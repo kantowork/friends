@@ -1,0 +1,16 @@
+{
+  "type": "tenant_preset",
+  "version": 1,
+  "tenantId": "t_default",
+  "tenantCode": "kanto.work",
+  "tenantName": "デフォルト",
+  "isDefaultTenant": true,
+  "description": "デフォルトテナント",
+  "configuration": {
+    "allowGuestLogin": true,
+    "requireApproval": false,
+    "maxMembers": 1000
+  },
+  "createdAt": "2026-08-20T00:00:00Z",
+  "updatedAt": "2026-08-20T00:00:00Z"
+}

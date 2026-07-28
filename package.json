@@ -1,0 +1,22 @@
+{
+  "name": "friends",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Friends Next-Generation Communication Application",
+  "scripts": {
+    "lint:md": "markdownlint '**/*.md' --ignore node_modules --ignore build",
+    "tenant:init": "node ./scripts/add_tenant.mjs --preset",
+    "tenant:create": "node ./scripts/add_tenant.mjs",
+    "deploy:sims": "./scripts/deploy_simulators.sh",
+    "deploy:rules": "firebase deploy --config infra/firebase.json --only firestore:rules,firestore:indexes"
+  },
+  "devDependencies": {
+    "markdownlint-cli": "^0.44.0"
+  },
+  "dependencies": {
+    "bs58": "^6.0.0",
+    "firebase-admin": "^12.0.0",
+    "qrcode-terminal": "^0.12.0",
+    "uuid": "^14.0.2"
+  }
+}

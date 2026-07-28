@@ -1,0 +1,809 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		02D0733F9151412926FECA15 /* CreateGroupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CDEFACC8A3FA9C99CF8DF38 /* CreateGroupView.swift */; };
+		05A50EBE2E202EAFF039AED8 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 571756FF5FB335DACAEE8222 /* HomeView.swift */; };
+		0B362DDAC424C2D97AA8B4BB /* tenant.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B1ACDADAC04F2FB5824859F /* tenant.pb.swift */; };
+		0BC92E61AFB2750FAD7196CE /* ToastBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2E3C3E86AD519CD32721AC3 /* ToastBannerView.swift */; };
+		0C76FD7A75628CC25692A256 /* ChatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED5E80E96490083CC2CF785 /* ChatService.swift */; };
+		0FD9DDF5C496A8CDBCCB82A1 /* AddFriendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F806734AD019C0DB45155686 /* AddFriendView.swift */; };
+		11C0697C000DF7E93DDFF5D3 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 843D20C5C1EE219362DCBF39 /* FirebaseFirestore */; };
+		14026010C5E38940B2E0EF14 /* ULID in Frameworks */ = {isa = PBXBuildFile; productRef = 7051210C1CCF956B15728EB2 /* ULID */; };
+		19147032001F1578E179221F /* CryptoKeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB174DA53133AD4E358D0543 /* CryptoKeyManager.swift */; };
+		1C4F574FB6EBCB185BC8BDE7 /* PresetTenantConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BD06C16F1E17F8C9BE1E48F /* PresetTenantConfig.swift */; };
+		226F6A4764327930953CE0E8 /* FriendInvitationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 110A108EC499613F06260DAB /* FriendInvitationTests.swift */; };
+		24D0348E9A56818D2DB4F5D3 /* MessageRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91746E05151A8A98BB35283E /* MessageRepository.swift */; };
+		287E1013270E85408A12F57D /* SwiftProtobuf in Frameworks */ = {isa = PBXBuildFile; productRef = F34AF2C8808DC5C87DBA377C /* SwiftProtobuf */; };
+		2E3D44FEDEE83CF5E7E60D0D /* FriendRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C3372477D89C3B7C93682B3 /* FriendRepository.swift */; };
+		30CC652E859111996CF99B3A /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91D3C03BA1244EA258513B9C /* LoginView.swift */; };
+		313B8036D8076C092433EF9C /* ToastNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E870B04CB55396AA196C5EA /* ToastNotificationManager.swift */; };
+		34A77CA3C504F568E54CAD70 /* GroupChatServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 191294B086311E44BAB0875A /* GroupChatServiceTests.swift */; };
+		354FB33E33AC9B6EF80A3BD6 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 982F65C0D7D0C26650254749 /* Localizable.strings */; };
+		36D7EA7F1F3A393026C80DA0 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61D0F0DDEF6511C713FE2F6C /* SettingsView.swift */; };
+		38BC7C13425562115454F2FD /* UserRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37D9B246340375349DB680A2 /* UserRepository.swift */; };
+		3A2333C6B5AF282771E286C6 /* TenantRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF255C2140EC8D1EFB180E3A /* TenantRepository.swift */; };
+		45F275B906350B5D1BF4105C /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B80054EF7CBD323CD9C1207 /* L10n.swift */; };
+		46F53CA0F7783E87945541DA /* Base58Swift in Frameworks */ = {isa = PBXBuildFile; productRef = F7675460E7EC690DE77B2CF3 /* Base58Swift */; };
+		4A49D1C8F50F6A2045C2D8B6 /* ReadReceiptServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 740BFAEC84E77B0229BF5FDD /* ReadReceiptServiceTests.swift */; };
+		4BDA6B8814AF5417E8C7888B /* ToastNotificationManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1210A3AB46980769A184FB5 /* ToastNotificationManagerTests.swift */; };
+		4BF224C168AD13B15D566172 /* PresetTenant.plist in Resources */ = {isa = PBXBuildFile; fileRef = 8CF1E654734996084DE28F2D /* PresetTenant.plist */; };
+		4C9D8C6EE9217D1523467001 /* ChatDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B602697905FD0D50788D4AA /* ChatDetailView.swift */; };
+		4D81E4E4CBDED389B9A6C03F /* Base58Swift in Frameworks */ = {isa = PBXBuildFile; productRef = F8EF690242180F32CE8BB5A3 /* Base58Swift */; };
+		64C65F4F92D43373B15AB8BA /* common.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9474BB46F28B24E4D2E05D1E /* common.pb.swift */; };
+		654EC337D4FB3017B9EF5251 /* R2Config.plist in Resources */ = {isa = PBXBuildFile; fileRef = 24A914712C89236342ED35B3 /* R2Config.plist */; };
+		66A1AF58928A09C812A78929 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE77C113E25A5A25D866CBD /* RootView.swift */; };
+		6D1FAFC0C2A48805D938742D /* message.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = C865A7F08BE5EE75FA404A86 /* message.pb.swift */; };
+		6E56001E6D461263F26716D4 /* InAppToast.swift in Sources */ = {isa = PBXBuildFile; fileRef = E398E98BC6D08ED8318A22C7 /* InAppToast.swift */; };
+		763AD6C13FBC1F6457066D47 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = F118FFCB9DD858C7A0A80E52 /* FirebaseAuth */; };
+		827EC8EA02C8BC5DAB1B12B1 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B0446CB35BD1DED70441109 /* GoogleService-Info.plist */; };
+		87CA0724A7824B7EB8C4F035 /* user.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DC45DCE17FFA7BE9C344104 /* user.pb.swift */; };
+		8A68F86C2F1CB50E9AFA13A9 /* TenantSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 677874861ECB1893E610DCB1 /* TenantSelectionView.swift */; };
+		902C92EF0710E58688137F3D /* ProtobufModelExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EFF9BEBF88BD245D30582A /* ProtobufModelExtensions.swift */; };
+		925AA0D4AB7D854196D029C2 /* chat.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED0E9E6440449A9F3F4D8985 /* chat.pb.swift */; };
+		9367769AEFFC21E5FFE69599 /* UserAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 742F0659533CB0CAD1247BCE /* UserAvatarView.swift */; };
+		AC175272B9C3FB36433698FB /* GroupDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B461A6C43DFB89F0B7FE3978 /* GroupDetailView.swift */; };
+		ACC46324326623D433E405F8 /* friend.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16CBC033C3BB6387AF2EEFDA /* friend.pb.swift */; };
+		AEA4132FF9C61035DAF1DECF /* R2Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC99C355772086F8C25B473E /* R2Config.swift */; };
+		B053E73BD86493140B7E098C /* AvatarRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0E4F421D19681024F04AB /* AvatarRepository.swift */; };
+		B8F8A42F949CE721CE93CAFF /* ChatRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC16F3F99E96F06398EEA0DE /* ChatRepository.swift */; };
+		CE0CACFE6FD36062538BF26C /* CryptoKeyManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D565C3091DA5BECD9CC25D05 /* CryptoKeyManagerTests.swift */; };
+		D2205A3B3B8BCBBFFF4867FE /* FriendListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EA5643E77B341F122508AC1 /* FriendListView.swift */; };
+		D3CC3E86D075BC2B9BD1E310 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E98D73A923F12CB9E9048015 /* MainTabView.swift */; };
+		DA5E9DA388B3B67CB35E692A /* ULID in Frameworks */ = {isa = PBXBuildFile; productRef = CF4A672980744C252CE0BE17 /* ULID */; };
+		DC31A55ADD9D19D59CCA2431 /* FriendsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001733C0CD611DF9D3816ED7 /* FriendsApp.swift */; };
+		DCDD9973FE6E89F151C88707 /* ReactionRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AAE26812CD356FC8FD5F061 /* ReactionRepository.swift */; };
+		DF1F14A70A5BC8E62DB4D4CC /* EditProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 126499C67BE5E96FA83A30AD /* EditProfileView.swift */; };
+		EAB58CA5EB81786B9D5825FA /* GroupListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C94084CD89A705B5BAF54F /* GroupListView.swift */; };
+		ED2EF6650654E1EFC07EBE74 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 735B7A1DC4D7010E59719EFF /* SplashView.swift */; };
+		EF92B67BDEF41128689C8D39 /* R2Config.plist.example in Resources */ = {isa = PBXBuildFile; fileRef = 4C6C05015932A0DAB3ED3B51 /* R2Config.plist.example */; };
+		F1DDFBD4665010D70C37F766 /* ReadReceiptRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCEECE7C03F984E10D3B0580 /* ReadReceiptRepository.swift */; };
+		FE53CA89A49848EE6D05ECA3 /* FriendInvitationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFD78F78EE81CC78390C270B /* FriendInvitationService.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		F94B26C59D3E86F01E65D54C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E868AA7641A96F252AE83E55 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FAA1F71DEF0745DEDF752565;
+			remoteInfo = Friends;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		001733C0CD611DF9D3816ED7 /* FriendsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsApp.swift; sourceTree = "<group>"; };
+		00A0E4F421D19681024F04AB /* AvatarRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarRepository.swift; sourceTree = "<group>"; };
+		0B1ACDADAC04F2FB5824859F /* tenant.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = tenant.pb.swift; sourceTree = "<group>"; };
+		110A108EC499613F06260DAB /* FriendInvitationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendInvitationTests.swift; sourceTree = "<group>"; };
+		126499C67BE5E96FA83A30AD /* EditProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditProfileView.swift; sourceTree = "<group>"; };
+		16CBC033C3BB6387AF2EEFDA /* friend.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = friend.pb.swift; sourceTree = "<group>"; };
+		191294B086311E44BAB0875A /* GroupChatServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupChatServiceTests.swift; sourceTree = "<group>"; };
+		1B80054EF7CBD323CD9C1207 /* L10n.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = L10n.swift; sourceTree = "<group>"; };
+		1ED5E80E96490083CC2CF785 /* ChatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatService.swift; sourceTree = "<group>"; };
+		24A914712C89236342ED35B3 /* R2Config.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = R2Config.plist; sourceTree = "<group>"; };
+		265075ED18C1D4EC2DC2D965 /* FriendsTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = FriendsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		2CDEFACC8A3FA9C99CF8DF38 /* CreateGroupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateGroupView.swift; sourceTree = "<group>"; };
+		2DE77C113E25A5A25D866CBD /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		37D9B246340375349DB680A2 /* UserRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserRepository.swift; sourceTree = "<group>"; };
+		3B0446CB35BD1DED70441109 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		473C7EC7238FB504E3E71A7B /* Friends.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Friends.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C6C05015932A0DAB3ED3B51 /* R2Config.plist.example */ = {isa = PBXFileReference; path = R2Config.plist.example; sourceTree = "<group>"; };
+		50C94084CD89A705B5BAF54F /* GroupListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupListView.swift; sourceTree = "<group>"; };
+		571756FF5FB335DACAEE8222 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		5DE80AD746183BADA346EAC5 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
+		61D0F0DDEF6511C713FE2F6C /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		677874861ECB1893E610DCB1 /* TenantSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TenantSelectionView.swift; sourceTree = "<group>"; };
+		6EA5643E77B341F122508AC1 /* FriendListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendListView.swift; sourceTree = "<group>"; };
+		735B7A1DC4D7010E59719EFF /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
+		73EFF9BEBF88BD245D30582A /* ProtobufModelExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtobufModelExtensions.swift; sourceTree = "<group>"; };
+		740BFAEC84E77B0229BF5FDD /* ReadReceiptServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadReceiptServiceTests.swift; sourceTree = "<group>"; };
+		742F0659533CB0CAD1247BCE /* UserAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserAvatarView.swift; sourceTree = "<group>"; };
+		7B602697905FD0D50788D4AA /* ChatDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatDetailView.swift; sourceTree = "<group>"; };
+		7DC45DCE17FFA7BE9C344104 /* user.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = user.pb.swift; sourceTree = "<group>"; };
+		7E870B04CB55396AA196C5EA /* ToastNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastNotificationManager.swift; sourceTree = "<group>"; };
+		8BD06C16F1E17F8C9BE1E48F /* PresetTenantConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetTenantConfig.swift; sourceTree = "<group>"; };
+		8C3372477D89C3B7C93682B3 /* FriendRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendRepository.swift; sourceTree = "<group>"; };
+		8CF1E654734996084DE28F2D /* PresetTenant.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = PresetTenant.plist; sourceTree = "<group>"; };
+		91746E05151A8A98BB35283E /* MessageRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageRepository.swift; sourceTree = "<group>"; };
+		91D3C03BA1244EA258513B9C /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		9474BB46F28B24E4D2E05D1E /* common.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = common.pb.swift; sourceTree = "<group>"; };
+		9AAE26812CD356FC8FD5F061 /* ReactionRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReactionRepository.swift; sourceTree = "<group>"; };
+		B461A6C43DFB89F0B7FE3978 /* GroupDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDetailView.swift; sourceTree = "<group>"; };
+		C865A7F08BE5EE75FA404A86 /* message.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = message.pb.swift; sourceTree = "<group>"; };
+		CB174DA53133AD4E358D0543 /* CryptoKeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CryptoKeyManager.swift; sourceTree = "<group>"; };
+		CC16F3F99E96F06398EEA0DE /* ChatRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatRepository.swift; sourceTree = "<group>"; };
+		CFD78F78EE81CC78390C270B /* FriendInvitationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendInvitationService.swift; sourceTree = "<group>"; };
+		D2E3C3E86AD519CD32721AC3 /* ToastBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastBannerView.swift; sourceTree = "<group>"; };
+		D565C3091DA5BECD9CC25D05 /* CryptoKeyManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CryptoKeyManagerTests.swift; sourceTree = "<group>"; };
+		E398E98BC6D08ED8318A22C7 /* InAppToast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InAppToast.swift; sourceTree = "<group>"; };
+		E98D73A923F12CB9E9048015 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		EC99C355772086F8C25B473E /* R2Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = R2Config.swift; sourceTree = "<group>"; };
+		ED0E9E6440449A9F3F4D8985 /* chat.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = chat.pb.swift; sourceTree = "<group>"; };
+		F1210A3AB46980769A184FB5 /* ToastNotificationManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastNotificationManagerTests.swift; sourceTree = "<group>"; };
+		F806734AD019C0DB45155686 /* AddFriendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFriendView.swift; sourceTree = "<group>"; };
+		FA78CAE1B760FF7E25B883AD /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		FCEECE7C03F984E10D3B0580 /* ReadReceiptRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadReceiptRepository.swift; sourceTree = "<group>"; };
+		FF255C2140EC8D1EFB180E3A /* TenantRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TenantRepository.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		4059D77EB4B79D385D75DDD7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				763AD6C13FBC1F6457066D47 /* FirebaseAuth in Frameworks */,
+				11C0697C000DF7E93DDFF5D3 /* FirebaseFirestore in Frameworks */,
+				287E1013270E85408A12F57D /* SwiftProtobuf in Frameworks */,
+				14026010C5E38940B2E0EF14 /* ULID in Frameworks */,
+				4D81E4E4CBDED389B9A6C03F /* Base58Swift in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D835DA1696759FA2B3C926F6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DA5E9DA388B3B67CB35E692A /* ULID in Frameworks */,
+				46F53CA0F7783E87945541DA /* Base58Swift in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		021BAB514991DD8F06AA742B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				473C7EC7238FB504E3E71A7B /* Friends.app */,
+				265075ED18C1D4EC2DC2D965 /* FriendsTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		19F587344C230F875CFEBFE6 /* Toast */ = {
+			isa = PBXGroup;
+			children = (
+				E398E98BC6D08ED8318A22C7 /* InAppToast.swift */,
+			);
+			path = Toast;
+			sourceTree = "<group>";
+		};
+		438107943C6BD4FE3E4A2979 /* Repositories */ = {
+			isa = PBXGroup;
+			children = (
+				00A0E4F421D19681024F04AB /* AvatarRepository.swift */,
+				CC16F3F99E96F06398EEA0DE /* ChatRepository.swift */,
+				8C3372477D89C3B7C93682B3 /* FriendRepository.swift */,
+				91746E05151A8A98BB35283E /* MessageRepository.swift */,
+				9AAE26812CD356FC8FD5F061 /* ReactionRepository.swift */,
+				FCEECE7C03F984E10D3B0580 /* ReadReceiptRepository.swift */,
+				FF255C2140EC8D1EFB180E3A /* TenantRepository.swift */,
+				37D9B246340375349DB680A2 /* UserRepository.swift */,
+			);
+			path = Repositories;
+			sourceTree = "<group>";
+		};
+		55C735BC18C9AA013C98A3E8 /* Generated */ = {
+			isa = PBXGroup;
+			children = (
+				ED0E9E6440449A9F3F4D8985 /* chat.pb.swift */,
+				9474BB46F28B24E4D2E05D1E /* common.pb.swift */,
+				16CBC033C3BB6387AF2EEFDA /* friend.pb.swift */,
+				C865A7F08BE5EE75FA404A86 /* message.pb.swift */,
+				0B1ACDADAC04F2FB5824859F /* tenant.pb.swift */,
+				7DC45DCE17FFA7BE9C344104 /* user.pb.swift */,
+			);
+			path = Generated;
+			sourceTree = "<group>";
+		};
+		985E10202300356AD839A514 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				D565C3091DA5BECD9CC25D05 /* CryptoKeyManagerTests.swift */,
+				110A108EC499613F06260DAB /* FriendInvitationTests.swift */,
+				191294B086311E44BAB0875A /* GroupChatServiceTests.swift */,
+				740BFAEC84E77B0229BF5FDD /* ReadReceiptServiceTests.swift */,
+				F1210A3AB46980769A184FB5 /* ToastNotificationManagerTests.swift */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		B12B8F06E271796FF3461915 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				F806734AD019C0DB45155686 /* AddFriendView.swift */,
+				7B602697905FD0D50788D4AA /* ChatDetailView.swift */,
+				2CDEFACC8A3FA9C99CF8DF38 /* CreateGroupView.swift */,
+				126499C67BE5E96FA83A30AD /* EditProfileView.swift */,
+				6EA5643E77B341F122508AC1 /* FriendListView.swift */,
+				B461A6C43DFB89F0B7FE3978 /* GroupDetailView.swift */,
+				50C94084CD89A705B5BAF54F /* GroupListView.swift */,
+				571756FF5FB335DACAEE8222 /* HomeView.swift */,
+				E98D73A923F12CB9E9048015 /* MainTabView.swift */,
+				2DE77C113E25A5A25D866CBD /* RootView.swift */,
+				61D0F0DDEF6511C713FE2F6C /* SettingsView.swift */,
+				735B7A1DC4D7010E59719EFF /* SplashView.swift */,
+				D2E3C3E86AD519CD32721AC3 /* ToastBannerView.swift */,
+				742F0659533CB0CAD1247BCE /* UserAvatarView.swift */,
+				E3436AED76D92C18944CDE6A /* Auth */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		BDA46F69B389A37B3F15C01D /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				1ED5E80E96490083CC2CF785 /* ChatService.swift */,
+				CB174DA53133AD4E358D0543 /* CryptoKeyManager.swift */,
+				CFD78F78EE81CC78390C270B /* FriendInvitationService.swift */,
+				7E870B04CB55396AA196C5EA /* ToastNotificationManager.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		BE3E0DC6C98BDAB81310FEDE /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				8BD06C16F1E17F8C9BE1E48F /* PresetTenantConfig.swift */,
+				73EFF9BEBF88BD245D30582A /* ProtobufModelExtensions.swift */,
+				EC99C355772086F8C25B473E /* R2Config.swift */,
+				55C735BC18C9AA013C98A3E8 /* Generated */,
+				EFEE1CD5E84989AB629DDABE /* Localization */,
+				19F587344C230F875CFEBFE6 /* Toast */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		C30248E41F0E7E051C4F8AEA = {
+			isa = PBXGroup;
+			children = (
+				F274B5D21E3504763E781754 /* Sources */,
+				985E10202300356AD839A514 /* Tests */,
+				021BAB514991DD8F06AA742B /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		E3436AED76D92C18944CDE6A /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				91D3C03BA1244EA258513B9C /* LoginView.swift */,
+				677874861ECB1893E610DCB1 /* TenantSelectionView.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		E4A513E463C085E69D600CAF /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				8CF1E654734996084DE28F2D /* PresetTenant.plist */,
+				24A914712C89236342ED35B3 /* R2Config.plist */,
+				4C6C05015932A0DAB3ED3B51 /* R2Config.plist.example */,
+				982F65C0D7D0C26650254749 /* Localizable.strings */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		EFEE1CD5E84989AB629DDABE /* Localization */ = {
+			isa = PBXGroup;
+			children = (
+				1B80054EF7CBD323CD9C1207 /* L10n.swift */,
+			);
+			path = Localization;
+			sourceTree = "<group>";
+		};
+		F274B5D21E3504763E781754 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				001733C0CD611DF9D3816ED7 /* FriendsApp.swift */,
+				3B0446CB35BD1DED70441109 /* GoogleService-Info.plist */,
+				BE3E0DC6C98BDAB81310FEDE /* Models */,
+				438107943C6BD4FE3E4A2979 /* Repositories */,
+				E4A513E463C085E69D600CAF /* Resources */,
+				BDA46F69B389A37B3F15C01D /* Services */,
+				B12B8F06E271796FF3461915 /* Views */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		49732A8D70CFD847118E1325 /* FriendsTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 204B71444C50028C8E5BA6C9 /* Build configuration list for PBXNativeTarget "FriendsTests" */;
+			buildPhases = (
+				11BD790A626B7603F4E7E73A /* Sources */,
+				D835DA1696759FA2B3C926F6 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				143C38FCE088E5C0724A2828 /* PBXTargetDependency */,
+			);
+			name = FriendsTests;
+			packageProductDependencies = (
+				CF4A672980744C252CE0BE17 /* ULID */,
+				F7675460E7EC690DE77B2CF3 /* Base58Swift */,
+			);
+			productName = FriendsTests;
+			productReference = 265075ED18C1D4EC2DC2D965 /* FriendsTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		FAA1F71DEF0745DEDF752565 /* Friends */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1DDFB4DE928DC027607FFE11 /* Build configuration list for PBXNativeTarget "Friends" */;
+			buildPhases = (
+				77E3632CCE80F79E969EFB73 /* Sources */,
+				FFBED63604B99532B7B37943 /* Resources */,
+				4059D77EB4B79D385D75DDD7 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Friends;
+			packageProductDependencies = (
+				F118FFCB9DD858C7A0A80E52 /* FirebaseAuth */,
+				843D20C5C1EE219362DCBF39 /* FirebaseFirestore */,
+				F34AF2C8808DC5C87DBA377C /* SwiftProtobuf */,
+				7051210C1CCF956B15728EB2 /* ULID */,
+				F8EF690242180F32CE8BB5A3 /* Base58Swift */,
+			);
+			productName = Friends;
+			productReference = 473C7EC7238FB504E3E71A7B /* Friends.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E868AA7641A96F252AE83E55 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = D8DFF57A97D02A5791A28C6D /* Build configuration list for PBXProject "Friends" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+				ja,
+			);
+			mainGroup = C30248E41F0E7E051C4F8AEA;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				E92046FD9422801DFC684791 /* XCRemoteSwiftPackageReference "Base58Swift" */,
+				6BCE5C38D169A1D085900560 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				AE7780B0CFE5F3C7D315384A /* XCRemoteSwiftPackageReference "swift-protobuf" */,
+				1315CD584F221955ED6C7EFC /* XCRemoteSwiftPackageReference "ULID.swift" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 021BAB514991DD8F06AA742B /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				FAA1F71DEF0745DEDF752565 /* Friends */,
+				49732A8D70CFD847118E1325 /* FriendsTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		FFBED63604B99532B7B37943 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				827EC8EA02C8BC5DAB1B12B1 /* GoogleService-Info.plist in Resources */,
+				354FB33E33AC9B6EF80A3BD6 /* Localizable.strings in Resources */,
+				4BF224C168AD13B15D566172 /* PresetTenant.plist in Resources */,
+				654EC337D4FB3017B9EF5251 /* R2Config.plist in Resources */,
+				EF92B67BDEF41128689C8D39 /* R2Config.plist.example in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		11BD790A626B7603F4E7E73A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CE0CACFE6FD36062538BF26C /* CryptoKeyManagerTests.swift in Sources */,
+				226F6A4764327930953CE0E8 /* FriendInvitationTests.swift in Sources */,
+				34A77CA3C504F568E54CAD70 /* GroupChatServiceTests.swift in Sources */,
+				4A49D1C8F50F6A2045C2D8B6 /* ReadReceiptServiceTests.swift in Sources */,
+				4BDA6B8814AF5417E8C7888B /* ToastNotificationManagerTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		77E3632CCE80F79E969EFB73 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0FD9DDF5C496A8CDBCCB82A1 /* AddFriendView.swift in Sources */,
+				B053E73BD86493140B7E098C /* AvatarRepository.swift in Sources */,
+				4C9D8C6EE9217D1523467001 /* ChatDetailView.swift in Sources */,
+				B8F8A42F949CE721CE93CAFF /* ChatRepository.swift in Sources */,
+				0C76FD7A75628CC25692A256 /* ChatService.swift in Sources */,
+				02D0733F9151412926FECA15 /* CreateGroupView.swift in Sources */,
+				19147032001F1578E179221F /* CryptoKeyManager.swift in Sources */,
+				DF1F14A70A5BC8E62DB4D4CC /* EditProfileView.swift in Sources */,
+				FE53CA89A49848EE6D05ECA3 /* FriendInvitationService.swift in Sources */,
+				D2205A3B3B8BCBBFFF4867FE /* FriendListView.swift in Sources */,
+				2E3D44FEDEE83CF5E7E60D0D /* FriendRepository.swift in Sources */,
+				DC31A55ADD9D19D59CCA2431 /* FriendsApp.swift in Sources */,
+				AC175272B9C3FB36433698FB /* GroupDetailView.swift in Sources */,
+				EAB58CA5EB81786B9D5825FA /* GroupListView.swift in Sources */,
+				05A50EBE2E202EAFF039AED8 /* HomeView.swift in Sources */,
+				6E56001E6D461263F26716D4 /* InAppToast.swift in Sources */,
+				45F275B906350B5D1BF4105C /* L10n.swift in Sources */,
+				30CC652E859111996CF99B3A /* LoginView.swift in Sources */,
+				D3CC3E86D075BC2B9BD1E310 /* MainTabView.swift in Sources */,
+				24D0348E9A56818D2DB4F5D3 /* MessageRepository.swift in Sources */,
+				1C4F574FB6EBCB185BC8BDE7 /* PresetTenantConfig.swift in Sources */,
+				902C92EF0710E58688137F3D /* ProtobufModelExtensions.swift in Sources */,
+				AEA4132FF9C61035DAF1DECF /* R2Config.swift in Sources */,
+				DCDD9973FE6E89F151C88707 /* ReactionRepository.swift in Sources */,
+				F1DDFBD4665010D70C37F766 /* ReadReceiptRepository.swift in Sources */,
+				66A1AF58928A09C812A78929 /* RootView.swift in Sources */,
+				36D7EA7F1F3A393026C80DA0 /* SettingsView.swift in Sources */,
+				ED2EF6650654E1EFC07EBE74 /* SplashView.swift in Sources */,
+				3A2333C6B5AF282771E286C6 /* TenantRepository.swift in Sources */,
+				8A68F86C2F1CB50E9AFA13A9 /* TenantSelectionView.swift in Sources */,
+				0BC92E61AFB2750FAD7196CE /* ToastBannerView.swift in Sources */,
+				313B8036D8076C092433EF9C /* ToastNotificationManager.swift in Sources */,
+				9367769AEFFC21E5FFE69599 /* UserAvatarView.swift in Sources */,
+				38BC7C13425562115454F2FD /* UserRepository.swift in Sources */,
+				925AA0D4AB7D854196D029C2 /* chat.pb.swift in Sources */,
+				64C65F4F92D43373B15AB8BA /* common.pb.swift in Sources */,
+				ACC46324326623D433E405F8 /* friend.pb.swift in Sources */,
+				6D1FAFC0C2A48805D938742D /* message.pb.swift in Sources */,
+				0B362DDAC424C2D97AA8B4BB /* tenant.pb.swift in Sources */,
+				87CA0724A7824B7EB8C4F035 /* user.pb.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		143C38FCE088E5C0724A2828 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FAA1F71DEF0745DEDF752565 /* Friends */;
+			targetProxy = F94B26C59D3E86F01E65D54C /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		982F65C0D7D0C26650254749 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				FA78CAE1B760FF7E25B883AD /* en */,
+				5DE80AD746183BADA346EAC5 /* ja */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		5830DEF80B179161150B6C0E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		7F773BD068D37A171FCBD853 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = work.kanto.friends.tests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Friends.app/Friends";
+			};
+			name = Debug;
+		};
+		AB7C68994B8DF1DEE8CFFD09 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Friends;
+				INFOPLIST_KEY_NSCameraUsageDescription = "テナントや友達のQRコードをスキャンするためにカメラを使用します。";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = work.kanto.friends;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		D44382E732E1F6A986CA689F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Friends;
+				INFOPLIST_KEY_NSCameraUsageDescription = "テナントや友達のQRコードをスキャンするためにカメラを使用します。";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = work.kanto.friends;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		E83A584419205BA2DAEA325E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		F9AF55B46ACBC963964E1571 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = work.kanto.friends.tests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Friends.app/Friends";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1DDFB4DE928DC027607FFE11 /* Build configuration list for PBXNativeTarget "Friends" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AB7C68994B8DF1DEE8CFFD09 /* Debug */,
+				D44382E732E1F6A986CA689F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		204B71444C50028C8E5BA6C9 /* Build configuration list for PBXNativeTarget "FriendsTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7F773BD068D37A171FCBD853 /* Debug */,
+				F9AF55B46ACBC963964E1571 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D8DFF57A97D02A5791A28C6D /* Build configuration list for PBXProject "Friends" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E83A584419205BA2DAEA325E /* Debug */,
+				5830DEF80B179161150B6C0E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		1315CD584F221955ED6C7EFC /* XCRemoteSwiftPackageReference "ULID.swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/yaslab/ULID.swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.3.1;
+			};
+		};
+		6BCE5C38D169A1D085900560 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
+		AE7780B0CFE5F3C7D315384A /* XCRemoteSwiftPackageReference "swift-protobuf" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-protobuf.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.28.0;
+			};
+		};
+		E92046FD9422801DFC684791 /* XCRemoteSwiftPackageReference "Base58Swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/keefertaylor/Base58Swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		7051210C1CCF956B15728EB2 /* ULID */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1315CD584F221955ED6C7EFC /* XCRemoteSwiftPackageReference "ULID.swift" */;
+			productName = ULID;
+		};
+		843D20C5C1EE219362DCBF39 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6BCE5C38D169A1D085900560 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		CF4A672980744C252CE0BE17 /* ULID */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1315CD584F221955ED6C7EFC /* XCRemoteSwiftPackageReference "ULID.swift" */;
+			productName = ULID;
+		};
+		F118FFCB9DD858C7A0A80E52 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6BCE5C38D169A1D085900560 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		F34AF2C8808DC5C87DBA377C /* SwiftProtobuf */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AE7780B0CFE5F3C7D315384A /* XCRemoteSwiftPackageReference "swift-protobuf" */;
+			productName = SwiftProtobuf;
+		};
+		F7675460E7EC690DE77B2CF3 /* Base58Swift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E92046FD9422801DFC684791 /* XCRemoteSwiftPackageReference "Base58Swift" */;
+			productName = Base58Swift;
+		};
+		F8EF690242180F32CE8BB5A3 /* Base58Swift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E92046FD9422801DFC684791 /* XCRemoteSwiftPackageReference "Base58Swift" */;
+			productName = Base58Swift;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = E868AA7641A96F252AE83E55 /* Project object */;
+}

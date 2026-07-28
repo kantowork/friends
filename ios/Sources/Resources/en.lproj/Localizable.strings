@@ -1,0 +1,162 @@
+/* 
+  Localizable.strings (English)
+  Friends App
+*/
+
+// MARK: - Common
+"common.ok" = "OK";
+"common.cancel" = "Cancel";
+"common.close" = "Close";
+"common.copy" = "Copy";
+"common.copied" = "Copied";
+"common.share" = "Share";
+"common.save" = "Save";
+"common.delete" = "Delete";
+"common.confirm" = "Confirm";
+"common.error" = "Error";
+"common.loading" = "Loading…";
+"common.success" = "Success";
+
+// MARK: - Auth & Login
+"auth.login.title" = "Friends";
+"auth.login.subtitle" = "Secure & Simple E2EE Communication";
+"auth.login.guest_btn" = "Sign in Anonymously";
+"auth.login.email_btn" = "Sign in with Email";
+"auth.login.recovery_btn" = "Restore with Recovery Phrase";
+"auth.login.reset_device_btn" = "Reset Device & Keys";
+"auth.login.reset_device_confirm_title" = "Reset all device data & keys?";
+"auth.login.reset_device_confirm_msg" = "Permanently deletes all encryption keys and local data stored in Keychain.";
+"auth.login.tenant_change" = "Change";
+"auth.login.display_name_placeholder" = "Your Name (Display Name)";
+
+// MARK: - Tenant Selection
+"tenant.selection.title" = "Select Tenant";
+"tenant.selection.header" = "Select Organization (Tenant)";
+"tenant.selection.subtitle" = "Scan QR code or enter tenant configuration directly.";
+"tenant.tab.qr" = "QR";
+"tenant.tab.url" = "URL";
+"tenant.tab.custom" = "Custom";
+"tenant.verify.verifying" = "Verifying tenant…";
+"tenant.verify.confirm_btn" = "Select This Tenant";
+"tenant.default_badge" = "Default";
+"tenant.input.label" = "Tenant Info (JSON or t_xxxx)";
+"tenant.input.template" = "Insert Template";
+"tenant.input.url_label" = "Invite URL or Custom Scheme";
+"tenant.verify.btn" = "Verify";
+"tenant.camera.simulator_note" = "Camera unavailable in Simulator";
+"tenant.camera.simulator_btn" = "Simulate Scanning Test Tenant QR";
+
+// MARK: - Tabs
+"tab.home" = "Home";
+"tab.friends" = "Friends";
+"tab.groups" = "Groups";
+
+// MARK: - Groups
+"group.list.title" = "Groups";
+"group.list.empty" = "No groups joined yet.\nTap \"+\" in the top right to create a new group.";
+"group.create.title" = "Create Group";
+"group.create.name_label" = "Group Name";
+"group.create.name_placeholder" = "Enter group name";
+"group.create.select_members" = "Select Members (%d selected)";
+"group.create.submit_btn" = "Create";
+"group.create.no_friends" = "No friends to invite. Please add friends first.";
+"group.detail.title" = "Group Details";
+"group.detail.members_section" = "Members (%d)";
+
+// MARK: - Home
+
+// MARK: - Chats
+"chat.list.title" = "Chats";
+"chat.list.empty" = "No chat history yet.\nExchange QR codes with friends to start chatting.";
+"chat.detail.input_placeholder" = "Message…";
+"chat.detail.send" = "Send";
+"chat.read.status" = "Read";
+"chat.read.count" = "Read %d";
+
+// MARK: - Reactions
+"chat.reaction.details_title" = "Reactions";
+"chat.reaction.tab_all" = "All";
+"chat.reaction.empty_list" = "No reactions yet";
+"chat.reaction.thumbs_up" = "Thumbs Up";
+"chat.reaction.heart" = "Heart";
+"chat.reaction.ok" = "OK";
+"chat.reaction.smile" = "Smile";
+"chat.reaction.surprised" = "Surprised";
+"chat.reaction.sad" = "Sad";
+"chat.reaction.thinking" = "Thinking";
+"chat.reaction.you" = "You";
+
+// MARK: - Friends
+"friend.list.title" = "Friends";
+"friend.list.add_btn" = "Add Friend";
+"friend.list.empty" = "No registered friends yet.\nScan a QR code to add friends.";
+"friend.list.user_id_prefix" = "ID: %@";
+
+// MARK: - Friend Add (C03)
+"friend.add.title" = "Add Friend";
+"friend.add.tab_qr" = "QR Code";
+"friend.add.tab_text" = "Text Code";
+"friend.add.camera_simulator_btn" = "Simulate Scanning Friend QR";
+"friend.add.passcode_title" = "Passcode";
+"friend.add.my_info_section" = "My Information";
+"friend.add.user_id_label" = "Username";
+"friend.add.text_input_section" = "Add Friend";
+"friend.add.target_user_id_placeholder" = "Friend's Username (@username)";
+"friend.add.target_passcode_placeholder" = "3-Digit Passcode (e.g. 782)";
+"friend.add.confirm_addition_btn" = "Add Friend";
+"friend.add.success_alert_title" = "Friend Added";
+"friend.add.success_alert_msg" = "%@ has been added to your friends!";
+"friend.add.confirm_sheet_title" = "Confirm Friend Addition";
+"friend.add.confirm_sheet_msg" = "Add \"%@\" (@%@) as a friend?";
+
+// MARK: - Settings
+"settings.title" = "Settings";
+"settings.section.profile" = "Profile";
+"settings.section.tenant" = "Tenant";
+"settings.section.security" = "Security & Backup";
+"settings.section.about" = "App Information";
+"settings.profile.display_name" = "name";
+"settings.profile.username" = "account";
+"settings.profile.username_placeholder" = "account";
+"settings.profile.username_invalid_format" = "Account must be alphanumeric characters or underscores.";
+"settings.profile.username_confirm_title" = "Confirm Account Name Change";
+"settings.profile.username_confirm_msg" = "Changing your account name will change the handle others use to find and add you. Do you want to save this change?";
+"settings.profile.username_confirm_button" = "Change";
+"settings.profile.user_id" = "ID";
+"settings.profile.default_user" = "User";
+"settings.tenant.name" = "name";
+"settings.tenant.code" = "code";
+"settings.tenant.id" = "ID";
+"settings.tenant.unconnected" = "Not Connected";
+"settings.security.reset_title" = "Security Reset";
+"settings.security.reset_confirm_title" = "Perform Security Reset?";
+"settings.security.reset_confirm_msg" = "Device keypair will be regenerated and all sessions on other devices will be disconnected.";
+"settings.security.reset_execute" = "Execute";
+"settings.security.reset_success_title" = "Security Reset Completed";
+"settings.security.reset_success_msg" = "New public key (PK_u) published and sessions are secured.";
+"settings.recovery.title" = "Recovery Phrase";
+"settings.recovery.desc" = "12 English words required for device migration and backup restoration. Never share these with anyone.";
+"settings.logout" = "Sign Out";
+"settings.logout.confirm_title" = "Sign out and reset device?";
+"settings.logout.confirm_msg" = "Sign out of your account and permanently clear all encryption keys and local data from this device.";
+"settings.about.version" = "Version";
+"settings.about.encryption" = "Encryption";
+"settings.profile.edit_title" = "Edit Profile";
+"settings.profile.edit_placeholder" = "Enter display name (max 32 chars)";
+"settings.profile.edit_empty_error" = "Please enter a display name.";
+"settings.profile.avatar_change" = "Change Avatar";
+"settings.profile.avatar_choose_photo" = "Choose from Photo Library";
+"settings.profile.avatar_preset_title" = "Choose from Presets";
+"settings.profile.avatar_remove" = "Remove Avatar";
+
+// MARK: - Errors
+"error.unknown" = "An unknown error occurred.";
+"error.friend.invalid_format" = "Friend invitation code format is invalid.";
+"error.friend.user_not_found" = "The specified user ID could not be found.";
+"error.friend.passcode_expired" = "Passcode mismatch or expired. Please enter the newest code.";
+"error.friend.tenant_mismatch" = "User belongs to a different organization. Friend addition is only allowed within the same tenant.";
+"error.friend.self_add" = "You cannot add yourself as a friend.";
+
+// MARK: - Toast Notification
+"toast.new_message" = "New Message";
+

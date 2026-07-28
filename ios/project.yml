@@ -1,0 +1,66 @@
+name: Friends
+options:
+  bundleIdPrefix: work.kanto
+  minimumXcodeVersion: "16.0"
+
+packages:
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk.git
+    from: 11.0.0
+  SwiftProtobuf:
+    url: https://github.com/apple/swift-protobuf.git
+    from: 1.28.0
+  ULID:
+    url: https://github.com/yaslab/ULID.swift.git
+    from: 1.3.1
+  Base58Swift:
+    url: https://github.com/keefertaylor/Base58Swift.git
+    from: 2.1.0
+
+targets:
+  Friends:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: Sources
+    dependencies:
+      - package: Firebase
+        product: FirebaseAuth
+      - package: Firebase
+        product: FirebaseFirestore
+      - package: SwiftProtobuf
+        product: SwiftProtobuf
+      - package: ULID
+        product: ULID
+      - package: Base58Swift
+        product: Base58Swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: work.kanto.friends
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_CFBundleDisplayName: "Friends"
+        INFOPLIST_KEY_NSCameraUsageDescription: "テナントや友達のQRコードをスキャンするためにカメラを使用します。"
+        SWIFT_VERSION: "5.0"
+        OTHER_LDFLAGS: ["$(inherited)", "-ObjC"]
+
+  FriendsTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: Tests
+    dependencies:
+      - target: Friends
+      - package: ULID
+        product: ULID
+      - package: Base58Swift
+        product: Base58Swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: work.kanto.friends.tests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.0"
+
+

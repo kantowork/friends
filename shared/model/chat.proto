@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package friends.model;
+
+import "google/protobuf/timestamp.proto";
+import "common.proto";
+
+option go_package = "work.kanto.friends/model;friendsmodel";
+option swift_prefix = "Friends";
+
+// チャット・会話 (/tenants/{tenantId}/chats/{chatId})
+message Chat {
+  string chat_id = 1;   // ID 命名規約: dm_xxx または gm_xxx
+  string tenant_id = 2; // ID 命名規約: t_xxx
+  ChatType chat_type = 3;
+  repeated string members = 4; // 参加者の Firebase Auth UID リスト
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+// グループ会話共有鍵バケット (/tenants/{tenantId}/chats/{chatId}/keys/{keyVersion})
+message KeyBucket {
+  string key_version = 1; // バージョン ID 命名規約: v_1, v_2
+  string chat_id = 2;     // ID 命名規約: gm_xxx
+  string tenant_id = 3;   // ID 命名規約: t_xxx
+  map<string, string> encrypted_group_keys = 4; // member_uid -> 各自の PK で暗号化された SK_group (Base64)
+  google.protobuf.Timestamp created_at = 5;
+}
+
+// チャット既読カーソル (/tenants/{tenantId}/chats/{chatId}/receipts/{userId})
+message ReadReceipt {
+  string user_id = 1;              // ユーザーID (u_xxx)
+  string chat_id = 2;              // チャットID (dm_xxx または gm_xxx)
+  string tenant_id = 3;            // テナントID (t_xxx)
+  string last_read_message_id = 4; // 最後に閲覧したメッセージID (m_xxx)
+  google.protobuf.Timestamp last_read_at = 5; // 最後に閲覧したメッセージの作成日時
+  google.protobuf.Timestamp updated_at = 6;   // カーソル更新日時
+}

@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package friends.model;
+
+import "google/protobuf/timestamp.proto";
+import "common.proto";
+
+option go_package = "work.kanto.friends/model;friendsmodel";
+option java_multiple_files = true;
+option java_package = "work.kanto.friends.model";
+option swift_prefix = "Friends";
+
+// テナント内公開ユーザープロファイル (u_)
+message PublicUserProfile {
+  string user_id = 1;                // ユーザー公開ID (ID 命名規約: u_xxx)
+  string uid = 2;                    // Firebase Auth 全域 UID (Firebase認証ID)
+  string tenant_id = 3;              // 所属テナント ID: t_xxx
+  string display_name = 4;           // アプリ内復号済み表示名
+  string public_key = 5;             // X25519/Ed25519 公開鍵 (Base64)
+  UserRole role = 6;
+  AccountType account_type = 7;
+  string encrypted_display_name = 8; // MK_T で AES-256-GCM 暗号化した表示名 (Base64)
+  string display_name_nonce = 9;      // 暗号化 Nonce (Base64)
+  string avatar_nonce = 11;           // MK_T で暗号化したアバターの Nonce (Base64)
+  google.protobuf.Timestamp avatar_updated_at = 12; // アバター最終更新日時
+  string username = 13;               // ユーザー識別子 (初期値: user_id と同値、変更可能、小文字一意)
+}
+
+// ユーザー非公開・復元用データ (/users/{uid}/private/data)
+message UserPrivateData {
+  string uid = 1;                    // Firebase Auth 全域 UID
+  string recovery_hash = 2;          // SHA256(K_recovery_id)
+  string encrypted_private_key = 3;  // K_priv_enc で暗号化した秘密鍵 SK_u (Base64)
+  string nonce = 4;                  // 暗号化 Nonce / IV (Base64)
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+// 端末デバイス情報 (d_)
+message Device {
+  string device_id = 1;   // ID 命名規約: d_xxx
+  string uid = 2;         // Firebase Auth 全域 UID
+  string device_type = 3; // "ios", "web", "android"
+  string device_token = 4; // FCM / APNs Token
+  google.protobuf.Timestamp registered_at = 5;
+}

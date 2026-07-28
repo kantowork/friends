@@ -1,0 +1,281 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // 共通認可・判定関数
+    // =========================================================================
+    
+    // 認証済みか判定
+    function isAuthenticated() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    // 特定の Auth UID 本人か判定
+    function isUser(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // テナント内のユーザープロファイルから Auth UID を取得して本人か検証
+    function isTenantUser(tenantId, userId) {
+      return isAuthenticated() && (
+        exists(/databases/$(database)/documents/tenants/$(tenantId)/users/$(userId)) &&
+        get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(userId)).data.uid == request.auth.uid
+      );
+    }
+
+    // チャットのメンバーか判定
+    // - 1:1 DM の場合: members 配列に2つの userId が格納されており、そのいずれかが本人であるか
+    // - グループの場合: members 配列に自分の userId または Auth UID が含まれるか
+    function isChatMember(tenantId, chatId) {
+      let chatPath = /databases/$(database)/documents/tenants/$(tenantId)/chats/$(chatId);
+      return isAuthenticated() && exists(chatPath) && (
+        (
+          get(chatPath).data.chatType == 'direct'
+          && get(chatPath).data.members.size() == 2
+          && (
+            isTenantUser(tenantId, get(chatPath).data.members[0]) ||
+            isTenantUser(tenantId, get(chatPath).data.members[1])
+          )
+        ) || (
+          get(chatPath).data.chatType == 'group'
+          && (
+            request.auth.uid in get(chatPath).data.members
+          )
+        )
+      );
+    }
+
+    // =========================================================================
+    // 1. 全域ユーザー情報 (/users/{uid})
+    // =========================================================================
+    match /users/{uid} {
+      // ユーザーの公開情報 (公開鍵, デフォルトテナント等) は認証済みユーザー全員に読み取り許可
+      allow read: if isAuthenticated();
+
+      // 作成・更新は本人のみ
+      allow create, update: if isUser(uid)
+        && request.resource.data.uid == uid
+        && (!('publicKey' in request.resource.data) || request.resource.data.publicKey is string);
+
+      allow delete: if false;
+
+      // 本人限定の秘密鍵・復旧データ (/users/{uid}/private/data)
+      match /private/data {
+        allow read, write: if isUser(uid);
+      }
+    }
+
+    // =========================================================================
+    // 2. テナントコレクション (/tenants/{tenantId})
+    // =========================================================================
+    match /tenants/{tenantId} {
+      // ログイン前・初期化時のテナント情報取得 (tenantCode, 暗号化tenantName等) は読み取り許可
+      allow read: if true;
+
+      // テナントドキュメント自体の作成・更新・削除はクライアントから完全禁止
+      // （Admin SDK / サービス管理者スクリプト add_tenant.mjs のみ実行可能）
+      allow write: if false;
+
+      // -----------------------------------------------------------------------
+      // 2.1 テナント内ユーザープロファイル (/tenants/{tenantId}/users/{userId})
+      // -----------------------------------------------------------------------
+      match /users/{userId} {
+        // テナント所属ユーザーの公開プロファイル (暗号化displayName, publicKey等)
+        // ログイン前・テナント選択時・友達検索時のため認証済みユーザーに読み取り許可
+        allow read: if isAuthenticated();
+
+        // 自身のプロファイルのみ作成・更新可能 (プロファイル内の uid と Auth UID が一致すること)
+        allow create, update: if isAuthenticated()
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.tenantId == tenantId;
+
+        allow delete: if false;
+
+        // ---------------------------------------------------------------------
+        // 2.1.1 友達サブコレクション (/tenants/{tenantId}/users/{userId}/friends/{friendUserId})
+        // ---------------------------------------------------------------------
+        match /friends/{friendUserId} {
+          // 自分の友達リストのみ閲覧可能
+          allow read: if isTenantUser(tenantId, userId);
+
+          // 友達追加時の書き込み:
+          // 1) 自分の友達リストへの相手追加: userId が本人
+          // 2) 相手の友達リストへの自己情報登録 (双方向関係の作成): request.resource.data.friendUid が本人
+          allow create, update: if isAuthenticated()
+            && request.resource.data.tenantId == tenantId
+            && (
+              isTenantUser(tenantId, userId) ||
+              request.resource.data.friendUid == request.auth.uid
+            );
+
+          // 削除は自分の友達リストのみ可能
+          allow delete: if isTenantUser(tenantId, userId);
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // 2.2 ユーザー識別子一意性インデックス (/tenants/{tenantId}/usernames/{username})
+      // -----------------------------------------------------------------------
+      match /usernames/{username} {
+        // ユーザー検索および一意性チェックのため認証済みユーザー全員に読み取り許可
+        allow read: if isAuthenticated();
+
+        // 新規登録: 自分の uid/userId を紐付け、まだ存在しない場合のみ許可
+        allow create: if isAuthenticated()
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.tenantId == tenantId
+          && username.matches('^[a-zA-Z0-9_]{3,32}$');
+
+        // 更新: 所有者本人のみ許可
+        allow update: if isAuthenticated()
+          && resource.data.uid == request.auth.uid
+          && request.resource.data.uid == request.auth.uid;
+
+        // 削除: username 変更時に古い username を削除可能（本人のみ）
+        allow delete: if isAuthenticated()
+          && resource.data.uid == request.auth.uid;
+      }
+
+      // -----------------------------------------------------------------------
+      // 2.2 チャット・会話コレクション (/tenants/{tenantId}/chats/{chatId})
+      // -----------------------------------------------------------------------
+      match /chats/{chatId} {
+        // チャット参加者のみ読み取り可能
+        allow read: if isChatMember(tenantId, chatId);
+
+        // 新規チャット作成 (Create):
+        // 1) DM チャット (dm_):
+        //    - members は厳密に2要素 (userIdA, userIdB)
+        //    - 必ず辞書順昇順 (members[0] < members[1])
+        //    - ドキュメントIDが 'dm_' + members[0] + '_' + members[1] と一致
+        //    - 参加者のいずれか1人がリクエスト者本人
+        // 2) グループチャット (gm_):
+        //    - 参加者リストに自分が含まれること
+        allow create: if isAuthenticated()
+          && request.resource.data.tenantId == tenantId
+          && (
+            (
+              request.resource.data.chatType == 'direct'
+              && request.resource.data.members.size() == 2
+              && request.resource.data.members[0] < request.resource.data.members[1]
+              && chatId == 'dm_' + request.resource.data.members[0] + '_' + request.resource.data.members[1]
+              && (
+                isTenantUser(tenantId, request.resource.data.members[0]) ||
+                isTenantUser(tenantId, request.resource.data.members[1])
+              )
+            ) || (
+              request.resource.data.chatType == 'group'
+              && request.auth.uid in request.resource.data.members
+            )
+          );
+
+        // メタデータ更新 (Update):
+        // 参加メンバーのみ lastMessage, lastMessageAt, updatedAt 等を更新可能
+        allow update: if isAuthenticated()
+          && request.resource.data.tenantId == tenantId
+          && (
+            // 既存ドキュメントが完全なメンバーを持つ場合は isChatMember で検証
+            (
+              isChatMember(tenantId, chatId)
+              && (
+                !('members' in request.resource.data) ||
+                !('members' in resource.data) ||
+                request.resource.data.members == resource.data.members ||
+                (resource.data.chatType == 'group' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'updatedAt']))
+              )
+            )
+            // 既存ドキュメントがフィールド未確定（空殻状態等）だった場合はリクエストの members で判定
+            || (
+              request.resource.data.chatType == 'direct'
+              && request.resource.data.members.size() == 2
+              && request.resource.data.members[0] < request.resource.data.members[1]
+              && chatId == 'dm_' + request.resource.data.members[0] + '_' + request.resource.data.members[1]
+              && (
+                isTenantUser(tenantId, request.resource.data.members[0]) ||
+                isTenantUser(tenantId, request.resource.data.members[1])
+              )
+            )
+          );
+
+        allow delete: if false;
+
+        // ---------------------------------------------------------------------
+        // 2.2.1 暗号化メッセージ (/tenants/{tenantId}/chats/{chatId}/messages/{messageId})
+        // ---------------------------------------------------------------------
+        match /messages/{messageId} {
+          // チャット参加者のみ読み取り可能
+          allow read: if isChatMember(tenantId, chatId);
+
+          // メッセージ作成 (Append-Only):
+          // 送信者本人のUIDがセットされており、チャット所属・テナント所属が一致すること
+          allow create: if isAuthenticated()
+            && isChatMember(tenantId, chatId)
+            && request.resource.data.senderId == request.auth.uid
+            && request.resource.data.tenantId == tenantId
+            && request.resource.data.chatId == chatId
+            && request.resource.data.keys().hasAll(['messageId', 'tenantId', 'chatId', 'senderId', 'keyVersion', 'encryptedPayload', 'createdAt']);
+
+          // メッセージ本文の改ざん・削除は禁止、reactionCounts と updatedAt のみ更新許可
+          allow update: if isChatMember(tenantId, chatId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactionCounts', 'updatedAt']);
+
+          allow delete: if false;
+
+          // -------------------------------------------------------------------
+          // 2.2.1.1 メッセージリアクション (/reactions/{reactionUserId})
+          // -------------------------------------------------------------------
+          match /reactions/{reactionUserId} {
+            // チャット参加者のみ読み取り可能
+            allow read: if isChatMember(tenantId, chatId);
+
+            // 自分のリアクションのみ作成・更新可能
+            allow create, update: if isAuthenticated()
+              && isChatMember(tenantId, chatId)
+              && (reactionUserId == request.auth.uid || isTenantUser(tenantId, reactionUserId))
+              && (request.resource.data.userId == request.auth.uid || isTenantUser(tenantId, request.resource.data.userId))
+              && request.resource.data.chatId == chatId
+              && request.resource.data.tenantId == tenantId;
+
+            // 自分のリアクションのみ削除可能
+            allow delete: if isAuthenticated()
+              && isChatMember(tenantId, chatId)
+              && (reactionUserId == request.auth.uid || isTenantUser(tenantId, reactionUserId));
+          }
+        }
+
+        // ---------------------------------------------------------------------
+        // 2.2.2 既読管理カーソル (/tenants/{tenantId}/chats/{chatId}/receipts/{receiptUserId})
+        // ---------------------------------------------------------------------
+        match /receipts/{receiptUserId} {
+          // チャット参加者は他メンバーの既読位置を読み取り可能
+          allow read: if isChatMember(tenantId, chatId);
+
+          // 自分の既読カーソルのみ作成・更新可能 (水位線カーソル方式)
+          allow create, update: if isAuthenticated()
+            && isChatMember(tenantId, chatId)
+            && (receiptUserId == request.auth.uid || isTenantUser(tenantId, receiptUserId))
+            && (request.resource.data.userId == request.auth.uid || isTenantUser(tenantId, request.resource.data.userId))
+            && request.resource.data.chatId == chatId
+            && request.resource.data.tenantId == tenantId;
+
+          allow delete: if false;
+        }
+
+        // ---------------------------------------------------------------------
+        // 2.2.3 会話共通鍵バケット (/tenants/{tenantId}/chats/{chatId}/keys/{keyVersion})
+        // ---------------------------------------------------------------------
+        match /keys/{keyVersion} {
+          // チャット参加者のみ読み取り・鍵バケット作成可能
+          allow read: if isChatMember(tenantId, chatId);
+
+          allow create: if isChatMember(tenantId, chatId)
+            && request.resource.data.tenantId == tenantId
+            && request.resource.data.chatId == chatId;
+
+          allow update, delete: if false;
+        }
+      }
+    }
+  }
+}

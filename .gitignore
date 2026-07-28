@@ -1,0 +1,71 @@
+# macOS / System
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Node.js & Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+.cache/
+
+# Build Outputs & Temporary Files
+build/
+dist/
+out/
+tmp/
+*.tmp
+*.log
+
+# Environment & Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# iOS / Swift / Xcode
+xcuserdata/
+*.xcuserdata
+*.xcuserstate
+*.xcbkptlist
+DerivedData/
+.build/
+Pods/
+.swiftpm/configuration/
+*.p8
+*.p12
+*.mobileprovision
+*.cer
+
+
+# Auto-Generated Code (Proto3 / Models)
+ios/Sources/Models/Generated/
+
+# IDE / Editors
+.idea/
+*.swp
+*.swo
+*~
+.gemini/
+
+# VS Code (Personal settings / history)
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Firebase
+firebase-config.json
+.firebaserc
+GoogleService-Info.plist
+!GoogleService-Info.plist.example
+
+# Cloudflare R2 / Secrets
+R2Config.plist
+PresetTenant.plist
+!*.plist.example
+

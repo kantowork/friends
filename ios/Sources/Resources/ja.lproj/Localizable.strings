@@ -1,0 +1,162 @@
+/*
+  Localizable.strings (Japanese)
+  Friends App
+*/
+
+// MARK: - Common
+"common.ok" = "OK";
+"common.cancel" = "キャンセル";
+"common.close" = "閉じる";
+"common.copy" = "コピー";
+"common.copied" = "コピーしました";
+"common.share" = "共有";
+"common.save" = "保存";
+"common.delete" = "削除";
+"common.confirm" = "確認";
+"common.error" = "エラー";
+"common.loading" = "読み込み中…";
+"common.success" = "完了";
+
+// MARK: - Auth & Login
+"auth.login.title" = "Friends";
+"auth.login.subtitle" = "安全でシンプルなE2EEコミュニケーション";
+"auth.login.guest_btn" = "匿名でログイン";
+"auth.login.email_btn" = "メールアドレスでログイン";
+"auth.login.recovery_btn" = "「ふっかつのじゅもん」で復元";
+"auth.login.reset_device_btn" = "端末データ・鍵の完全リセット";
+"auth.login.reset_device_confirm_title" = "端末データを完全に初期化しますか？";
+"auth.login.reset_device_confirm_msg" = "Keychainに保存された暗号鍵やローカル情報をすべて消去し、初期状態に戻します。";
+"auth.login.tenant_change" = "変更";
+"auth.login.display_name_placeholder" = "お名前 (表示名)";
+
+// MARK: - Tenant Selection
+"tenant.selection.title" = "テナント選択";
+"tenant.selection.header" = "組織（テナント）を選択";
+"tenant.selection.subtitle" = "QRコードをスキャンするか、\nテナント設定情報を直接入力してください。";
+"tenant.tab.qr" = "QR";
+"tenant.tab.url" = "URL";
+"tenant.tab.custom" = "カスタム";
+"tenant.verify.verifying" = "テナントを検証中…";
+"tenant.verify.confirm_btn" = "このテナントを選択";
+"tenant.default_badge" = "デフォルト";
+"tenant.input.label" = "テナント情報（JSONまたはt_xxxx）";
+"tenant.input.template" = "テンプレートを挿入";
+"tenant.input.url_label" = "招待URLまたはカスタムURLスキーム";
+"tenant.verify.btn" = "検証する";
+"tenant.camera.simulator_note" = "カメラ利用不可（シミュレータ環境）";
+"tenant.camera.simulator_btn" = "テスト用テナントQRをスキャン（シミュレート）";
+
+// MARK: - Tabs
+"tab.home" = "ホーム";
+"tab.friends" = "ともだち";
+"tab.groups" = "かいぎ";
+
+// MARK: - Groups (かいぎ)
+"group.list.title" = "かいぎ";
+"group.list.empty" = "参加しているグループはありません\n右上の「＋」ボタンから新しいグループを作成しましょう";
+"group.create.title" = "グループを作成";
+"group.create.name_label" = "グループ名";
+"group.create.name_placeholder" = "グループ名を入力";
+"group.create.select_members" = "メンバーを選択 (%d人選択中)";
+"group.create.submit_btn" = "作成する";
+"group.create.no_friends" = "招待できる友達がいません。先に友達を追加してください。";
+"group.detail.title" = "グループ情報";
+"group.detail.members_section" = "参加メンバー (%d人)";
+
+// MARK: - Home
+
+// MARK: - Chats
+"chat.list.title" = "ともだち";
+"chat.list.empty" = "トーク履歴がありません\n友達と対面QRコードを交換してトークを開始しましょう";
+"chat.detail.input_placeholder" = "メッセージを入力…";
+"chat.detail.send" = "送信";
+"chat.read.status" = "既読";
+"chat.read.count" = "既読 %d";
+
+// MARK: - Reactions
+"chat.reaction.details_title" = "リアクション";
+"chat.reaction.tab_all" = "すべて";
+"chat.reaction.empty_list" = "リアクションはまだありません";
+"chat.reaction.thumbs_up" = "サムズアップ";
+"chat.reaction.heart" = "ハート";
+"chat.reaction.ok" = "OK";
+"chat.reaction.smile" = "スマイル";
+"chat.reaction.surprised" = "びっくり";
+"chat.reaction.sad" = "かなしい";
+"chat.reaction.thinking" = "考え中";
+"chat.reaction.you" = "あなた";
+
+// MARK: - Friends
+"friend.list.title" = "ともだち";
+"friend.list.add_btn" = "友達を追加";
+"friend.list.empty" = "登録されている友達はいません\nQRコードをスキャンして友達を追加しましょう";
+"friend.list.user_id_prefix" = "ID: %@";
+
+// MARK: - Friend Add (C03)
+"friend.add.title" = "友達を追加";
+"friend.add.tab_qr" = "QRコード";
+"friend.add.tab_text" = "テキスト";
+"friend.add.camera_simulator_btn" = "テスト用QRをスキャン（シミュレート）";
+"friend.add.passcode_title" = "合言葉";
+"friend.add.my_info_section" = "自分の情報";
+"friend.add.user_id_label" = "ユーザー名";
+"friend.add.text_input_section" = "相手を追加";
+"friend.add.target_user_id_placeholder" = "相手のユーザー名 (@username)";
+"friend.add.target_passcode_placeholder" = "3桁の合言葉 (例: 782)";
+"friend.add.confirm_addition_btn" = "友達に追加する";
+"friend.add.success_alert_title" = "友達追加完了";
+"friend.add.success_alert_msg" = "%@ を友達に追加しました！";
+"friend.add.confirm_sheet_title" = "友達の追加確認";
+"friend.add.confirm_sheet_msg" = "「%@」(@%@) を友達に追加しますか？";
+
+// MARK: - Settings
+"settings.title" = "設定";
+"settings.section.profile" = "プロフィール";
+"settings.section.tenant" = "テナント";
+"settings.section.security" = "セキュリティ & バックアップ";
+"settings.section.about" = "アプリ情報";
+"settings.profile.display_name" = "名前";
+"settings.profile.username" = "アカウント";
+"settings.profile.username_placeholder" = "account";
+"settings.profile.username_invalid_format" = "アカウントは半角英数字・アンダースコアで入力してください。";
+"settings.profile.username_confirm_title" = "アカウント名の変更確認";
+"settings.profile.username_confirm_msg" = "アカウント名を変更すると、相手があなたを検索・追加する際のアカウント名が変わります。変更して保存しますか？";
+"settings.profile.username_confirm_button" = "変更";
+"settings.profile.user_id" = "ID";
+"settings.profile.default_user" = "ユーザー";
+"settings.tenant.name" = "テナント名";
+"settings.tenant.code" = "コード";
+"settings.tenant.id" = "ID";
+"settings.tenant.unconnected" = "未接続";
+"settings.security.reset_title" = "セキュリティリセット";
+"settings.security.reset_confirm_title" = "セキュリティリセットを実行しますか？";
+"settings.security.reset_confirm_msg" = "端末の鍵ペアが再生成され、他端末のセッションが全切断されます。";
+"settings.security.reset_execute" = "実行する";
+"settings.security.reset_success_title" = "セキュリティリセット完了";
+"settings.security.reset_success_msg" = "新しい公開鍵 (PK_u) が公開され、セッションが保護されました。";
+"settings.recovery.title" = "ふっかつのじゅもん";
+"settings.recovery.desc" = "端末移行時やバックアップ復元に必要な12個の英単語です。第三者に絶対に共有しないでください。";
+"settings.logout" = "ログアウト";
+"settings.logout.confirm_title" = "ログアウトして初期化しますか？";
+"settings.logout.confirm_msg" = "アカウントからログアウトします。「ふっかつのじゅもん」がなければ復元できなくなります。";
+"settings.about.version" = "バージョン";
+"settings.about.encryption" = "暗号化方式";
+"settings.profile.edit_title" = "プロフィール編集";
+"settings.profile.edit_placeholder" = "表示名を入力 (最大32文字)";
+"settings.profile.edit_empty_error" = "表示名を入力してください。";
+"settings.profile.avatar_change" = "アバターを変更";
+"settings.profile.avatar_choose_photo" = "写真ライブラリから選択";
+"settings.profile.avatar_preset_title" = "プリセットから選択";
+"settings.profile.avatar_remove" = "アバターを削除";
+
+// MARK: - Errors
+"error.unknown" = "不明なエラーが発生しました。";
+"error.friend.invalid_format" = "友達追加コードの形式が正しくありません。";
+"error.friend.user_not_found" = "指定されたユーザーIDが見つかりませんでした。";
+"error.friend.passcode_expired" = "合言葉が一致しないか、有効期限が切れています。最新のコードを再入力してください。";
+"error.friend.tenant_mismatch" = "異なる組織（テナント）のユーザーです。同一組織内でのみ友達追加が可能です。";
+"error.friend.self_add" = "自分自身を友達に追加することはできません。";
+
+// MARK: - Toast Notification
+"toast.new_message" = "新着メッセージ";
+

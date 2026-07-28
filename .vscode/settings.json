@@ -1,0 +1,14 @@
+{
+  "editor.detectIndentation": false,
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.formatOnSave": true,
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "[swift]": {
+    "editor.insertSpaces": true
+  },
+  "[markdown]": {
+    "editor.insertSpaces": true
+  }
+}

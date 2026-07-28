@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package friends.model;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "work.kanto.friends/model;friendsmodel";
+option java_multiple_files = true;
+option java_package = "work.kanto.friends.model";
+option swift_prefix = "Friends";
+
+// テナント (t_)
+message Tenant {
+  string tenant_id = 1;             // ID 命名規約: t_xxx (不変システム一意識別キー)
+  string tenant_code = 2;           // ユーザー向け表示用・変更可能コード (例: "kanto-tech")
+  string tenant_name = 3;           // アプリ内復号済みテナント表示名
+  bool is_default_tenant = 4;
+  string tenant_master_key = 5;     // 招待/配布用マスターキー MK_T (Base64) - ※DB格納は禁止
+  string encrypted_tenant_name = 6; // MK_T で AES-256-GCM 暗号化したテナント表示名 (Base64)
+  string tenant_name_nonce = 7;     // 暗号化 Nonce (Base64)
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+// テナント内組織グループ (g_)
+message Group {
+  string group_id = 1;                  // ID 命名規約: g_xxx
+  string tenant_id = 2;                 // ID 命名規約: t_xxx
+  string group_name = 3;                // アプリ内復号済みグループ名
+  string description = 4;               // アプリ内復号済み説明文
+  bool is_default_group = 5;
+  repeated string member_uids = 6;      // 所属ユーザーの Firebase Auth UID リスト
+  string encrypted_group_name = 7;      // MK_T で暗号化したグループ名 (Base64)
+  string group_name_nonce = 8;          // 暗号化 Nonce (Base64)
+  string encrypted_description = 9;     // MK_T で暗号化した説明文 (Base64)
+  string description_nonce = 10;        // 暗号化 Nonce (Base64)
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}

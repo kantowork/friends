@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- 1. ダウンロード用 公開カスタムドメイン (HTTPS) -->
+	<key>R2_PUBLIC_BASE_URL</key>
+	<string>https://bucket.friends.kanto.work</string>
+
+	<!-- 2. R2 バケット名 -->
+	<key>R2_BUCKET_NAME</key>
+	<string>friends-kantowork</string>
+
+	<!-- 3. S3 互換 エンドポイント URL -->
+	<key>R2_ENDPOINT_URL</key>
+	<string>https://<SAMPLE>.r2.cloudflarestorage.com</string>
+
+	<!-- 4. S3 互換 API 認証情報 (※アップロード用トークン) -->
+	<key>R2_ACCESS_KEY_ID</key>
+	<string>YOUR_R2_ACCESS_KEY_ID</string>
+	<key>R2_SECRET_ACCESS_KEY</key>
+	<string>YOUR_R2_SECRET_ACCESS_KEY</string>
+</dict>
+</plist>
