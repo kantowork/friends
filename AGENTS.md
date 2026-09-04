@@ -81,6 +81,7 @@
 | **アクセスパターン** | [doc/10-detailed-design/10-03-data-access-patterns.md](./doc/10-detailed-design/10-03-data-access-patterns.md) | テナント・ユーザー・友達・アバター・チャット・メッセージ等のFirebase/R2アクセスパターン一元管理仕様 |
 | **API戦略** | [doc/10-detailed-design/10-05-api-strategy-analysis.md](./doc/10-detailed-design/10-05-api-strategy-analysis.md) | クライアント直接Firestore vs サーバーAPIの通信戦略分析 |
 | **R2ストレージ準備** | [doc/10-detailed-design/10-06-r2-storage-setup.md](./doc/10-detailed-design/10-06-r2-storage-setup.md) | Cloudflare R2 バケット作成・カスタムドメイン・CORS・APIトークン発行・事前準備手順書 |
+| **ロガー基盤** | [doc/10-detailed-design/10-07-logging-system.md](./doc/10-detailed-design/10-07-logging-system.md) | OSLog連携、動的ログレベル制御（DEBUG/INFO/WARN/ERROR）仕様 |
 
 ---
 *This document is optimized for AI context injection.*
