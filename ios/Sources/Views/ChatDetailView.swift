@@ -19,43 +19,146 @@ struct ChatDetailView: View {
         chatService.messages[chat.chatID] ?? []
     }
     
+    @State private var lastBottomMessageId: String? = nil
+    @State private var isAtBottom: Bool = true
+    @State private var hasUnseenNewMessages: Bool = false
+    @State private var isInitialScrollDone: Bool = false
+    
     public var body: some View {
         VStack(spacing: 0) {
             // Messages Scroll
             ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(spacing: 14) {
-                        ForEach(currentMessages) { message in
-                            MessageBubbleView(
-                                message: message,
-                                chatId: chat.chatID,
-                                isFromMe: message.senderID == chatService.currentUser?.uid,
-                                isRead: isMessageRead(message),
-                                readCount: readCountFor(message),
-                                isGroup: chat.chatType == .group,
-                                isAllDetailsRevealed: isAllDetailsRevealed,
-                                globalDragOffset: globalDragOffset,
-                                onShowReactionDetails: {
-                                    selectedMessageForReactions = message
+                ZStack(alignment: .bottom) {
+                    ScrollView {
+                        LazyVStack(spacing: 14) {
+                            // 過去メッセージのオンデマンド遡りロード領域
+                            if chatService.hasMoreMessages[chat.chatID] ?? true {
+                                HStack(spacing: 8) {
+                                    ProgressView()
+                                        .scaleEffect(0.85)
+                                    Text(L10n.Common.loading)
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
                                 }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
+                                .onAppear {
+                                    chatService.loadMoreMessages(chatId: chat.chatID)
+                                }
+                            }
+                            
+                            ForEach(currentMessages) { message in
+                                MessageBubbleView(
+                                    message: message,
+                                    chatId: chat.chatID,
+                                    isFromMe: message.senderID == chatService.currentUser?.userID || message.senderID == chatService.currentUser?.uid,
+                                    isGroup: chat.chatType == .group,
+                                    isAllDetailsRevealed: isAllDetailsRevealed,
+                                    globalDragOffset: globalDragOffset,
+                                    onShowReactionDetails: {
+                                        selectedMessageForReactions = message
+                                    }
+                                )
+                                .id(message.id)
+                            }
+                            
+                            // 最下部検知用アンカー
+                            Color.clear
+                                .frame(height: 1)
+                                .id("bottom_anchor")
+                                .onAppear {
+                                    isAtBottom = true
+                                    hasUnseenNewMessages = false
+                                }
+                                .onDisappear {
+                                    isAtBottom = false
+                                }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                    }
+                    .onChange(of: currentMessages.count) { _ in
+                        guard let lastMsg = currentMessages.last else { return }
+                        let isNewBottom = (lastBottomMessageId == nil || lastBottomMessageId != lastMsg.id)
+                        lastBottomMessageId = lastMsg.id
+                        
+                        if !isInitialScrollDone {
+                            isInitialScrollDone = true
+                            withAnimation {
+                                proxy.scrollTo("bottom_anchor", anchor: .bottom)
+                            }
+                            chatService.markAsRead(
+                                chatId: chat.chatID,
+                                lastMessageId: lastMsg.id,
+                                lastMessageDate: lastMsg.createdDate
                             )
-                            .id(message.id)
+                        } else if isNewBottom {
+                            if isAtBottom {
+                                // 画面下部にいる場合は最新メッセージを表示し既読化
+                                withAnimation {
+                                    proxy.scrollTo("bottom_anchor", anchor: .bottom)
+                                }
+                                chatService.markAsRead(
+                                    chatId: chat.chatID,
+                                    lastMessageId: lastMsg.id,
+                                    lastMessageDate: lastMsg.createdDate
+                                )
+                            } else {
+                                // 過去メッセージを閲覧中の場合は勝手にスクロールさせず新着バナーを表示
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                    hasUnseenNewMessages = true
+                                }
+                            }
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                }
-                .onChange(of: currentMessages.count) { _ in
-                    if let lastMsg = currentMessages.last {
-                        withAnimation {
-                            proxy.scrollTo(lastMsg.id, anchor: .bottom)
+                    .onChange(of: currentMessages.last?.id) { _ in
+                        guard let lastMsg = currentMessages.last else { return }
+                        let isNewBottom = (lastBottomMessageId == nil || lastBottomMessageId != lastMsg.id)
+                        lastBottomMessageId = lastMsg.id
+                        
+                        if isAtBottom || !isInitialScrollDone {
+                            isInitialScrollDone = true
+                            chatService.markAsRead(
+                                chatId: chat.chatID,
+                                lastMessageId: lastMsg.id,
+                                lastMessageDate: lastMsg.createdDate
+                            )
+                        } else if isNewBottom {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                hasUnseenNewMessages = true
+                            }
                         }
-                        // Mark latest as read
-                        chatService.markAsRead(
-                            chatId: chat.chatID,
-                            lastMessageId: lastMsg.id,
-                            lastMessageDate: lastMsg.createdDate
-                        )
+                    }
+                    
+                    // 新着メッセージ通知フローティングバナー (タップで最新メッセージ/既読位置へスクロール)
+                    if hasUnseenNewMessages, let lastMsg = currentMessages.last {
+                        Button {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                proxy.scrollTo("bottom_anchor", anchor: .bottom)
+                                hasUnseenNewMessages = false
+                            }
+                            chatService.markAsRead(
+                                chatId: chat.chatID,
+                                lastMessageId: lastMsg.id,
+                                lastMessageDate: lastMsg.createdDate
+                            )
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "arrow.down.circle.fill")
+                                    .font(.system(size: 14, weight: .semibold))
+                                Text(L10n.Chat.newMessagesBadge)
+                                    .font(.system(size: 13, weight: .semibold))
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .clipShape(Capsule())
+                            .shadow(color: Color.black.opacity(0.2), radius: 6, x: 0, y: 3)
+                        }
+                        .padding(.bottom, 12)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .zIndex(10)
                     }
                 }
             }
@@ -108,8 +211,8 @@ struct ChatDetailView: View {
         }
         .onAppear {
             chatService.activeChatId = chat.chatID
-            chatService.listenToMessages(chatId: chat.chatID)
-            chatService.listenToReadReceipts(chatId: chat.chatID)
+            chatService.watchMessages(chatId: chat.chatID)
+            chatService.watchReadReceipts(chatId: chat.chatID)
             
             if let lastMsg = currentMessages.last {
                 chatService.markAsRead(
@@ -120,6 +223,13 @@ struct ChatDetailView: View {
             }
         }
         .onDisappear {
+            if let lastMsg = currentMessages.last {
+                chatService.markAsRead(
+                    chatId: chat.chatID,
+                    lastMessageId: lastMsg.id,
+                    lastMessageDate: lastMsg.createdDate
+                )
+            }
             if chatService.activeChatId == chat.chatID {
                 chatService.activeChatId = nil
             }
@@ -128,12 +238,18 @@ struct ChatDetailView: View {
     
     private func performSendMessage() {
         let text = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
+        guard !text.isEmpty else {
+            return
+        }
         
-        chatService.sendMessage(chatId: chat.chatID, text: text) { result in
+        chatService.createMessage(chatId: chat.chatID, text: text) { result in
             DispatchQueue.main.async {
-                if case .success = result {
+                switch result {
+                case .success:
                     self.messageText = ""
+                    self.hasUnseenNewMessages = false
+                case .failure:
+                    break
                 }
             }
         }
@@ -162,8 +278,6 @@ struct MessageBubbleView: View {
     let message: DecryptedMessage
     let chatId: String
     let isFromMe: Bool
-    var isRead: Bool = false
-    var readCount: Int = 0
     var isGroup: Bool = false
     var isAllDetailsRevealed: Bool = false
     var globalDragOffset: CGFloat = 0
@@ -171,6 +285,22 @@ struct MessageBubbleView: View {
     
     @ObservedObject private var chatService = ChatService.shared
     @State private var showReactionPicker: Bool = false
+    
+    private var isRead: Bool {
+        chatService.isMessageRead(
+            chatId: chatId,
+            messageDate: message.createdDate,
+            senderId: message.senderID
+        )
+    }
+    
+    private var readCount: Int {
+        chatService.readCountForMessage(
+            chatId: chatId,
+            messageDate: message.createdDate,
+            senderId: message.senderID
+        )
+    }
     
     var isInfoVisible: Bool {
         if !isFromMe {
@@ -535,7 +665,7 @@ struct ReactionDetailSheetView: View {
                                     HStack {
                                         Text(reaction.userName)
                                             .font(.system(size: 15, weight: .medium))
-                                        if reaction.userID == chatService.currentUser?.uid {
+                                        if reaction.userID == chatService.currentUser?.userID || reaction.userID == chatService.currentUser?.uid {
                                             Text("(\(L10n.Reaction.you))")
                                                 .font(.caption)
                                                 .foregroundColor(.secondary)
@@ -580,8 +710,8 @@ struct ReactionDetailSheetView: View {
                 switch result {
                 case .success(let items):
                     self.reactions = items
-                case .failure(let err):
-                    print("⚠️ Failed to load reaction details: \(err.localizedDescription)")
+                case .failure:
+                    break
                 }
             }
         }

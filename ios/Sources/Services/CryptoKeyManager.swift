@@ -35,7 +35,7 @@ final class CryptoKeyManager {
     /// 指定された UID の秘密鍵を取得する
     func getPrivateKey(uid: String) -> Curve25519.KeyAgreement.PrivateKey? {
         let keyTag = privateKeyTag(for: uid)
-        guard let keyData = loadFromKeychain(key: keyTag) else {
+        guard let keyData = loadFromKeychain(key: keyTag), keyData.count == 32 else {
             return nil
         }
         return try? Curve25519.KeyAgreement.PrivateKey(rawRepresentation: keyData)
@@ -43,7 +43,8 @@ final class CryptoKeyManager {
     
     /// 指定された UID の公開鍵 (Base64) を取得する
     func getPublicKeyBase64(uid: String) -> String? {
-        if let pubKeyStr = loadStringFromKeychain(key: publicKeyTag(for: uid)) {
+        if let pubKeyStr = loadStringFromKeychain(key: publicKeyTag(for: uid)),
+           let data = Data(base64Encoded: pubKeyStr), data.count == 32 {
             return pubKeyStr
         }
         if let privKey = getPrivateKey(uid: uid) {
@@ -155,11 +156,11 @@ final class CryptoKeyManager {
             )
         }
         
-        guard let combinedData = Data(base64Encoded: encryptedData) else {
+        guard let combinedData = Data(base64Encoded: encryptedData), combinedData.count >= 28 else {
             throw NSError(
                 domain: "CryptoKeyManager",
                 code: 400,
-                userInfo: [NSLocalizedDescriptionKey: "Invalid base64 encrypted data"]
+                userInfo: [NSLocalizedDescriptionKey: "Invalid base64 encrypted data or insufficient payload length"]
             )
         }
         
@@ -185,8 +186,8 @@ final class CryptoKeyManager {
             throw NSError(domain: "CryptoKeyManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "My private key not found for uid \(myUid)"])
         }
         
-        guard let peerPubData = Data(base64Encoded: peerPublicKeyBase64) else {
-            throw NSError(domain: "CryptoKeyManager", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid peer public key base64"])
+        guard let peerPubData = Data(base64Encoded: peerPublicKeyBase64), peerPubData.count == 32 else {
+            throw NSError(domain: "CryptoKeyManager", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid peer public key base64: length must be exactly 32 bytes (got \(Data(base64Encoded: peerPublicKeyBase64)?.count ?? 0))"])
         }
         
         let peerPublicKey = try Curve25519.KeyAgreement.PublicKey(rawRepresentation: peerPubData)
@@ -220,8 +221,8 @@ final class CryptoKeyManager {
     
     /// E2EE 暗号化されたメッセージ本文を復号する
     func decryptDirectMessage(ciphertext: String, nonce: String, sessionKey: SymmetricKey) throws -> String {
-        guard let combinedData = Data(base64Encoded: ciphertext) else {
-            throw NSError(domain: "CryptoKeyManager", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid ciphertext base64"])
+        guard let combinedData = Data(base64Encoded: ciphertext), combinedData.count >= 28 else {
+            throw NSError(domain: "CryptoKeyManager", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid ciphertext base64: payload too short (\(Data(base64Encoded: ciphertext)?.count ?? 0) bytes)"])
         }
         
         let sealedBox = try AES.GCM.SealedBox(combined: combinedData)
@@ -232,8 +233,79 @@ final class CryptoKeyManager {
         }
         return text
     }
+    // MARK: - E2EE Group Message & KeyBucket Management (Forward Secrecy)
     
-    // MARK: - Key Tag Helpers
+    /// ランダムな 256-bit グループ会話鍵 (SK_group) を生成
+    func generateGroupKey() -> SymmetricKey {
+        return SymmetricKey(size: .bits256)
+    }
+    
+    /// グループ会話鍵 (SK_group) を各メンバーの公開鍵で暗号化して Base64 マップを作成する
+    /// - Parameters:
+    ///   - groupKey: 生成した SK_group
+    ///   - memberPublicKeys: [userId (u_...): publicKeyBase64]
+    func encryptGroupKeyForMembers(
+        groupKey: SymmetricKey,
+        myUid: String,
+        memberPublicKeys: [String: String],
+        tenantId: String
+    ) throws -> [String: String] {
+        guard let myPrivateKey = getPrivateKey(uid: myUid) else {
+            throw NSError(domain: "CryptoKeyManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "My private key not found"])
+        }
+        
+        let keyRawData = groupKey.withUnsafeBytes { Data($0) }
+        var encryptedMap: [String: String] = [:]
+        
+        for (userId, pubKeyBase64) in memberPublicKeys {
+            guard let pubData = Data(base64Encoded: pubKeyBase64), pubData.count == 32 else {
+                continue
+            }
+            if let peerPubKey = try? Curve25519.KeyAgreement.PublicKey(rawRepresentation: pubData),
+               let sharedSecret = try? myPrivateKey.sharedSecretFromKeyAgreement(with: peerPubKey) {
+                let salt = Data("friends-group-key-salt-\(tenantId)".utf8)
+                let info = Data("friends-group-key-v1".utf8)
+                let wrapKey = sharedSecret.hkdfDerivedSymmetricKey(using: SHA256.self, salt: salt, sharedInfo: info, outputByteCount: 32)
+                
+                let nonce = AES.GCM.Nonce()
+                if let sealedBox = try? AES.GCM.seal(keyRawData, using: wrapKey, nonce: nonce),
+                   let combined = sealedBox.combined {
+                    encryptedMap[userId] = combined.base64EncodedString()
+                }
+            }
+        }
+        
+        return encryptedMap
+    }
+    
+    /// 受信した KeyBucket 内の暗号化されたグループ鍵を自分の秘密鍵で復号する
+    func decryptGroupKey(
+        encryptedGroupKeyBase64: String,
+        peerPublicKeyBase64: String,
+        myUid: String,
+        tenantId: String
+    ) throws -> SymmetricKey {
+        guard let myPrivateKey = getPrivateKey(uid: myUid) else {
+            throw NSError(domain: "CryptoKeyManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "My private key not found"])
+        }
+        guard let peerPubData = Data(base64Encoded: peerPublicKeyBase64), peerPubData.count == 32 else {
+            throw NSError(domain: "CryptoKeyManager", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid peer public key"])
+        }
+        guard let combinedData = Data(base64Encoded: encryptedGroupKeyBase64), combinedData.count >= 28 else {
+            throw NSError(domain: "CryptoKeyManager", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid encrypted group key payload"])
+        }
+        
+        let peerPubKey = try Curve25519.KeyAgreement.PublicKey(rawRepresentation: peerPubData)
+        let sharedSecret = try myPrivateKey.sharedSecretFromKeyAgreement(with: peerPubKey)
+        let salt = Data("friends-group-key-salt-\(tenantId)".utf8)
+        let info = Data("friends-group-key-v1".utf8)
+        let wrapKey = sharedSecret.hkdfDerivedSymmetricKey(using: SHA256.self, salt: salt, sharedInfo: info, outputByteCount: 32)
+        
+        let sealedBox = try AES.GCM.SealedBox(combined: combinedData)
+        let decryptedData = try AES.GCM.open(sealedBox, using: wrapKey)
+        
+        return SymmetricKey(data: decryptedData)
+    }
     
     private func privateKeyTag(for uid: String) -> String {
         "friends_priv_key_\(uid)"
@@ -310,6 +382,5 @@ final class CryptoKeyManager {
             ]
             SecItemDelete(query as CFDictionary)
         }
-        print("🧹 Keychain keys completely cleared.")
     }
 }

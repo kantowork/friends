@@ -20,8 +20,7 @@ final class FriendRepository {
             .collection("friends")
             .order(by: "addedAt", descending: true)
             .addSnapshotListener { snapshot, error in
-                if let error = error {
-                    print("⚠️ Firestore Friends Watch Error: \(error.localizedDescription)")
+                if error != nil {
                     return
                 }
                 guard let documents = snapshot?.documents else { return }
@@ -31,8 +30,7 @@ final class FriendRepository {
                     let data = doc.data()
                     let fUserId = doc.documentID
                     let fUid = data["friendUid"] as? String ?? ""
-                    var fDisplayName = data["friendDisplayName"] as? String ?? "友達"
-                    
+                    var fDisplayName = ""
                     if let encName = data["encryptedFriendDisplayName"] as? String,
                        let nonce = data["friendDisplayNameNonce"] as? String,
                        let decrypted = try? CryptoKeyManager.shared.decryptWithTenantKey(encryptedData: encName, nonce: nonce, tenantId: tenantId) {
@@ -78,12 +76,14 @@ final class FriendRepository {
         
         var friendData: [String: Any] = [
             "friendUserId": friendUser.userID,
-            "friendUid": friendUser.uid,
             "friendUsername": friendUser.effectiveUsername,
             "friendDisplayName": friendUser.displayName,
             "friendPublicKey": friendUser.publicKey,
             "tenantId": tenantId,
-            "addedAt": FieldValue.serverTimestamp()
+            "createdBy": myUser.userID,
+            "createdAt": FieldValue.serverTimestamp(),
+            "updatedBy": myUser.userID,
+            "updatedAt": FieldValue.serverTimestamp()
         ]
         if let enc = try? CryptoKeyManager.shared.encryptWithTenantKey(plainText: friendUser.displayName, tenantId: tenantId) {
             friendData["encryptedFriendDisplayName"] = enc.encryptedData
@@ -98,12 +98,14 @@ final class FriendRepository {
         
         var reverseData: [String: Any] = [
             "friendUserId": myUser.userID,
-            "friendUid": myUser.uid,
             "friendUsername": myUser.effectiveUsername,
             "friendDisplayName": myUser.displayName,
             "friendPublicKey": myUser.publicKey,
             "tenantId": tenantId,
-            "addedAt": FieldValue.serverTimestamp()
+            "createdBy": myUser.userID,
+            "createdAt": FieldValue.serverTimestamp(),
+            "updatedBy": myUser.userID,
+            "updatedAt": FieldValue.serverTimestamp()
         ]
         if let enc = try? CryptoKeyManager.shared.encryptWithTenantKey(plainText: myUser.displayName, tenantId: tenantId) {
             reverseData["encryptedFriendDisplayName"] = enc.encryptedData
@@ -159,7 +161,7 @@ final class FriendRepository {
                 defer { group.leave() }
                 guard let doc = snapshot, doc.exists, let data = doc.data() else { return }
                 
-                var resolvedName = data["displayName"] as? String ?? ""
+                var resolvedName = ""
                 if let encName = data["encryptedDisplayName"] as? String,
                    let nonce = data["displayNameNonce"] as? String,
                    let decrypted = try? CryptoKeyManager.shared.decryptWithTenantKey(encryptedData: encName, nonce: nonce, tenantId: tenantId) {

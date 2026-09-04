@@ -6,7 +6,9 @@
   "files.trimTrailingWhitespace": true,
   "files.insertFinalNewline": true,
   "[swift]": {
-    "editor.insertSpaces": true
+    "editor.insertSpaces": true,
+    "editor.indentSize": 2,
+    "editor.tabSize": 2
   },
   "[markdown]": {
     "editor.insertSpaces": true

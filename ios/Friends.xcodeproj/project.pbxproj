@@ -12,6 +12,7 @@
 		0B362DDAC424C2D97AA8B4BB /* tenant.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B1ACDADAC04F2FB5824859F /* tenant.pb.swift */; };
 		0BC92E61AFB2750FAD7196CE /* ToastBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2E3C3E86AD519CD32721AC3 /* ToastBannerView.swift */; };
 		0C76FD7A75628CC25692A256 /* ChatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED5E80E96490083CC2CF785 /* ChatService.swift */; };
+		0CD0520C9EC19FA17B2C896B /* AppLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F1F7949FDFBF8F8AAAB3A10 /* AppLogger.swift */; };
 		0FD9DDF5C496A8CDBCCB82A1 /* AddFriendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F806734AD019C0DB45155686 /* AddFriendView.swift */; };
 		11C0697C000DF7E93DDFF5D3 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 843D20C5C1EE219362DCBF39 /* FirebaseFirestore */; };
 		14026010C5E38940B2E0EF14 /* ULID in Frameworks */ = {isa = PBXBuildFile; productRef = 7051210C1CCF956B15728EB2 /* ULID */; };
@@ -19,6 +20,7 @@
 		1C4F574FB6EBCB185BC8BDE7 /* PresetTenantConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BD06C16F1E17F8C9BE1E48F /* PresetTenantConfig.swift */; };
 		226F6A4764327930953CE0E8 /* FriendInvitationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 110A108EC499613F06260DAB /* FriendInvitationTests.swift */; };
 		24D0348E9A56818D2DB4F5D3 /* MessageRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91746E05151A8A98BB35283E /* MessageRepository.swift */; };
+		2790B236D73056B512FD5521 /* GoogleService-Info.plist.example in Resources */ = {isa = PBXBuildFile; fileRef = E47EB0AAA0942E9FAD966EAF /* GoogleService-Info.plist.example */; };
 		287E1013270E85408A12F57D /* SwiftProtobuf in Frameworks */ = {isa = PBXBuildFile; productRef = F34AF2C8808DC5C87DBA377C /* SwiftProtobuf */; };
 		2E3D44FEDEE83CF5E7E60D0D /* FriendRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C3372477D89C3B7C93682B3 /* FriendRepository.swift */; };
 		30CC652E859111996CF99B3A /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91D3C03BA1244EA258513B9C /* LoginView.swift */; };
@@ -37,6 +39,7 @@
 		4D81E4E4CBDED389B9A6C03F /* Base58Swift in Frameworks */ = {isa = PBXBuildFile; productRef = F8EF690242180F32CE8BB5A3 /* Base58Swift */; };
 		64C65F4F92D43373B15AB8BA /* common.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9474BB46F28B24E4D2E05D1E /* common.pb.swift */; };
 		654EC337D4FB3017B9EF5251 /* R2Config.plist in Resources */ = {isa = PBXBuildFile; fileRef = 24A914712C89236342ED35B3 /* R2Config.plist */; };
+		6568875089F32FD52FBAF027 /* KeyBucketRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D9BC65F5B28B01CDA532088 /* KeyBucketRepository.swift */; };
 		66A1AF58928A09C812A78929 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE77C113E25A5A25D866CBD /* RootView.swift */; };
 		6D1FAFC0C2A48805D938742D /* message.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = C865A7F08BE5EE75FA404A86 /* message.pb.swift */; };
 		6E56001E6D461263F26716D4 /* InAppToast.swift in Sources */ = {isa = PBXBuildFile; fileRef = E398E98BC6D08ED8318A22C7 /* InAppToast.swift */; };
@@ -80,6 +83,7 @@
 		001733C0CD611DF9D3816ED7 /* FriendsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsApp.swift; sourceTree = "<group>"; };
 		00A0E4F421D19681024F04AB /* AvatarRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarRepository.swift; sourceTree = "<group>"; };
 		0B1ACDADAC04F2FB5824859F /* tenant.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = tenant.pb.swift; sourceTree = "<group>"; };
+		0F1F7949FDFBF8F8AAAB3A10 /* AppLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLogger.swift; sourceTree = "<group>"; };
 		110A108EC499613F06260DAB /* FriendInvitationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendInvitationTests.swift; sourceTree = "<group>"; };
 		126499C67BE5E96FA83A30AD /* EditProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditProfileView.swift; sourceTree = "<group>"; };
 		16CBC033C3BB6387AF2EEFDA /* friend.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = friend.pb.swift; sourceTree = "<group>"; };
@@ -94,6 +98,7 @@
 		3B0446CB35BD1DED70441109 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		473C7EC7238FB504E3E71A7B /* Friends.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Friends.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4C6C05015932A0DAB3ED3B51 /* R2Config.plist.example */ = {isa = PBXFileReference; path = R2Config.plist.example; sourceTree = "<group>"; };
+		4D9BC65F5B28B01CDA532088 /* KeyBucketRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyBucketRepository.swift; sourceTree = "<group>"; };
 		50C94084CD89A705B5BAF54F /* GroupListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupListView.swift; sourceTree = "<group>"; };
 		571756FF5FB335DACAEE8222 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		5DE80AD746183BADA346EAC5 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -122,6 +127,7 @@
 		D2E3C3E86AD519CD32721AC3 /* ToastBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastBannerView.swift; sourceTree = "<group>"; };
 		D565C3091DA5BECD9CC25D05 /* CryptoKeyManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CryptoKeyManagerTests.swift; sourceTree = "<group>"; };
 		E398E98BC6D08ED8318A22C7 /* InAppToast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InAppToast.swift; sourceTree = "<group>"; };
+		E47EB0AAA0942E9FAD966EAF /* GoogleService-Info.plist.example */ = {isa = PBXFileReference; path = "GoogleService-Info.plist.example"; sourceTree = "<group>"; };
 		E98D73A923F12CB9E9048015 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		EC99C355772086F8C25B473E /* R2Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = R2Config.swift; sourceTree = "<group>"; };
 		ED0E9E6440449A9F3F4D8985 /* chat.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = chat.pb.swift; sourceTree = "<group>"; };
@@ -180,6 +186,7 @@
 				00A0E4F421D19681024F04AB /* AvatarRepository.swift */,
 				CC16F3F99E96F06398EEA0DE /* ChatRepository.swift */,
 				8C3372477D89C3B7C93682B3 /* FriendRepository.swift */,
+				4D9BC65F5B28B01CDA532088 /* KeyBucketRepository.swift */,
 				91746E05151A8A98BB35283E /* MessageRepository.swift */,
 				9AAE26812CD356FC8FD5F061 /* ReactionRepository.swift */,
 				FCEECE7C03F984E10D3B0580 /* ReadReceiptRepository.swift */,
@@ -239,6 +246,7 @@
 		BDA46F69B389A37B3F15C01D /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				0F1F7949FDFBF8F8AAAB3A10 /* AppLogger.swift */,
 				1ED5E80E96490083CC2CF785 /* ChatService.swift */,
 				CB174DA53133AD4E358D0543 /* CryptoKeyManager.swift */,
 				CFD78F78EE81CC78390C270B /* FriendInvitationService.swift */,
@@ -281,6 +289,7 @@
 		E4A513E463C085E69D600CAF /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				E47EB0AAA0942E9FAD966EAF /* GoogleService-Info.plist.example */,
 				8CF1E654734996084DE28F2D /* PresetTenant.plist */,
 				24A914712C89236342ED35B3 /* R2Config.plist */,
 				4C6C05015932A0DAB3ED3B51 /* R2Config.plist.example */,
@@ -403,6 +412,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				827EC8EA02C8BC5DAB1B12B1 /* GoogleService-Info.plist in Resources */,
+				2790B236D73056B512FD5521 /* GoogleService-Info.plist.example in Resources */,
 				354FB33E33AC9B6EF80A3BD6 /* Localizable.strings in Resources */,
 				4BF224C168AD13B15D566172 /* PresetTenant.plist in Resources */,
 				654EC337D4FB3017B9EF5251 /* R2Config.plist in Resources */,
@@ -430,6 +440,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0FD9DDF5C496A8CDBCCB82A1 /* AddFriendView.swift in Sources */,
+				0CD0520C9EC19FA17B2C896B /* AppLogger.swift in Sources */,
 				B053E73BD86493140B7E098C /* AvatarRepository.swift in Sources */,
 				4C9D8C6EE9217D1523467001 /* ChatDetailView.swift in Sources */,
 				B8F8A42F949CE721CE93CAFF /* ChatRepository.swift in Sources */,
@@ -445,6 +456,7 @@
 				EAB58CA5EB81786B9D5825FA /* GroupListView.swift in Sources */,
 				05A50EBE2E202EAFF039AED8 /* HomeView.swift in Sources */,
 				6E56001E6D461263F26716D4 /* InAppToast.swift in Sources */,
+				6568875089F32FD52FBAF027 /* KeyBucketRepository.swift in Sources */,
 				45F275B906350B5D1BF4105C /* L10n.swift in Sources */,
 				30CC652E859111996CF99B3A /* LoginView.swift in Sources */,
 				D3CC3E86D075BC2B9BD1E310 /* MainTabView.swift in Sources */,

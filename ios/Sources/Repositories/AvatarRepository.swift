@@ -152,6 +152,7 @@ final class AvatarRepository {
                     "avatarStoragePath": storagePath,
                     "avatarNonce": enc.nonce,
                     "avatarUpdatedAt": Timestamp(date: now),
+                    "updatedBy": userId,
                     "updatedAt": FieldValue.serverTimestamp()
                 ]
                 
@@ -169,6 +170,7 @@ final class AvatarRepository {
                     "encryptedAvatar": enc.encryptedData,
                     "avatarNonce": enc.nonce,
                     "avatarUpdatedAt": Timestamp(date: now),
+                    "updatedBy": userId,
                     "updatedAt": FieldValue.serverTimestamp()
                 ]
                 userDocRef.updateData(updates) { _ in
@@ -306,6 +308,7 @@ final class AvatarRepository {
             "avatarStoragePath": FieldValue.delete(),
             "avatarNonce": FieldValue.delete(),
             "avatarUpdatedAt": FieldValue.delete(),
+            "updatedBy": userId,
             "updatedAt": FieldValue.serverTimestamp()
         ]
         userDocRef.updateData(updates) { error in

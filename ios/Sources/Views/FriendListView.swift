@@ -97,7 +97,7 @@ public struct FriendListView: View {
             .navigationTitle(L10n.Friend.listTitle)
             .refreshable {
                 await withCheckedContinuation { continuation in
-                    chatService.refreshFriendsProfiles(force: true) {
+                    chatService.listFriendsProfiles(force: true) {
                         continuation.resume()
                     }
                 }

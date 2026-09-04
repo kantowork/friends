@@ -75,7 +75,11 @@ extension FriendsPublicUserProfile: Identifiable {
         displayNameNonce: String = "",
         avatarNonce: String = "",
         avatarUpdatedAt: Date? = nil,
-        username: String? = nil
+        username: String? = nil,
+        createdBy: String = "",
+        createdAt: Date = Date(),
+        updatedBy: String = "",
+        updatedAt: Date = Date()
     ) {
         self.init()
         self.userID = userID
@@ -92,6 +96,10 @@ extension FriendsPublicUserProfile: Identifiable {
             self.avatarUpdatedAt = Google_Protobuf_Timestamp(date: avatarUpdatedAt)
         }
         self.username = username ?? String(userID.prefix(10))
+        self.createdBy = createdBy.isEmpty ? userID : createdBy
+        self.createdAt = Google_Protobuf_Timestamp(date: createdAt)
+        self.updatedBy = updatedBy.isEmpty ? userID : updatedBy
+        self.updatedAt = Google_Protobuf_Timestamp(date: updatedAt)
     }
 }
 
@@ -113,7 +121,10 @@ extension FriendsChat: Identifiable {
         tenantID: String,
         chatType: FriendsChatType = .direct,
         members: [String] = [],
+        title: String = "",
+        createdBy: String = "",
         createdAt: Date = Date(),
+        updatedBy: String = "",
         updatedAt: Date = Date()
     ) {
         self.init()
@@ -121,7 +132,10 @@ extension FriendsChat: Identifiable {
         self.tenantID = tenantID
         self.chatType = chatType
         self.members = members
+        self.title = title
+        self.createdBy = createdBy
         self.createdAt = Google_Protobuf_Timestamp(date: createdAt)
+        self.updatedBy = updatedBy.isEmpty ? createdBy : updatedBy
         self.updatedAt = Google_Protobuf_Timestamp(date: updatedAt)
     }
 }
@@ -180,7 +194,10 @@ extension FriendsMessage: Identifiable {
         ciphertext: String,
         nonce: String,
         messageType: FriendsMessageType = .text,
+        createdBy: String = "",
         createdAt: Date = Date(),
+        updatedBy: String = "",
+        updatedAt: Date = Date(),
         reactionCounts: [String: Int32] = [:]
     ) {
         self.init()
@@ -196,7 +213,10 @@ extension FriendsMessage: Identifiable {
         self.encryptedPayload = payload
         
         self.messageType = messageType
+        self.createdBy = createdBy.isEmpty ? senderID : createdBy
         self.createdAt = Google_Protobuf_Timestamp(date: createdAt)
+        self.updatedBy = updatedBy.isEmpty ? senderID : updatedBy
+        self.updatedAt = Google_Protobuf_Timestamp(date: updatedAt)
         self.reactionCounts = reactionCounts
     }
 }
@@ -280,7 +300,10 @@ extension FriendsMessageReaction: Identifiable {
         userID: String,
         userName: String,
         reactionType: FriendsReactionType,
-        createdAt: Date = Date()
+        createdBy: String = "",
+        createdAt: Date = Date(),
+        updatedBy: String = "",
+        updatedAt: Date = Date()
     ) {
         self.init()
         self.reactionID = reactionID
@@ -290,8 +313,10 @@ extension FriendsMessageReaction: Identifiable {
         self.userID = userID
         self.userName = userName
         self.reactionType = reactionType
+        self.createdBy = createdBy.isEmpty ? userID : createdBy
         self.createdAt = Google_Protobuf_Timestamp(date: createdAt)
-        self.updatedAt = Google_Protobuf_Timestamp(date: createdAt)
+        self.updatedBy = updatedBy.isEmpty ? userID : updatedBy
+        self.updatedAt = Google_Protobuf_Timestamp(date: updatedAt)
     }
 }
 
@@ -300,23 +325,33 @@ extension FriendsMessageReaction: Identifiable {
 struct DecryptedMessage: Identifiable, Equatable {
     let message: FriendsMessage
     let senderName: String
-    let decryptedText: String
-    var myReaction: FriendsReactionType? = nil
+    let plainText: String
+    let isDecrypted: Bool
+    let reactions: [FriendsMessageReaction]
+    let myReaction: FriendsReactionType?
     
     var id: String { message.messageID }
-    var createdDate: Date { message.createdDate }
+    var chatID: String { message.chatID }
     var senderID: String { message.senderID }
+    var createdDate: Date { message.createdDate }
+    var isFromMe: Bool { false }
+    var decryptedText: String { plainText }
     var reactionCounts: [String: Int32] { message.reactionCounts }
     
     init(
         message: FriendsMessage,
-        senderName: String = "送信者",
-        decryptedText: String,
+        senderName: String = "",
+        plainText: String = "",
+        decryptedText: String? = nil,
+        isDecrypted: Bool = true,
+        reactions: [FriendsMessageReaction] = [],
         myReaction: FriendsReactionType? = nil
     ) {
         self.message = message
         self.senderName = senderName
-        self.decryptedText = decryptedText
+        self.plainText = decryptedText ?? plainText
+        self.isDecrypted = isDecrypted
+        self.reactions = reactions
         self.myReaction = myReaction
     }
 }
@@ -327,7 +362,7 @@ extension FriendsFriendRelationship: Identifiable {
     var id: String { relationshipID.isEmpty ? "\(ownerUserID)_\(friendUserID)" : relationshipID }
     
     var addedDate: Date {
-        hasAddedAt ? addedAt.date : Date()
+        hasCreatedAt ? createdAt.date : Date()
     }
     
     init(
@@ -336,9 +371,11 @@ extension FriendsFriendRelationship: Identifiable {
         ownerUserID: String,
         friendUserID: String,
         friendDisplayName: String,
-        friendUid: String,
         friendPublicKey: String = "",
-        addedAt: Date = Date()
+        createdBy: String = "",
+        createdAt: Date = Date(),
+        updatedBy: String = "",
+        updatedAt: Date = Date()
     ) {
         self.init()
         self.relationshipID = relationshipID
@@ -346,9 +383,11 @@ extension FriendsFriendRelationship: Identifiable {
         self.ownerUserID = ownerUserID
         self.friendUserID = friendUserID
         self.friendDisplayName = friendDisplayName
-        self.friendUid = friendUid
         self.friendPublicKey = friendPublicKey
-        self.addedAt = Google_Protobuf_Timestamp(date: addedAt)
+        self.createdBy = createdBy.isEmpty ? ownerUserID : createdBy
+        self.createdAt = Google_Protobuf_Timestamp(date: createdAt)
+        self.updatedBy = updatedBy.isEmpty ? ownerUserID : updatedBy
+        self.updatedAt = Google_Protobuf_Timestamp(date: updatedAt)
     }
 }
 
@@ -362,7 +401,7 @@ extension FriendsFriendInvitationPayload {
         displayName: String,
         publicKey: String,
         passcode: String,
-        timestamp: Date = Date()
+        timestamp: Int64 = Int64(Date().timeIntervalSince1970)
     ) {
         self.init()
         self.type = "friend_invite"
@@ -373,7 +412,7 @@ extension FriendsFriendInvitationPayload {
         self.displayName = displayName
         self.publicKey = publicKey
         self.passcode = passcode
-        self.timestamp = Int64(timestamp.timeIntervalSince1970)
+        self.timestamp = timestamp
     }
 }
 
@@ -396,14 +435,48 @@ extension FriendsReadReceipt: Identifiable {
         tenantID: String,
         lastReadMessageID: String = "",
         lastReadAt: Date = Date(),
+        createdBy: String = "",
+        createdAt: Date = Date(),
+        updatedBy: String = "",
         updatedAt: Date = Date()
     ) {
-        self.init()
         self.userID = userID
         self.chatID = chatID
         self.tenantID = tenantID
         self.lastReadMessageID = lastReadMessageID
         self.lastReadAt = Google_Protobuf_Timestamp(date: lastReadAt)
+        self.createdBy = createdBy.isEmpty ? userID : createdBy
+        self.createdAt = Google_Protobuf_Timestamp(date: createdAt)
+        self.updatedBy = updatedBy.isEmpty ? userID : updatedBy
         self.updatedAt = Google_Protobuf_Timestamp(date: updatedAt)
     }
 }
+
+// MARK: - FriendsKeyBucket Extensions
+
+extension FriendsKeyBucket: Identifiable {
+    var id: String { "\(chatID)_\(keyVersion)" }
+    
+    var createdDate: Date {
+        hasCreatedAt ? createdAt.date : Date()
+    }
+    
+    init(
+        keyVersion: String,
+        chatID: String,
+        tenantID: String,
+        encryptedGroupKeys: [String: String] = [:],
+        createdBy: String = "",
+        createdAt: Date = Date(),
+        updatedBy: String = "",
+        updatedAt: Date = Date()
+    ) {
+        self.init()
+        self.keyVersion = keyVersion
+        self.chatID = chatID
+        self.tenantID = tenantID
+        self.encryptedGroupKeys = encryptedGroupKeys
+        self.createdAt = Google_Protobuf_Timestamp(date: createdAt)
+    }
+}
+

@@ -86,6 +86,8 @@ public enum L10n {
         public static var listEmpty: String { tr("chat.list.empty") }
         public static var inputPlaceholder: String { tr("chat.detail.input_placeholder") }
         public static var send: String { tr("chat.detail.send") }
+        public static var newMessagesBadge: String { tr("chat.detail.new_messages_badge") }
+        public static var scrollToLatest: String { tr("chat.detail.scroll_to_latest") }
         public static var readStatus: String { tr("chat.read.status") }
         public static func readCount(_ count: Int) -> String {
             String(format: tr("chat.read.count"), count)

@@ -199,7 +199,7 @@ public struct LoginView: View {
                 isLoggingIn = false
                 switch result {
                 case .success:
-                    print("✅ Logged in successfully!")
+                    break
                 case .failure(let error):
                     errorMessage = error.localizedDescription
                 }

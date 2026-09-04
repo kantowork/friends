@@ -251,7 +251,6 @@ public struct EditProfileView: View {
         // username バリデーション (3〜20文字、英数字とアンダースコア)
         let usernameRegex = "^[a-zA-Z0-9_]{3,20}$"
         if rawUsername.range(of: usernameRegex, options: .regularExpression) == nil {
-            print("⚠️ [EditProfileView] Username validation failed for: '\(rawUsername)'")
             errorMessage = L10n.Settings.profileUsernameInvalidFormat
             return
         }
@@ -266,10 +265,6 @@ public struct EditProfileView: View {
     }
     
     private func executeSaveProfile() {
-        print("🔍 [EditProfileView] executeSaveProfile started")
-        print("🔍 [EditProfileView] Current displayName: '\(chatService.currentUser?.displayName ?? "")', input displayName: '\(displayNameText)'")
-        print("🔍 [EditProfileView] Current username: '\(chatService.currentUser?.effectiveUsername ?? "")', input username: '\(usernameText)'")
-        
         isSaving = true
         errorMessage = nil
         
@@ -281,68 +276,48 @@ public struct EditProfileView: View {
         
         // 1. 表示名の更新（変更がある場合）
         if trimmedName != chatService.currentUser?.displayName {
-            print("🔍 [EditProfileView] Triggering updateDisplayName to '\(trimmedName)'")
             group.enter()
-            chatService.updateDisplayName(newName: trimmedName) { result in
+            chatService.patchDisplayName(newName: trimmedName) { result in
                 DispatchQueue.main.async {
                     if case .failure(let error) = result {
-                        print("❌ [EditProfileView] DisplayName update error: \(error)")
                         operationError = error
-                    } else {
-                        print("✅ [EditProfileView] DisplayName updated successfully")
                     }
                     group.leave()
                 }
             }
-        } else {
-            print("ℹ️ [EditProfileView] DisplayName unchanged")
         }
         
         // 2. ユーザー名 (username) の更新（変更がある場合）
         let currentEffective = chatService.currentUser?.effectiveUsername.lowercased() ?? ""
         if rawUsername != currentEffective {
-            print("🔍 [EditProfileView] Triggering updateUsername to '\(rawUsername)' (from '\(currentEffective)')")
             group.enter()
             chatService.updateUsername(newUsername: rawUsername) { result in
                 DispatchQueue.main.async {
                     if case .failure(let error) = result {
-                        print("❌ [EditProfileView] Username update error: \(error.localizedDescription) (Error: \(error))")
                         operationError = error
-                    } else {
-                        print("✅ [EditProfileView] Username updated successfully to: '\(rawUsername)'")
                     }
                     group.leave()
                 }
             }
-        } else {
-            print("ℹ️ [EditProfileView] Username unchanged (rawUsername: '\(rawUsername)', current: '\(currentEffective)')")
         }
         
         // 3. アバター画像の更新または削除
         if let newImage = previewAvatarImage {
-            print("🔍 [EditProfileView] Triggering uploadAvatar")
             group.enter()
             chatService.uploadAvatar(image: newImage) { result in
                 DispatchQueue.main.async {
                     if case .failure(let error) = result {
-                        print("❌ [EditProfileView] Avatar upload error: \(error)")
                         operationError = error
-                    } else {
-                        print("✅ [EditProfileView] Avatar uploaded successfully")
                     }
                     group.leave()
                 }
             }
         } else if isAvatarRemoved {
-            print("🔍 [EditProfileView] Triggering deleteAvatar")
             group.enter()
             chatService.deleteAvatar { result in
                 DispatchQueue.main.async {
                     if case .failure(let error) = result {
-                        print("❌ [EditProfileView] Avatar delete error: \(error)")
                         operationError = error
-                    } else {
-                        print("✅ [EditProfileView] Avatar deleted successfully")
                     }
                     group.leave()
                 }
@@ -350,12 +325,11 @@ public struct EditProfileView: View {
         }
         
         group.notify(queue: .main) {
-            print("🏁 [EditProfileView] All profile save operations completed. Has error: \(operationError != nil)")
             self.isSaving = false
             if let error = operationError {
                 self.errorMessage = error.localizedDescription
             } else {
-                self.chatService.refreshFriendsProfiles(force: true) {
+                self.chatService.listFriendsProfiles(force: true) {
                     // 同期完了
                 }
                 self.dismiss()

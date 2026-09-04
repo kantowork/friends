@@ -16,18 +16,25 @@
 
 ---
 
-## 2. 鍵体系 & E2EE 暗号化プロトコル
+## 2. 鍵体系 & E2EE 暗号化プロトコル (前方秘匿性 / Forward Secrecy 対応)
 
-グループチャットにおける E2EE 通信は、[07-03: テキストメッセージ送信・暗号化詳細設計書](07-03-message-encryption.md) に規定された **テナントマスターキー ($MK_T$) / 共有グループセッション鍵方式** に準拠します。
+グループチャットにおける E2EE 通信は、[07-03: テキストメッセージ送信・暗号化詳細設計書](07-03-message-encryption.md) および [10-01: テナント暗号設計](10-detailed-design/10-01-tenant-data-encryption.md) に規定された **グループ会話共有鍵バケット (`KeyBucket` / $SK_{group, v}$) 方式** に準拠します。
 
-### 2.1 処理プロトコル
-1. **暗号化**:
-   - 送信端末はテナントマスターキー $MK_T$ または共有グループ鍵を用いて AES-256-GCM でメッセージ本文を暗号化。
-   $$\text{CiphertextPayload} = \text{AES-256-GCM-Encrypt}(MK_T, \text{Plaintext}, \text{Nonce})$$
-2. **送信**:
-   - 暗号文 (`ciphertext`) と Nonce のみを Firestore `/tenants/{tenantId}/chats/{chatId}/messages/{messageId}` に保存。
+### 2.1 共有鍵バージョニング & 配布プロトコル
+1. **鍵生成 & 配布 (`KeyBucket` / `v_1`, `v_2`, ...)**:
+   - グループ作成時またはメンバー増減（追加・除外）時に、暗号論的擬似乱数により 256-bit のグループ会話鍵 $SK_{group, v}$ を生成。
+   - 作成者は各メンバーの公開鍵 $PK_{u}$ を用いて $SK_{group, v}$ を個別暗号化し、`/tenants/{tenantId}/chats/{chatId}/keys/{keyVersion}` の `encryptedGroupKeys` マップに格納：
+     $$\text{encryptedGroupKeys}[u_i] = \text{Encrypt}(PK_{u_i}, SK_{group, v})$$
+   - メンバー除外時は新規バージョン $v_{k+1}$ を発行することで、除外されたユーザーが以降のメッセージを復号できない **前方秘匿性 (Forward Secrecy)** を担保します。
+   - 過去バージョンの `KeyBucket`（$v_1, \dots, v_k$）も Firestore に保持されるため、過去のメッセージもメッセージの `keyVersion` に応じた鍵で過去ログ復号可能です。
+
+2. **暗号化送信**:
+   - 送信端末は最新バージョンのグループ会話鍵 $SK_{group, v}$（またはフォールバックとして $MK_T$）を用いてメッセージ本文を AES-256-GCM 暗号化。
+     $$\text{CiphertextPayload} = \text{AES-256-GCM-Encrypt}(SK_{group, v}, \text{Plaintext}, \text{Nonce})$$
+   - メッセージには `keyVersion: "v_1"` 等のバージョン情報を付与して Firestore に保存。
+
 3. **受信・復号**:
-   - 受信端末はローカルの $MK_T$ を用いてリアルタイムに復号・表示。
+   - 受信端末はメッセージの `keyVersion` に応じた $SK_{group, v}$ をローカルキャッシュまたは `KeyBucket` から復号して取得し、メッセージを平文へ復号。
 
 ---
 
@@ -41,10 +48,11 @@
   "chatType": "group",
   "title": "プロジェクト推進会",
   "members": [
-    "firebase_auth_uid_1",
-    "firebase_auth_uid_2",
-    "firebase_auth_uid_3"
+    "u_01J6XYZ_ALICE",
+    "u_01J6XYZ_BOB",
+    "u_01J6XYZ_CHARLIE"
   ],
+  "latestKeyVersion": "v_1",
   "lastMessage": "次回の会議は明日10時からです",
   "lastMessageAt": "2026-08-30T22:50:00Z",
   "createdAt": "2026-08-30T20:00:00Z",
@@ -52,13 +60,28 @@
 }
 ```
 
-### 3.2 メッセージドキュメント (`/tenants/{tenantId}/chats/{chatId}/messages/{messageId}`)
+### 3.2 グループ鍵バケット (`/tenants/{tenantId}/chats/{chatId}/keys/{keyVersion}`)
+```json
+{
+  "keyVersion": "v_1",
+  "chatId": "gm_01J6XYZ1234567890ABCDEF",
+  "tenantId": "t_corp_abc",
+  "encryptedGroupKeys": {
+    "u_01J6XYZ_ALICE": "base64EncodedEncryptedSKGroupForAlice...",
+    "u_01J6XYZ_BOB": "base64EncodedEncryptedSKGroupForBob...",
+    "u_01J6XYZ_CHARLIE": "base64EncodedEncryptedSKGroupForCharlie..."
+  },
+  "createdAt": "2026-08-30T20:00:00Z"
+}
+```
+
+### 3.3 メッセージドキュメント (`/tenants/{tenantId}/chats/{chatId}/messages/{messageId}`)
 ```json
 {
   "messageId": "m_01J6XYZ9876543210FEDCBA",
   "tenantId": "t_corp_abc",
   "chatId": "gm_01J6XYZ1234567890ABCDEF",
-  "senderId": "firebase_auth_uid_1",
+  "senderId": "u_01J6XYZ_ALICE",
   "keyVersion": "v_1",
   "encryptedPayload": {
     "ciphertext": "base64EncodedGroupCiphertext...",
@@ -77,21 +100,25 @@
 
 ## 4. シーケンス図
 
-### 4.1 新規グループチャット作成 (D03)
+### 4.1 新規グループチャット作成 & KeyBucket 初期化 (D03)
 
 ```mermaid
 sequenceDiagram
-    actor Creator as "作成者 (User A)"
+    actor Creator as "作成者 (Alice: u_alice)"
     participant View as "CreateGroupView"
     participant Service as "ChatService"
-    participant Repo as "ChatRepository"
+    participant Crypto as "CryptoKeyManager"
+    participant Repo as "ChatRepository / KeyBucketRepository"
     participant Firestore as "Cloud Firestore"
 
-    Creator->>View: グループ名入力 & 友達メンバー選択
+    Creator->>View: グループ名入力 & 友達メンバー選択 (u_bob, u_charlie)
     Creator->>View: 「作成」ボタンタップ
-    View->>Service: createGroup(title, memberUids)
-    Service->>Repo: createGroupChat(tenantId, chatId, title, members)
-    Repo->>Firestore: /tenants/{tenantId}/chats/{chatId} を作成
+    View->>Service: createGroup(title, memberUserIds)
+    Service->>Crypto: generateGroupKey(chatId, version: "v_1")
+    Service->>Crypto: encryptGroupKeyForMembers(SK_group, memberPublicKeys)
+    Service->>Repo: createGroupChatWithKeyBucket(tenantId, chatId, title, members, keyBucket)
+    Repo->>Firestore: 1) /tenants/{tenantId}/chats/{chatId} を作成 (members: [u_alice, u_bob, ...])
+    Repo->>Firestore: 2) /tenants/{tenantId}/chats/{chatId}/keys/v_1 を保存
     Firestore-->>Repo: 完了通知
     Repo-->>Service: Success
     Service->>Service: 参加グループ一覧を即時更新
@@ -114,7 +141,7 @@ sequenceDiagram
 3. **新規グループ作成（D03）**:
    - モーダル/シート表示
    - グループ名入力フィールド（クリアボタン付き）
-   - メンバー選択（登録済み友達一覧の複数チェックボックス）
+   - メンバー選択（登録済み友達一覧の複数チェックボックス、`userId: u_...` 基準）
    - ナビゲーションバー右上に「作成」ボタン（グループ名未入力時は非活性）
 4. **グループ詳細 & メンバー管理（D04）**:
    - チャット詳細のナビゲーションバー右上にあるインフォボタン（`info.circle`）から遷移

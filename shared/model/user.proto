@@ -24,6 +24,10 @@ message PublicUserProfile {
   string avatar_nonce = 11;           // MK_T で暗号化したアバターの Nonce (Base64)
   google.protobuf.Timestamp avatar_updated_at = 12; // アバター最終更新日時
   string username = 13;               // ユーザー識別子 (初期値: user_id と同値、変更可能、小文字一意)
+  string created_by = 14;             // 作成者の userId (u_xxx)
+  google.protobuf.Timestamp created_at = 15; // 作成日時
+  string updated_by = 16;             // 更新者の userId (u_xxx)
+  google.protobuf.Timestamp updated_at = 17; // 更新日時
 }
 
 // ユーザー非公開・復元用データ (/users/{uid}/private/data)

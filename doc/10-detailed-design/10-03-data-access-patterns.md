@@ -104,12 +104,15 @@
 - **操作種別**: Write (Set/Merge)
 - **対象パス**: `/tenants/{tenantId}/users/{userId}`
 - **関数名**: `createOrUpdateUserProfile(tenantId:user:completion:)`
-- **概要**: ユーザー初回登録時のプロファイル作成。
+- **監査要件**:
+  - 作成時: `createdBy: userId`, `createdAt: serverTimestamp()`, `updatedBy: userId`, `updatedAt: serverTimestamp()`
+  - 更新時: `createdBy`, `createdAt` は変更不可。`updatedBy: userId`, `updatedAt: serverTimestamp()`
 
 #### UP-06: 表示名更新
 - **操作種別**: Update
 - **対象パス**: `/tenants/{tenantId}/users/{userId}`
 - **関数名**: `updateDisplayNameByUserId(tenantId:userId:name:completion:)`
+- **監査要件**: `updatedBy: userId`, `updatedAt: serverTimestamp()`
 - **概要**: 表示名を $MK_T$ で暗号化して更新。
 
 ---
@@ -128,7 +131,9 @@
   - `/tenants/{tenantId}/users/{myUserId}/friends/{friendUserId}`
   - `/tenants/{tenantId}/users/{friendUserId}/friends/{myUserId}`
 - **関数名**: `createFriendBidirectional(tenantId:myUser:friendUser:completion:)`
-- **概要**: 相互のサブコレクションにアトミック同時書き込み。
+- **監査要件**:
+  - 作成時: `createdBy: myUserId`, `createdAt: serverTimestamp()`, `updatedBy: myUserId`, `updatedAt: serverTimestamp()`
+- **概要**: 相互のサブコレクションにアトミック同時書き込み（Auth UID は使用せず `userId` で相互認可）。
 
 #### FP-03: 友達削除
 - **操作種別**: Delete
@@ -152,6 +157,7 @@
   - R2 Storage: `https://<R2_CUSTOM_DOMAIN>/tenants/{tenantId}/users/{userId}/avatar.enc`
   - Firestore: `/tenants/{tenantId}/users/{userId}`
 - **関数名**: `uploadAvatarByUserId(image:tenantId:userId:completion:)`
+- **監査要件**: `updatedBy: userId`, `updatedAt: serverTimestamp()`
 - **概要**: 画像を 256x256 圧縮・$MK_T$ 暗号化して R2 バケットに S3 互換 PUT / 署名付き URL アップロード後、Firestore の `encryptedAvatar`（または R2 パス）, `avatarNonce`, `avatarUpdatedAt` を更新。
 
 #### AP-02: アバター画像ダウンロード・復号
@@ -166,6 +172,7 @@
   - R2 Storage: `https://<R2_CUSTOM_DOMAIN>/tenants/{tenantId}/users/{userId}/avatar.enc`
   - Firestore: `/tenants/{tenantId}/users/{userId}`
 - **関数名**: `deleteAvatarByUserId(tenantId:userId:completion:)`
+- **監査要件**: `updatedBy: userId`, `updatedAt: serverTimestamp()`
 - **概要**: R2 上の暗号化バイナリ削除および Firestore メタデータ（`avatarNonce`, `avatarUpdatedAt`）消去。
 
 
@@ -185,19 +192,28 @@
 #### CP-02: チャットメタデータ作成・更新
 - **操作種別**: Write / Update (Set with merge)
 - **対象パス**: `/tenants/{tenantId}/chats/{chatId}`
-- **関数名**: `createOrUpdateChat(tenantId:chat:completion:)` / `createDirectChatIfNotExists`
+- **関数名**: `MessageRepository.createMessage` 内部での自動初期化/更新（旧 `createDirectChatIfNotExists` はデッドコードとして廃止）
+- **監査要件**:
+  - 作成時: `createdBy: myUserId`, `createdAt: serverTimestamp()`, `updatedBy: myUserId`, `updatedAt: serverTimestamp()`
+  - 更新時: `createdBy`, `createdAt` は不変。`updatedBy: myUserId`, `updatedAt: serverTimestamp()`
 - **概要**: チャットルームの初期作成または最終メッセージメタデータ更新。DM の場合は `members: [min(uA, uB), max(uA, uB)]` で初期化。
 
-#### MP-01: 新着メッセージ購読
-- **操作種別**: Listen (`onSnapshot`)
-- **対象パス**: `/tenants/{tenantId}/chats/{chatId}/messages` (order `createdAt asc`, `limitToLast(100)`)
-- **関数名**: `watchMessagesByChatId(tenantId:chatId:limit:onNewMessages:)`
-- **概要**: チャット内の新着暗号化メッセージを受信し、セッション鍵でリアルタイム復号。
+#### MP-01: 新着メッセージ購読 & 過去メッセージの動的オンデマンド取得 (Dynamic Pagination)
+- **操作種別**: Listen (`onSnapshot`) + Dynamic Limit Expansion
+- **対象パス**: `/tenants/{tenantId}/chats/{chatId}/messages` (order `createdAt asc`, `limitToLast(limit)`)
+- **関数名**: `watchMessagesByChatId(tenantId:chatId:limit:onChange:)` / `loadMoreMessages(chatId:pageSize:)`
+- **動的ページネーション仕様**:
+  - **初期表示**: 最新の 30 件（`initialLimit: 30`）をリアルタイム購読し、初期通信量・メモリ使用量を最小化。
+  - **上スクロール時の遡りロード**: ユーザーが上方向にスクロールして最上部付近に到達した際、`limit` を +30 件ずつ動的に拡張してリスナーを再設定（または追加過去データを取得）。
+  - **リアルタイム整合性**: リアルタイムリスナーのウィンドウを拡張する方式により、過去メッセージへのリアクション変更や新着メッセージの受信・既読管理を同一ストリームで一貫して保証。
+  - **全件到達判定**: 取得件数が要求 `limit` 未満となった場合、`hasMoreMessages = false` として不要なバックエンドクエリを停止。
 
 #### MP-02: 暗号化メッセージ送信
 - **操作種別**: Create (Append)
 - **対象パス**: `/tenants/{tenantId}/chats/{chatId}/messages/{messageId}`
 - **関数名**: `createMessage(tenantId:chatId:message:members:completion:)`
+- **監査要件**:
+  - 作成時: `createdBy: senderId`, `createdAt: serverTimestamp()`, `updatedBy: senderId`, `updatedAt: serverTimestamp()`
 - **概要**: E2EE 暗号化本文と監査用メタデータを Firestore に追記。親チャット未作成時は親ドキュメントを `members` とともにアトミックに初期化・更新。
 
 ---
@@ -207,13 +223,15 @@
 #### GP-01: グループチャット作成
 - **操作種別**: Write (Create/Set)
 - **対象パス**: `/tenants/{tenantId}/chats/{chatId}`
-- **関数名**: `createGroupChat(tenantId:chatId:title:members:completion:)`
-- **概要**: グループチャットドキュメント（`chatType: "group"`, `title`, `members`）を作成。
+- **関数名**: `createGroupChat(tenantId:chatId:title:members:createdBy:completion:)`
+- **監査要件**: `createdBy: myUserId`, `createdAt: serverTimestamp()`, `updatedBy: myUserId`, `updatedAt: serverTimestamp()`
+- **概要**: グループチャットドキュメント（`chatType: "group"`, `title`, `members`, `createdBy`）を作成。
 
 #### GP-02: グループメンバー追加
 - **操作種別**: Update (ArrayUnion)
 - **対象パス**: `/tenants/{tenantId}/chats/{chatId}`
-- **関数名**: `addGroupMembers(tenantId:chatId:newMembers:completion:)`
+- **関数名**: `addGroupMembers(tenantId:chatId:newMembers:updatedBy:completion:)`
+- **監査要件**: `updatedBy: myUserId`, `updatedAt: serverTimestamp()`
 - **概要**: 既存グループチャットの `members` フィールドに新規 UID を追加。
 
 ---
@@ -232,6 +250,9 @@
   - `/tenants/{tenantId}/chats/{chatId}/messages/{messageId}/reactions/{userId}`
   - `/tenants/{tenantId}/chats/{chatId}/messages/{messageId}` (`reactionCounts` カウント加算)
 - **関数名**: `setReactionByUserId(tenantId:chatId:messageId:userId:emoji:completion:)`
+- **監査要件**:
+  - リアクションサブコレクション: `createdBy: userId`, `createdAt: serverTimestamp()`, `updatedBy: userId`, `updatedAt: serverTimestamp()`
+  - 親メッセージ: `updatedBy: userId`, `updatedAt: serverTimestamp()`
 - **概要**: リアクションサブコレクション追加と集計カウントのインクリメント。
 
 #### RP-03: リアクション解除
@@ -240,6 +261,7 @@
   - `/tenants/{tenantId}/chats/{chatId}/messages/{messageId}/reactions/{userId}` (Delete)
   - `/tenants/{tenantId}/chats/{chatId}/messages/{messageId}` (`reactionCounts` カウント減算)
 - **関数名**: `deleteReactionByUserId(tenantId:chatId:messageId:userId:completion:)`
+- **監査要件**: 親メッセージ: `updatedBy: userId`, `updatedAt: serverTimestamp()`
 - **概要**: リアクションの取り消しと集計カウントのデクリメント。
 
 #### RR-01: 既読状態購読
@@ -252,6 +274,7 @@
 - **操作種別**: Set/Merge
 - **対象パス**: `/tenants/{tenantId}/chats/{chatId}/receipts/{userId}`
 - **関数名**: `updateReadReceiptByUserId(tenantId:chatId:userId:lastReadMessageId:lastReadAt:completion:)`
+- **監査要件**: `createdBy: userId`, `createdAt: serverTimestamp()`, `updatedBy: userId`, `updatedAt: serverTimestamp()`
 - **概要**: 自身が最新メッセージを閲覧した際の水位線カーソル更新。
 
 ---

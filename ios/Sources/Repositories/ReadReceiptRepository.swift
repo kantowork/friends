@@ -17,8 +17,7 @@ final class ReadReceiptRepository {
             .collection("chats").document(chatId)
             .collection("receipts")
             .addSnapshotListener { snapshot, error in
-                if let error = error {
-                    print("⚠️ Firestore Read Receipts Watch Error [\(chatId)]: \(error.localizedDescription)")
+                if error != nil {
                     return
                 }
                 guard let documents = snapshot?.documents else { return }
@@ -31,12 +30,19 @@ final class ReadReceiptRepository {
                     let lastReadAt = (data["lastReadAt"] as? Timestamp)?.dateValue() ?? Date.distantPast
                     let updatedAt = (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date()
                     
+                    let createdBy = data["createdBy"] as? String ?? userId
+                    let createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? updatedAt
+                    let updatedBy = data["updatedBy"] as? String ?? userId
+                    
                     let receipt = FriendsReadReceipt(
                         userID: userId,
                         chatID: chatId,
                         tenantID: tenantId,
                         lastReadMessageID: lastReadMessageId,
                         lastReadAt: lastReadAt,
+                        createdBy: createdBy,
+                        createdAt: createdAt,
+                        updatedBy: updatedBy,
                         updatedAt: updatedAt
                     )
                     receiptsMap[userId] = receipt
@@ -58,20 +64,46 @@ final class ReadReceiptRepository {
             .collection("chats").document(chatId)
             .collection("receipts").document(userId)
         
-        let receiptData: [String: Any] = [
-            "userId": userId,
-            "chatId": chatId,
-            "tenantId": tenantId,
-            "lastReadMessageId": lastReadMessageId,
-            "lastReadAt": Timestamp(date: lastReadAt),
-            "updatedAt": FieldValue.serverTimestamp()
-        ]
-        
-        receiptRef.setData(receiptData, merge: true) { error in
+        receiptRef.getDocument { snapshot, error in
             if let error = error {
                 completion?(.failure(error))
+                return
+            }
+            
+            let exists = snapshot?.exists ?? false
+            if exists {
+                let updateData: [String: Any] = [
+                    "lastReadMessageId": lastReadMessageId,
+                    "lastReadAt": Timestamp(date: lastReadAt),
+                    "updatedBy": userId,
+                    "updatedAt": FieldValue.serverTimestamp()
+                ]
+                receiptRef.updateData(updateData) { err in
+                    if let err = err {
+                        completion?(.failure(err))
+                    } else {
+                        completion?(.success(()))
+                    }
+                }
             } else {
-                completion?(.success(()))
+                let createData: [String: Any] = [
+                    "userId": userId,
+                    "chatId": chatId,
+                    "tenantId": tenantId,
+                    "lastReadMessageId": lastReadMessageId,
+                    "lastReadAt": Timestamp(date: lastReadAt),
+                    "createdBy": userId,
+                    "createdAt": FieldValue.serverTimestamp(),
+                    "updatedBy": userId,
+                    "updatedAt": FieldValue.serverTimestamp()
+                ]
+                receiptRef.setData(createData) { err in
+                    if let err = err {
+                        completion?(.failure(err))
+                    } else {
+                        completion?(.success(()))
+                    }
+                }
             }
         }
     }

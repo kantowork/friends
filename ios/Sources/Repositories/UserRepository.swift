@@ -92,6 +92,9 @@ final class UserRepository {
             "publicKey": user.publicKey,
             "role": user.role.rawValue,
             "accountType": user.accountType.rawValue,
+            "createdBy": user.userID,
+            "createdAt": FieldValue.serverTimestamp(),
+            "updatedBy": user.userID,
             "updatedAt": FieldValue.serverTimestamp()
         ]
         
@@ -110,6 +113,9 @@ final class UserRepository {
             "userId": user.userID,
             "uid": user.uid,
             "tenantId": tenantId,
+            "createdBy": user.userID,
+            "createdAt": FieldValue.serverTimestamp(),
+            "updatedBy": user.userID,
             "updatedAt": FieldValue.serverTimestamp()
         ], forDocument: usernameRef, merge: true)
         
@@ -140,8 +146,8 @@ final class UserRepository {
                 return
             }
             guard let doc = doc, doc.exists, let data = doc.data(), let userId = data["userId"] as? String else {
-                // usernames になければ直接 userId ドキュメントの存在を確認 (フォールバック)
-                self.getUserProfileByUserId(tenantId: tenantId, userId: username, completion: completion)
+                let err = NSError(domain: "UserError", code: 404, userInfo: [NSLocalizedDescriptionKey: "ユーザーが見つかりません。"])
+                completion(.failure(err))
                 return
             }
             self.getUserProfileByUserId(tenantId: tenantId, userId: userId, completion: completion)
@@ -153,10 +159,7 @@ final class UserRepository {
         let cleanOld = oldUsername.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanNew = newUsername.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         
-        print("🔍 [UserRepository] updateUsername: tenantId=\(tenantId), userId=\(userId), old='\(cleanOld)', new='\(cleanNew)'")
-        
         guard cleanNew != cleanOld else {
-            print("ℹ️ [UserRepository] updateUsername: old and new are identical ('\(cleanNew)'), returning success immediately")
             completion(.success(()))
             return
         }
@@ -166,16 +169,13 @@ final class UserRepository {
         let userRef = db.collection("tenants").document(tenantId).collection("users").document(userId)
         
         // 重複チェックおよび旧インデックスの存在確認
-        print("🔍 [UserRepository] Checking username availability for '\(cleanNew)' and verifying old index '\(cleanOld)'...")
         newUsernameRef.getDocument { [weak self] newSnap, error in
             guard let self = self else { return }
             if let error = error {
-                print("❌ [UserRepository] Error reading /tenants/\(tenantId)/usernames/\(cleanNew): \(error.localizedDescription)")
                 completion(.failure(error))
                 return
             }
             if let snapshot = newSnap, snapshot.exists, let ownerUid = snapshot.data()?["uid"] as? String, ownerUid != uid {
-                print("⚠️ [UserRepository] Username '\(cleanNew)' is already owned by uid '\(ownerUid)' (current user uid: '\(uid)')")
                 let err = NSError(domain: "UserError", code: 409, userInfo: [NSLocalizedDescriptionKey: "このユーザー名は既に使用されています。"])
                 completion(.failure(err))
                 return
@@ -183,31 +183,32 @@ final class UserRepository {
             
             // 旧インデックスの存在確認
             let handleBatchWrite = { (deleteOld: Bool) in
-                print("🔍 [UserRepository] Committing Firestore batch write (deleteOld: \(deleteOld))...")
                 let batch = self.db.batch()
-                batch.setData([
+                var usernameData: [String: Any] = [
                     "userId": userId,
                     "uid": uid,
                     "tenantId": tenantId,
+                    "createdBy": userId,
+                    "createdAt": FieldValue.serverTimestamp(),
+                    "updatedBy": userId,
                     "updatedAt": FieldValue.serverTimestamp()
-                ], forDocument: newUsernameRef, merge: true)
+                ]
+                batch.setData(usernameData, forDocument: newUsernameRef, merge: true)
                 
                 batch.updateData([
                     "username": cleanNew,
+                    "updatedBy": userId,
                     "updatedAt": FieldValue.serverTimestamp()
                 ], forDocument: userRef)
                 
                 if deleteOld {
-                    print("🔍 [UserRepository] Adding deleteDocument for old username index: '\(cleanOld)'")
                     batch.deleteDocument(oldUsernameRef)
                 }
                 
                 batch.commit { error in
                     if let error = error {
-                        print("❌ [UserRepository] Firestore batch commit error: \(error.localizedDescription) (Error: \(error))")
                         completion(.failure(error))
                     } else {
-                        print("✅ [UserRepository] Firestore batch commit succeeded for username: '\(cleanNew)'")
                         completion(.success(()))
                     }
                 }
@@ -229,6 +230,7 @@ final class UserRepository {
         let updates: [String: Any] = [
             "encryptedDisplayName": encryptedDisplayName,
             "displayNameNonce": nonce,
+            "updatedBy": userId,
             "updatedAt": FieldValue.serverTimestamp()
         ]
         db.collection("tenants").document(tenantId).collection("users").document(userId).updateData(updates) { error in
@@ -251,17 +253,16 @@ final class UserRepository {
         let avatarNonce = data["avatarNonce"] as? String ?? ""
         let avatarUpdatedAt = (data["avatarUpdatedAt"] as? Timestamp)?.dateValue()
         let usernameVal = data["username"] as? String ?? String(doc.documentID.prefix(10))
+        let createdBy = data["createdBy"] as? String ?? doc.documentID
+        let createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+        let updatedBy = data["updatedBy"] as? String ?? doc.documentID
+        let updatedAt = (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date()
         
-        var resolvedName = data["displayName"] as? String ?? ""
+        var resolvedName = ""
         if !encryptedName.isEmpty {
             if let decrypted = try? CryptoKeyManager.shared.decryptWithTenantKey(encryptedData: encryptedName, nonce: nameNonce, tenantId: tenantId) {
                 resolvedName = decrypted
-            } else {
-                resolvedName = "未復号ユーザー"
             }
-        }
-        if resolvedName.isEmpty {
-            resolvedName = "ユーザー"
         }
         
         return FriendsPublicUserProfile(
@@ -276,7 +277,11 @@ final class UserRepository {
             displayNameNonce: nameNonce,
             avatarNonce: avatarNonce,
             avatarUpdatedAt: avatarUpdatedAt,
-            username: usernameVal
+            username: usernameVal,
+            createdBy: createdBy,
+            createdAt: createdAt,
+            updatedBy: updatedBy,
+            updatedAt: updatedAt
         )
     }
 }

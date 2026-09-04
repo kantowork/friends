@@ -10,16 +10,16 @@ struct GroupDetailView: View {
     
     var groupMembers: [FriendsPublicUserProfile] {
         var result: [FriendsPublicUserProfile] = []
-        let memberUids = chat.chat.members
+        let memberIds = chat.chat.members
         
         // 自分自身
-        if let current = chatService.currentUser, memberUids.contains(current.uid) {
+        if let current = chatService.currentUser, (memberIds.contains(current.userID) || memberIds.contains(current.uid)) {
             result.append(current)
         }
         
         // 登録されている友達
         for friend in chatService.friends {
-            if memberUids.contains(friend.uid) && !result.contains(where: { $0.uid == friend.uid }) {
+            if (memberIds.contains(friend.userID) || memberIds.contains(friend.uid)) && !result.contains(where: { $0.userID == friend.userID }) {
                 result.append(friend)
             }
         }
@@ -81,7 +81,7 @@ struct GroupDetailView: View {
                                 HStack {
                                     Text(member.displayName)
                                         .font(.body)
-                                    if member.uid == chatService.currentUser?.uid {
+                                    if member.userID == chatService.currentUser?.userID || member.uid == chatService.currentUser?.uid {
                                         Text("(\(L10n.Reaction.you))")
                                             .font(.caption)
                                             .foregroundColor(.secondary)

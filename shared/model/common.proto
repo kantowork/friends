@@ -17,25 +17,24 @@ enum ChatType {
 // メッセージ種別
 enum MessageType {
   MESSAGE_TYPE_UNSPECIFIED = 0;
-  MESSAGE_TYPE_TEXT = 1;
-  MESSAGE_TYPE_IMAGE = 2;
-  MESSAGE_TYPE_SYSTEM = 3;
+  MESSAGE_TYPE_TEXT = 1; // テキストメッセージ
+  MESSAGE_TYPE_IMAGE = 2; // 画像メッセージ
+  MESSAGE_TYPE_SYSTEM = 3; // システムメッセージ（画像なし、テキストのみ、あるいは専用のアイコンと本文で表示されるメッセージ。例えば「○○さんが入退室しました」など）
 }
 
 // アカウント認証種別
 enum AccountType {
   ACCOUNT_TYPE_UNSPECIFIED = 0;
-  ACCOUNT_TYPE_ANONYMOUS = 1;
-  ACCOUNT_TYPE_PERSISTENT = 2;
+  ACCOUNT_TYPE_ANONYMOUS = 1; // 匿名アカウント
+  ACCOUNT_TYPE_PERSISTENT = 2; // 永続アカウント
 }
 
 // ユーザーロール
 enum UserRole {
   USER_ROLE_UNSPECIFIED = 0;
-  USER_ROLE_MEMBER = 1;
-  USER_ROLE_MANAGER = 2;
-  USER_ROLE_TENANT_ADMIN = 3;
-  USER_ROLE_SERVICE_ADMIN = 4;
+  USER_ROLE_MEMBER = 1; // メンバー
+  USER_ROLE_MANAGER = 2; // マネージャー
+  USER_ROLE_TENANT_ADMIN = 3; // テナント管理者
 }
 
 // E2EE 暗号化メッセージペイロード

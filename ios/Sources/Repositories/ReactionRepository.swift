@@ -20,8 +20,7 @@ final class ReactionRepository {
             .collection("reactions")
             .order(by: "createdAt", descending: false)
             .addSnapshotListener { snapshot, error in
-                if let error = error {
-                    print("⚠️ Firestore Reactions Watch Error: \(error.localizedDescription)")
+                if error != nil {
                     return
                 }
                 guard let documents = snapshot?.documents else { return }
@@ -77,7 +76,9 @@ final class ReactionRepository {
             "userId": userId,
             "userName": userName,
             "reactionType": reactionType.key,
+            "createdBy": userId,
             "createdAt": FieldValue.serverTimestamp(),
+            "updatedBy": userId,
             "updatedAt": FieldValue.serverTimestamp()
         ]
         
@@ -89,6 +90,7 @@ final class ReactionRepository {
             
             var updates: [String: Any] = [
                 "reactionCounts.\(reactionType.key)": FieldValue.increment(Int64(1)),
+                "updatedBy": userId,
                 "updatedAt": FieldValue.serverTimestamp()
             ]
             if let prev = previousReaction {
@@ -128,6 +130,7 @@ final class ReactionRepository {
             
             messageDocRef.updateData([
                 "reactionCounts.\(reactionType.key)": FieldValue.increment(Int64(-1)),
+                "updatedBy": userId,
                 "updatedAt": FieldValue.serverTimestamp()
             ]) { err in
                 if let err = err {

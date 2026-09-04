@@ -5,62 +5,99 @@ service cloud.firestore {
     // =========================================================================
     // 共通認可・判定関数
     // =========================================================================
-    
-    // 認証済みか判定
+
+    // 【認証状態判定】Firebase Auth による認証トークンが存在するか判定
     function isAuthenticated() {
       return request.auth != null && request.auth.uid != null;
     }
 
-    // 特定の Auth UID 本人か判定
+    // 【Auth UID 本人判定】指定された UID が現在ログイン中の Firebase Auth UID と一致するか判定
     function isUser(uid) {
       return isAuthenticated() && request.auth.uid == uid;
     }
 
-    // テナント内のユーザープロファイルから Auth UID を取得して本人か検証
+    // 【テナント所属ユーザー本人検証】
+    // 指定された userId (u_...) のプロファイルが指定テナントに存在し、
+    // かつそのプロファイル内の uid が現在ログイン中の Auth UID と一致している（本人である）かを検証
     function isTenantUser(tenantId, userId) {
-      return isAuthenticated() && (
-        exists(/databases/$(database)/documents/tenants/$(tenantId)/users/$(userId)) &&
-        get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(userId)).data.uid == request.auth.uid
-      );
+      let userPath = /databases/$(database)/documents/tenants/$(tenantId)/users/$(userId);
+      return isAuthenticated()
+        && userId != null
+        && exists(userPath)
+        && get(userPath).data.uid == request.auth.uid;
     }
 
-    // チャットのメンバーか判定
-    // - 1:1 DM の場合: members 配列に2つの userId が格納されており、そのいずれかが本人であるか
-    // - グループの場合: members 配列に自分の userId または Auth UID が含まれるか
+    // 【監査メタデータ作成時検証】
+    // 作成時に createdBy, createdAt, updatedBy, updatedAt が必ず含まれ、
+    // createdBy, updatedBy が操作者本人の正当な userId (u_...) であり、作成時は両者が一致し、
+    // createdAt, updatedAt がリクエスト実行時のサーバー現在時刻 (request.time) であることを検証
+    function isValidAuditCreate(tenantId) {
+      return request.resource.data.keys().hasAll(['createdBy', 'createdAt', 'updatedBy', 'updatedAt'])
+        && isTenantUser(tenantId, request.resource.data.createdBy)
+        && request.resource.data.createdBy == request.resource.data.updatedBy
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    // 【監査メタデータ更新時検証】
+    // 更新時に createdBy, createdAt は一切変更（更新）されず、
+    // updatedBy, updatedAt が必ず含まれ、updatedBy が更新操作者本人の userId (u_...) であり、
+    // updatedAt がリクエスト実行時のサーバー現在時刻 (request.time) であることを検証
+    function isValidAuditUpdate(tenantId) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['createdBy', 'createdAt'])
+        && request.resource.data.keys().hasAll(['updatedBy', 'updatedAt'])
+        && isTenantUser(tenantId, request.resource.data.updatedBy)
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    // 【チャット正当メンバー判定】
+    // チャットが存在し、かつ現在ログイン中のユーザーがそのチャットの正当な参加メンバーであるかを判定
     function isChatMember(tenantId, chatId) {
       let chatPath = /databases/$(database)/documents/tenants/$(tenantId)/chats/$(chatId);
-      return isAuthenticated() && exists(chatPath) && (
-        (
-          get(chatPath).data.chatType == 'direct'
-          && get(chatPath).data.members.size() == 2
-          && (
-            isTenantUser(tenantId, get(chatPath).data.members[0]) ||
-            isTenantUser(tenantId, get(chatPath).data.members[1])
-          )
-        ) || (
-          get(chatPath).data.chatType == 'group'
-          && (
-            request.auth.uid in get(chatPath).data.members
-          )
-        )
+      let chatDoc = get(chatPath);
+      let members = chatDoc.data.members;
+
+      return isAuthenticated()
+        && exists(chatPath)
+        && (
+      // -------------------------------------------------------------------
+      // 1) 1:1 ダイレクトメッセージ (DM) の場合:
+      //    - members 配列の要素数が厳密に 2
+      //    - 辞書順でソートされている (members[0] < members[1])
+      //    - 参加者 2 名のうち、少なくともいずれか 1 人が現在ログイン中の本人であること
+      // -------------------------------------------------------------------
+      (
+      chatDoc.data.chatType == 'direct'
+        && members.size() == 2
+        && members[0] < members[1]
+        && (isTenantUser(tenantId, members[0]) || isTenantUser(tenantId, members[1]))
+      )
+        ||
+      // -------------------------------------------------------------------
+      // 2) グループチャットの場合:
+      //    - テナント内に該当グループチャットが存在すること
+      // -------------------------------------------------------------------
+      (chatDoc.data.chatType == 'group')
       );
     }
 
     // =========================================================================
     // 1. 全域ユーザー情報 (/users/{uid})
+    //    - ユーザーの E2EE 公開鍵 (publicKey) やデフォルト所属テナント等を管理
     // =========================================================================
     match /users/{uid} {
-      // ユーザーの公開情報 (公開鍵, デフォルトテナント等) は認証済みユーザー全員に読み取り許可
+      // 公開情報 (公開鍵, デフォルトテナントID等) は認証済みユーザー全員に読み取り許可
       allow read: if isAuthenticated();
 
-      // 作成・更新は本人のみ
+      // 新規作成・更新は本人のみ可能 (Auth UID の一致を強制)
       allow create, update: if isUser(uid)
         && request.resource.data.uid == uid
         && (!('publicKey' in request.resource.data) || request.resource.data.publicKey is string);
 
+      // アカウント情報の物理削除は禁止
       allow delete: if false;
 
-      // 本人限定の秘密鍵・復旧データ (/users/{uid}/private/data)
+      // 【本人専用領域】秘密鍵のバックアップ・復元データ (/users/{uid}/private/data)
       match /private/data {
         allow read, write: if isUser(uid);
       }
@@ -68,28 +105,45 @@ service cloud.firestore {
 
     // =========================================================================
     // 2. テナントコレクション (/tenants/{tenantId})
+    //    - 組織・企業・コミュニティ単位のデータ境界
     // =========================================================================
     match /tenants/{tenantId} {
-      // ログイン前・初期化時のテナント情報取得 (tenantCode, 暗号化tenantName等) は読み取り許可
+      // テナント情報 (tenantCode, 暗号化テナント名等) はログイン前・テナント選択時にも読み取り許可
       allow read: if true;
 
-      // テナントドキュメント自体の作成・更新・削除はクライアントから完全禁止
-      // （Admin SDK / サービス管理者スクリプト add_tenant.mjs のみ実行可能）
+      // テナント本体の書き込み・変更・削除はクライアント SDK から完全禁止 (サーバー管理)
       allow write: if false;
 
       // -----------------------------------------------------------------------
       // 2.1 テナント内ユーザープロファイル (/tenants/{tenantId}/users/{userId})
       // -----------------------------------------------------------------------
       match /users/{userId} {
-        // テナント所属ユーザーの公開プロファイル (暗号化displayName, publicKey等)
-        // ログイン前・テナント選択時・友達検索時のため認証済みユーザーに読み取り許可
+        // 公開プロファイル (暗号化displayName, publicKey等) は認証済みユーザーに読み取り許可
+        // ※ displayName は E2EE 暗号化されており、平文情報は漏洩しません
         allow read: if isAuthenticated();
 
-        // 自身のプロファイルのみ作成・更新可能 (プロファイル内の uid と Auth UID が一致すること)
-        allow create, update: if isAuthenticated()
+        // 新規作成: 自身が所有者 (uid == request.auth.uid) としてのみ新規作成可能
+        // 作成監査メタデータ (createdBy/createdAt/updatedBy/updatedAt) の整合性を強制
+        allow create: if isAuthenticated()
           && request.resource.data.uid == request.auth.uid
-          && request.resource.data.tenantId == tenantId;
+          && request.resource.data.tenantId == tenantId
+          && request.resource.data.userId == userId
+          && request.resource.data.createdBy == userId
+          && request.resource.data.updatedBy == userId
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.keys().hasAll(['createdBy', 'createdAt', 'updatedBy', 'updatedAt']);
 
+        // プロファイル更新: 既存ドキュメントの所有者本人のみ許可
+        // 作成時メタデータの不変性 (createdBy/createdAt) と更新者 (updatedBy) の正当性を検証
+        allow update: if isAuthenticated()
+          && resource.data.uid == request.auth.uid
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.tenantId == tenantId
+          && request.resource.data.userId == userId
+          && isValidAuditUpdate(tenantId);
+
+        // ユーザープロファイルの削除は禁止
         allow delete: if false;
 
         // ---------------------------------------------------------------------
@@ -99,98 +153,105 @@ service cloud.firestore {
           // 自分の友達リストのみ閲覧可能
           allow read: if isTenantUser(tenantId, userId);
 
-          // 友達追加時の書き込み:
-          // 1) 自分の友達リストへの相手追加: userId が本人
-          // 2) 相手の友達リストへの自己情報登録 (双方向関係の作成): request.resource.data.friendUid が本人
-          allow create, update: if isAuthenticated()
+          // 友達追加・相互登録時の書き込み:
+          // 作成監査メタデータが正当であり、操作者が当事者であることを検証
+          allow create: if isAuthenticated()
             && request.resource.data.tenantId == tenantId
+            && isValidAuditCreate(tenantId)
             && (
-              isTenantUser(tenantId, userId) ||
-              request.resource.data.friendUid == request.auth.uid
+              (isTenantUser(tenantId, userId) && request.resource.data.createdBy == userId) ||
+              (isTenantUser(tenantId, friendUserId) && request.resource.data.createdBy == friendUserId)
             );
 
-          // 削除は自分の友達リストのみ可能
+          // 友達情報更新時:
+          allow update: if isAuthenticated()
+            && request.resource.data.tenantId == tenantId
+            && isValidAuditUpdate(tenantId)
+            && (
+              isTenantUser(tenantId, userId) ||
+              isTenantUser(tenantId, friendUserId)
+            );
+
+          // 友達の解除・削除は自分の友達リストからのみ可能
           allow delete: if isTenantUser(tenantId, userId);
         }
       }
 
       // -----------------------------------------------------------------------
-      // 2.2 ユーザー識別子一意性インデックス (/tenants/{tenantId}/usernames/{username})
+      // 2.2 ユーザー名一意性インデックス (/tenants/{tenantId}/usernames/{username})
+      //     - ドキュメント ID に小文字 username を使用し、重複登録を排他ロック
       // -----------------------------------------------------------------------
       match /usernames/{username} {
-        // ユーザー検索および一意性チェックのため認証済みユーザー全員に読み取り許可
+        // ユーザー検索および重複事前チェックのため認証済みユーザー全員に読み取り許可
         allow read: if isAuthenticated();
 
-        // 新規登録: 自分の uid/userId を紐付け、まだ存在しない場合のみ許可
+        // 新規登録: 自分の uid を紐付け、まだ存在しない場合のみ作成可能
         allow create: if isAuthenticated()
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.tenantId == tenantId
-          && username.matches('^[a-zA-Z0-9_]{3,32}$');
+          && username.matches('^[a-zA-Z0-9_]{3,32}$')
+          && isValidAuditCreate(tenantId);
 
-        // 更新: 所有者本人のみ許可
+        // ユーザー名変更に伴う旧インデックス削除・更新: 所有者本人のみ許可
         allow update: if isAuthenticated()
           && resource.data.uid == request.auth.uid
-          && request.resource.data.uid == request.auth.uid;
+          && isValidAuditUpdate(tenantId);
 
-        // 削除: username 変更時に古い username を削除可能（本人のみ）
-        allow delete: if isAuthenticated()
-          && resource.data.uid == request.auth.uid;
+        allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
       }
 
       // -----------------------------------------------------------------------
-      // 2.2 チャット・会話コレクション (/tenants/{tenantId}/chats/{chatId})
+      // 2.3 チャット・会話コレクション (/tenants/{tenantId}/chats/{chatId})
       // -----------------------------------------------------------------------
       match /chats/{chatId} {
-        // チャット参加者のみ読み取り可能
+        // チャット参加メンバーのみ一覧・詳細を読み取り可能
         allow read: if isChatMember(tenantId, chatId);
 
         // 新規チャット作成 (Create):
-        // 1) DM チャット (dm_):
-        //    - members は厳密に2要素 (userIdA, userIdB)
-        //    - 必ず辞書順昇順 (members[0] < members[1])
-        //    - ドキュメントIDが 'dm_' + members[0] + '_' + members[1] と一致
-        //    - 参加者のいずれか1人がリクエスト者本人
-        // 2) グループチャット (gm_):
-        //    - 参加者リストに自分が含まれること
+        // 監査メタデータの正当性 (createdBy/createdAt/updatedBy/updatedAt) を検証
         allow create: if isAuthenticated()
           && request.resource.data.tenantId == tenantId
+          && isValidAuditCreate(tenantId)
           && (
+            // 1:1 DM の場合: 2名構成でソートされ、自身が含まれていること
             (
               request.resource.data.chatType == 'direct'
               && request.resource.data.members.size() == 2
               && request.resource.data.members[0] < request.resource.data.members[1]
-              && chatId == 'dm_' + request.resource.data.members[0] + '_' + request.resource.data.members[1]
               && (
-                isTenantUser(tenantId, request.resource.data.members[0]) ||
-                isTenantUser(tenantId, request.resource.data.members[1])
+                request.resource.data.createdBy == request.resource.data.members[0] ||
+                request.resource.data.createdBy == request.resource.data.members[1]
               )
-            ) || (
+            )
+            ||
+            // グループチャットの場合: 参加者が1名以上存在し、作成者が members に含まれていること
+            (
               request.resource.data.chatType == 'group'
-              && request.auth.uid in request.resource.data.members
+              && request.resource.data.members.size() > 0
+              && request.resource.data.createdBy in request.resource.data.members
             )
           );
 
         // メタデータ更新 (Update):
-        // 参加メンバーのみ lastMessage, lastMessageAt, updatedAt 等を更新可能
+        // 作成時メタデータの不変性 (createdBy/createdAt) と更新者 (updatedBy) の正当性を検証
         allow update: if isAuthenticated()
           && request.resource.data.tenantId == tenantId
+          && isValidAuditUpdate(tenantId)
           && (
-            // 既存ドキュメントが完全なメンバーを持つ場合は isChatMember で検証
             (
               isChatMember(tenantId, chatId)
               && (
                 !('members' in request.resource.data) ||
                 !('members' in resource.data) ||
                 request.resource.data.members == resource.data.members ||
-                (resource.data.chatType == 'group' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'updatedAt']))
+                (resource.data.chatType == 'group' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'latestKeyVersion', 'lastMessage', 'lastMessageAt', 'updatedBy', 'updatedAt']))
               )
             )
-            // 既存ドキュメントがフィールド未確定（空殻状態等）だった場合はリクエストの members で判定
-            || (
+            ||
+            (
               request.resource.data.chatType == 'direct'
               && request.resource.data.members.size() == 2
               && request.resource.data.members[0] < request.resource.data.members[1]
-              && chatId == 'dm_' + request.resource.data.members[0] + '_' + request.resource.data.members[1]
               && (
                 isTenantUser(tenantId, request.resource.data.members[0]) ||
                 isTenantUser(tenantId, request.resource.data.members[1])
@@ -198,64 +259,89 @@ service cloud.firestore {
             )
           );
 
+        // チャット親ドキュメントの削除は禁止
         allow delete: if false;
 
         // ---------------------------------------------------------------------
-        // 2.2.1 暗号化メッセージ (/tenants/{tenantId}/chats/{chatId}/messages/{messageId})
+        // 2.3.1 暗号化メッセージ (/tenants/{tenantId}/chats/{chatId}/messages/{messageId})
         // ---------------------------------------------------------------------
         match /messages/{messageId} {
-          // チャット参加者のみ読み取り可能
+          // チャット参加メンバーのみメッセージを読み取り可能
           allow read: if isChatMember(tenantId, chatId);
 
           // メッセージ作成 (Append-Only):
-          // 送信者本人のUIDがセットされており、チャット所属・テナント所属が一致すること
+          // - チャット参加メンバーであること
+          // - 監査メタデータ (createdBy/createdAt/updatedBy/updatedAt) が正当であること
+          // - 送信者本人 (senderId == createdBy) の正当な userId (u_...) であること
           allow create: if isAuthenticated()
             && isChatMember(tenantId, chatId)
-            && request.resource.data.senderId == request.auth.uid
+            && isValidAuditCreate(tenantId)
+            && request.resource.data.senderId == request.resource.data.createdBy
             && request.resource.data.tenantId == tenantId
             && request.resource.data.chatId == chatId
-            && request.resource.data.keys().hasAll(['messageId', 'tenantId', 'chatId', 'senderId', 'keyVersion', 'encryptedPayload', 'createdAt']);
+            && request.resource.data.keys().hasAll(['messageId', 'tenantId', 'chatId', 'senderId', 'keyVersion', 'encryptedPayload', 'createdBy', 'createdAt', 'updatedBy', 'updatedAt']);
 
-          // メッセージ本文の改ざん・削除は禁止、reactionCounts と updatedAt のみ更新許可
+          // メッセージ本文の改ざん・削除は禁止、リアクション集計と監査更新 (updatedBy/updatedAt) のみ更新許可
           allow update: if isChatMember(tenantId, chatId)
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactionCounts', 'updatedAt']);
+            && isValidAuditUpdate(tenantId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactionCounts', 'updatedBy', 'updatedAt']);
 
           allow delete: if false;
 
           // -------------------------------------------------------------------
-          // 2.2.1.1 メッセージリアクション (/reactions/{reactionUserId})
+          // 2.3.1.1 メッセージリアクション (/reactions/{reactionUserId})
           // -------------------------------------------------------------------
           match /reactions/{reactionUserId} {
-            // チャット参加者のみ読み取り可能
+            // チャット参加メンバーのみリアクション状況を閲覧可能
             allow read: if isChatMember(tenantId, chatId);
 
-            // 自分のリアクションのみ作成・更新可能
-            allow create, update: if isAuthenticated()
+            // 自分のリアクションのみ作成可能 (reactionUserId == createdBy)
+            allow create: if isAuthenticated()
               && isChatMember(tenantId, chatId)
-              && (reactionUserId == request.auth.uid || isTenantUser(tenantId, reactionUserId))
-              && (request.resource.data.userId == request.auth.uid || isTenantUser(tenantId, request.resource.data.userId))
+              && isValidAuditCreate(tenantId)
+              && (reactionUserId == request.resource.data.createdBy)
+              && (request.resource.data.userId == request.resource.data.createdBy)
               && request.resource.data.chatId == chatId
               && request.resource.data.tenantId == tenantId;
 
-            // 自分のリアクションのみ削除可能
+            // 自分のリアクションのみ更新可能
+            allow update: if isAuthenticated()
+              && isChatMember(tenantId, chatId)
+              && isValidAuditUpdate(tenantId)
+              && (reactionUserId == request.resource.data.updatedBy)
+              && (request.resource.data.userId == request.resource.data.updatedBy)
+              && request.resource.data.chatId == chatId
+              && request.resource.data.tenantId == tenantId;
+
+            // 自分のリアクションのみ削除・解除可能
             allow delete: if isAuthenticated()
               && isChatMember(tenantId, chatId)
-              && (reactionUserId == request.auth.uid || isTenantUser(tenantId, reactionUserId));
+              && isTenantUser(tenantId, reactionUserId);
           }
         }
 
         // ---------------------------------------------------------------------
-        // 2.2.2 既読管理カーソル (/tenants/{tenantId}/chats/{chatId}/receipts/{receiptUserId})
+        // 2.3.2 既読管理カーソル (/tenants/{tenantId}/chats/{chatId}/receipts/{receiptUserId})
         // ---------------------------------------------------------------------
         match /receipts/{receiptUserId} {
-          // チャット参加者は他メンバーの既読位置を読み取り可能
+          // チャット参加メンバーは他メンバーの既読水位線カーソルを読み取り可能
           allow read: if isChatMember(tenantId, chatId);
 
-          // 自分の既読カーソルのみ作成・更新可能 (水位線カーソル方式)
-          allow create, update: if isAuthenticated()
+          // 自分の既読カーソルのみ作成可能
+          allow create: if isAuthenticated()
             && isChatMember(tenantId, chatId)
-            && (receiptUserId == request.auth.uid || isTenantUser(tenantId, receiptUserId))
-            && (request.resource.data.userId == request.auth.uid || isTenantUser(tenantId, request.resource.data.userId))
+            && isValidAuditCreate(tenantId)
+            && (receiptUserId == request.resource.data.createdBy)
+            && (request.resource.data.userId == request.resource.data.createdBy)
+            && request.resource.data.chatId == chatId
+            && request.resource.data.tenantId == tenantId;
+
+          // 自分の既読カーソルのみ更新可能
+          allow update: if isAuthenticated()
+            && isChatMember(tenantId, chatId)
+            && isValidAuditUpdate(tenantId)
+            && (receiptUserId == request.resource.data.updatedBy)
+            && (request.resource.data.userId == request.resource.data.updatedBy)
             && request.resource.data.chatId == chatId
             && request.resource.data.tenantId == tenantId;
 
@@ -263,16 +349,20 @@ service cloud.firestore {
         }
 
         // ---------------------------------------------------------------------
-        // 2.2.3 会話共通鍵バケット (/tenants/{tenantId}/chats/{chatId}/keys/{keyVersion})
+        // 2.3.3 会話共通鍵バケット (/tenants/{tenantId}/chats/{chatId}/keys/{keyVersion})
         // ---------------------------------------------------------------------
         match /keys/{keyVersion} {
-          // チャット参加者のみ読み取り・鍵バケット作成可能
+          // チャット参加メンバーのみ暗号化鍵バケットを読み取り可能
           allow read: if isChatMember(tenantId, chatId);
 
-          allow create: if isChatMember(tenantId, chatId)
+          // チャット参加メンバーのみ新規鍵バケット (v_1, v_2...) を作成可能
+          allow create: if isAuthenticated()
+            && isChatMember(tenantId, chatId)
+            && isValidAuditCreate(tenantId)
             && request.resource.data.tenantId == tenantId
             && request.resource.data.chatId == chatId;
 
+          // 既存の鍵バケットの上書き・削除は禁止 (Forward Secrecy 担保)
           allow update, delete: if false;
         }
       }

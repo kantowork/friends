@@ -51,3 +51,35 @@ Firestore に保存されるすべてのフィールドは、セキュリティ�
    - 作成時は「ドキュメントが存在しないこと（重複禁止）」、更新・削除時は「紐づく `userId` / `uid` が一致すること」をセキュリティルールで強制します。
 5. **インデックスの最適化**:
    - メッセージ取得クエリおよび `members` 配列を含むチャット一覧取得クエリ（`CP-01`）に必要な複合インデックス (Composite Indexes) を事前作成します。
+
+---
+
+## 4. 監査メタデータ規約と不変性制御 (Audit Metadata & Immutability)
+
+セキュリティ、トレーサビリティ、およびなりすまし防止のため、Firestore に保存される全主要エンティティに対して統一された監査メタデータ規約を適用します。
+
+### 4.1 監査フィールド定義
+| フィールド名 | 型 | 説明 | 作成時規約 | 更新時規約 |
+|:---|:---|:---|:---|:---|
+| `createdBy` | `string` | 作成者のテナント内公開ID (`u_...`) | **必須**。現在の Auth UID に紐づく本人IDであることを検証。 | **完全不変（変更不可）** |
+| `createdAt` | `timestamp` | ドキュメント初期作成日時 | **必須**。サーバー現在時刻 (`FieldValue.serverTimestamp()` == `request.time`) | **完全不変（変更不可）** |
+| `updatedBy` | `string` | 最終更新者のテナント内公開ID (`u_...`) | **必須**。作成時は `createdBy == updatedBy` | **必須**。更新操作者本人の ID であることを検証 |
+| `updatedAt` | `timestamp` | ドキュメント最終更新日時 | **必須**。サーバー現在時刻 (`FieldValue.serverTimestamp()` == `request.time`) | **必須**。サーバー現在時刻 (`request.time`) で更新 |
+
+### 4.2 セキュリティルールによる強制仕様
+- **新規作成 (`allow create`)**:
+  ```javascript
+  request.resource.data.keys().hasAll(['createdBy', 'createdAt', 'updatedBy', 'updatedAt'])
+    && isTenantUser(tenantId, request.resource.data.createdBy)
+    && request.resource.data.createdBy == request.resource.data.updatedBy
+    && request.resource.data.createdAt == request.time
+    && request.resource.data.updatedAt == request.time;
+  ```
+- **更新 (`allow update`)**:
+  ```javascript
+  !request.resource.data.diff(resource.data).affectedKeys().hasAny(['createdBy', 'createdAt'])
+    && request.resource.data.keys().hasAll(['updatedBy', 'updatedAt'])
+    && isTenantUser(tenantId, request.resource.data.updatedBy)
+    && request.resource.data.updatedAt == request.time;
+  ```
+

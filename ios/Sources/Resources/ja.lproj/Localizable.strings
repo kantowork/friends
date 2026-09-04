@@ -58,7 +58,7 @@
 "group.create.name_label" = "グループ名";
 "group.create.name_placeholder" = "グループ名を入力";
 "group.create.select_members" = "メンバーを選択 (%d人選択中)";
-"group.create.submit_btn" = "作成する";
+"group.create.submit_btn" = "作成";
 "group.create.no_friends" = "招待できる友達がいません。先に友達を追加してください。";
 "group.detail.title" = "グループ情報";
 "group.detail.members_section" = "参加メンバー (%d人)";
@@ -70,8 +70,11 @@
 "chat.list.empty" = "トーク履歴がありません\n友達と対面QRコードを交換してトークを開始しましょう";
 "chat.detail.input_placeholder" = "メッセージを入力…";
 "chat.detail.send" = "送信";
+"chat.detail.new_messages_badge" = "新着メッセージがあります ↓";
+"chat.detail.scroll_to_latest" = "最新メッセージへ移動";
 "chat.read.status" = "既読";
 "chat.read.count" = "既読 %d";
+
 
 // MARK: - Reactions
 "chat.reaction.details_title" = "リアクション";

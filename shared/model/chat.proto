@@ -13,9 +13,12 @@ message Chat {
   string chat_id = 1;   // ID 命名規約: dm_xxx または gm_xxx
   string tenant_id = 2; // ID 命名規約: t_xxx
   ChatType chat_type = 3;
-  repeated string members = 4; // 参加者の Firebase Auth UID リスト
-  google.protobuf.Timestamp created_at = 5;
-  google.protobuf.Timestamp updated_at = 6;
+  repeated string members = 4; // 参加者のユーザーID (u_xxx) リスト
+  string title = 5;            // グループチャット表示タイトル
+  string created_by = 6;       // 作成者の userId (u_xxx)
+  google.protobuf.Timestamp created_at = 7;
+  string updated_by = 8;       // 最終更新者の userId (u_xxx)
+  google.protobuf.Timestamp updated_at = 9;
 }
 
 // グループ会話共有鍵バケット (/tenants/{tenantId}/chats/{chatId}/keys/{keyVersion})
@@ -23,8 +26,11 @@ message KeyBucket {
   string key_version = 1; // バージョン ID 命名規約: v_1, v_2
   string chat_id = 2;     // ID 命名規約: gm_xxx
   string tenant_id = 3;   // ID 命名規約: t_xxx
-  map<string, string> encrypted_group_keys = 4; // member_uid -> 各自の PK で暗号化された SK_group (Base64)
-  google.protobuf.Timestamp created_at = 5;
+  map<string, string> encrypted_group_keys = 4; // member_userId -> 各自の PK で暗号化された SK_group (Base64)
+  string created_by = 5;  // 作成者の userId (u_xxx)
+  google.protobuf.Timestamp created_at = 6;
+  string updated_by = 7;  // 更新者の userId (u_xxx)
+  google.protobuf.Timestamp updated_at = 8;
 }
 
 // チャット既読カーソル (/tenants/{tenantId}/chats/{chatId}/receipts/{userId})
@@ -34,5 +40,8 @@ message ReadReceipt {
   string tenant_id = 3;            // テナントID (t_xxx)
   string last_read_message_id = 4; // 最後に閲覧したメッセージID (m_xxx)
   google.protobuf.Timestamp last_read_at = 5; // 最後に閲覧したメッセージの作成日時
-  google.protobuf.Timestamp updated_at = 6;   // カーソル更新日時
+  string created_by = 6;           // 作成者の userId (u_xxx)
+  google.protobuf.Timestamp created_at = 7;   // カーソル初期作成日時
+  string updated_by = 8;           // 更新者の userId (u_xxx)
+  google.protobuf.Timestamp updated_at = 9;   // カーソル更新日時
 }

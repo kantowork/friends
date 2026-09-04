@@ -70,8 +70,11 @@
 "chat.list.empty" = "No chat history yet.\nExchange QR codes with friends to start chatting.";
 "chat.detail.input_placeholder" = "Message…";
 "chat.detail.send" = "Send";
+"chat.detail.new_messages_badge" = "New messages below ↓";
+"chat.detail.scroll_to_latest" = "Jump to latest";
 "chat.read.status" = "Read";
 "chat.read.count" = "Read %d";
+
 
 // MARK: - Reactions
 "chat.reaction.details_title" = "Reactions";

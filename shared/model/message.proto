@@ -15,12 +15,15 @@ message Message {
   string message_id = 1; // ID 命名規約: m_xxx
   string tenant_id = 2;  // ID 命名規約: t_xxx
   string chat_id = 3;    // ID 命名規約: dm_xxx または gm_xxx
-  string sender_id = 4;  // 送信者の Firebase Auth UID
+  string sender_id = 4;  // 送信者のユーザーID (u_xxx)
   string key_version = 5; // 使用鍵バージョン (例: v_1, v_2)
   EncryptedPayload encrypted_payload = 6;
   MessageType message_type = 7;
-  google.protobuf.Timestamp created_at = 8;
-  map<string, int32> reaction_counts = 9; // reaction_type string (e.g. "thumbs_up") -> count
+  string created_by = 8; // 送信者/作成者の userId (u_xxx)
+  google.protobuf.Timestamp created_at = 9;
+  string updated_by = 10; // 更新者の userId (u_xxx)
+  google.protobuf.Timestamp updated_at = 11;
+  map<string, int32> reaction_counts = 12; // reaction_type string (e.g. "thumbs_up") -> count
 }
 
 // リアクション種別
@@ -41,10 +44,12 @@ message MessageReaction {
   string message_id = 2;   // ID 命名規約: m_xxx
   string chat_id = 3;      // ID 命名規約: dm_xxx または gm_xxx
   string tenant_id = 4;    // ID 命名規約: t_xxx
-  string user_id = 5;      // ユーザーID (u_xxx / UID)
+  string user_id = 5;      // ユーザーID (u_xxx)
   string user_name = 6;    // ユーザー表示名
   ReactionType reaction_type = 7;
-  google.protobuf.Timestamp created_at = 8;
-  google.protobuf.Timestamp updated_at = 9;
+  string created_by = 8;   // リアクション作成者の userId (u_xxx)
+  google.protobuf.Timestamp created_at = 9;
+  string updated_by = 10;  // リアクション更新者の userId (u_xxx)
+  google.protobuf.Timestamp updated_at = 11;
 }
 

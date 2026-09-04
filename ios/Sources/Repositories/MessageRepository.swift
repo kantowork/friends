@@ -20,8 +20,7 @@ final class MessageRepository {
             .order(by: "createdAt", descending: false)
             .limit(toLast: limit)
             .addSnapshotListener { snapshot, error in
-                if let error = error {
-                    print("⚠️ Firestore Messages Watch Error [\(chatId)]: \(error.localizedDescription)")
+                if error != nil {
                     return
                 }
                 guard let documents = snapshot?.documents else { return }
@@ -48,6 +47,10 @@ final class MessageRepository {
                         }
                     }
                     
+                    let createdBy = data["createdBy"] as? String ?? senderId
+                    let updatedBy = data["updatedBy"] as? String ?? senderId
+                    let updatedAt = (data["updatedAt"] as? Timestamp)?.dateValue() ?? createdAt
+                    
                     let msg = FriendsMessage(
                         messageID: messageId,
                         tenantID: tenantId,
@@ -57,7 +60,10 @@ final class MessageRepository {
                         ciphertext: ciphertext,
                         nonce: nonce,
                         messageType: .text,
+                        createdBy: createdBy,
                         createdAt: createdAt,
+                        updatedBy: updatedBy,
+                        updatedAt: updatedAt,
                         reactionCounts: reactionCounts
                     )
                     newMessages.append(msg)
@@ -66,31 +72,6 @@ final class MessageRepository {
             }
     }
     
-    /// 1:1 DM チャット親ドキュメントの安全な初期化 (userId 昇順・厳格な2要素)
-    func createDirectChatIfNotExists(
-        tenantId: String,
-        chatId: String,
-        members: [String],
-        completion: ((Result<Void, Error>) -> Void)? = nil
-    ) {
-        let sortedMembers = members.sorted()
-        let chatData: [String: Any] = [
-            "chatId": chatId,
-            "tenantId": tenantId,
-            "chatType": "direct",
-            "members": sortedMembers,
-            "updatedAt": FieldValue.serverTimestamp()
-        ]
-        
-        let chatRef = db.collection("tenants").document(tenantId).collection("chats").document(chatId)
-        chatRef.setData(chatData, merge: true) { error in
-            if let error = error {
-                completion?(.failure(error))
-            } else {
-                completion?(.success(()))
-            }
-        }
-    }
     
     /// 暗号化メッセージの送信・追記 (MP-02)
     func createMessage(
@@ -100,53 +81,89 @@ final class MessageRepository {
         members: [String]? = nil,
         completion: ((Result<Void, Error>) -> Void)? = nil
     ) {
+        let senderId = message.senderID
         let messageData: [String: Any] = [
             "messageId": message.messageID,
             "tenantId": tenantId,
             "chatId": chatId,
-            "senderId": message.senderID,
+            "senderId": senderId,
             "keyVersion": message.keyVersion,
             "encryptedPayload": [
                 "ciphertext": message.encryptedPayload.ciphertext,
                 "nonce": message.encryptedPayload.nonce
             ],
             "messageType": "text",
-            "createdAt": FieldValue.serverTimestamp()
+            "createdBy": senderId,
+            "createdAt": FieldValue.serverTimestamp(),
+            "updatedBy": senderId,
+            "updatedAt": FieldValue.serverTimestamp()
         ]
         
         let chatRef = db.collection("tenants").document(tenantId).collection("chats").document(chatId)
         
-        var chatUpdateData: [String: Any] = [
-            "chatId": chatId,
-            "tenantId": tenantId,
-            "createdAt": FieldValue.serverTimestamp(),
-            "lastMessageAt": FieldValue.serverTimestamp(),
-            "updatedAt": FieldValue.serverTimestamp()
-        ]
-        
-        if let members = members, !members.isEmpty {
-            if chatId.hasPrefix("dm_") {
-                chatUpdateData["chatType"] = "direct"
-                chatUpdateData["members"] = members.sorted()
-            } else if chatId.hasPrefix("gm_") {
-                chatUpdateData["chatType"] = "group"
-                chatUpdateData["members"] = members
-            }
-        }
-        
-        // チャット更新時刻をセットしつつメッセージをサブコレクションへ書き込み
-        chatRef.setData(chatUpdateData, merge: true) { error in
+        // 親チャットドキュメントの存在確認を行い、作成時(Create)と更新時(Update)で監査フィールドを正しく分岐
+        chatRef.getDocument { snapshot, error in
             if let error = error {
                 completion?(.failure(error))
                 return
             }
             
-            chatRef.collection("messages").document(message.messageID).setData(messageData) { error in
-                if let error = error {
-                    completion?(.failure(error))
-                } else {
-                    completion?(.success(()))
+            let exists = snapshot?.exists ?? false
+            if exists {
+                // 既存チャットの更新 (Update): createdBy/createdAt は含めず、updatedBy/updatedAt/lastMessageAt のみを更新
+                let chatUpdateData: [String: Any] = [
+                    "lastMessageAt": FieldValue.serverTimestamp(),
+                    "updatedBy": senderId,
+                    "updatedAt": FieldValue.serverTimestamp()
+                ]
+                chatRef.updateData(chatUpdateData) { err in
+                    if let err = err {
+                        completion?(.failure(err))
+                        return
+                    }
+                    self.writeMessageDocument(chatRef: chatRef, messageId: message.messageID, messageData: messageData, senderId: senderId, completion: completion)
                 }
+            } else {
+                // 新規チャットの作成 (Create): createdBy, createdAt, updatedBy, updatedAt が完全一致する監査メタデータをセット
+                var chatCreateData: [String: Any] = [
+                    "chatId": chatId,
+                    "tenantId": tenantId,
+                    "chatType": chatId.hasPrefix("gm_") ? "group" : "direct",
+                    "members": (members ?? [senderId]).sorted(),
+                    "lastMessage": "",
+                    "lastMessageAt": FieldValue.serverTimestamp(),
+                    "createdBy": senderId,
+                    "createdAt": FieldValue.serverTimestamp(),
+                    "updatedBy": senderId,
+                    "updatedAt": FieldValue.serverTimestamp()
+                ]
+                if chatId.hasPrefix("gm_") {
+                    chatCreateData["title"] = "かいぎ"
+                }
+                
+                chatRef.setData(chatCreateData) { err in
+                    if let err = err {
+                        completion?(.failure(err))
+                        return
+                    }
+                    self.writeMessageDocument(chatRef: chatRef, messageId: message.messageID, messageData: messageData, senderId: senderId, completion: completion)
+                }
+            }
+        }
+    }
+    
+    private func writeMessageDocument(
+        chatRef: DocumentReference,
+        messageId: String,
+        messageData: [String: Any],
+        senderId: String,
+        completion: ((Result<Void, Error>) -> Void)?
+    ) {
+        chatRef.collection("messages").document(messageId).setData(messageData) { error in
+            if let error = error {
+                completion?(.failure(error))
+            } else {
+                completion?(.success(()))
             }
         }
     }

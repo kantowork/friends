@@ -21,17 +21,21 @@ public class ChatService: ObservableObject {
     @Published var friends: [FriendsPublicUserProfile] = []
     @Published var chats: [FriendsChatUIModel] = []
     @Published var messages: [String: [DecryptedMessage]] = [:] // chatId -> [DecryptedMessage]
+    @Published var hasMoreMessages: [String: Bool] = [:] // chatId -> Bool
+    @Published var isLoadingMoreMessages: [String: Bool] = [:] // chatId -> Bool
     @Published var readReceipts: [String: [String: FriendsReadReceipt]] = [:] // chatId -> [userId: FriendsReadReceipt]
     @Published var userReactions: [String: FriendsReactionType] = [:] // "\(chatId)_\(messageId)" -> reactionType
     @Published public var activeChatId: String? = nil
     
     private let db = Firestore.firestore()
     private var messageListeners: [String: ListenerRegistration] = [:]
+    private var messageLimits: [String: Int] = [:] // chatId -> Int
     private var readReceiptListeners: [String: ListenerRegistration] = [:]
     private var chatListener: ListenerRegistration?
     private var friendListener: ListenerRegistration?
     private var markAsReadDebounceWorkItems: [String: DispatchWorkItem] = [:]
     private var directSessionKeys: [String: SymmetricKey] = [:] // chatId -> SK_direct
+    private var groupSessionKeys: [String: SymmetricKey] = [:] // "\(chatId)_\(keyVersion)" -> SK_group
     private var knownMessageIds: [String: Set<String>] = [:]
 
     
@@ -59,8 +63,7 @@ public class ChatService: ObservableObject {
                         self.authStatus = .unauthenticated
                     }
                 }
-            case .failure(let error):
-                print("⚠️ Error fetching tenant from Firestore: \(error.localizedDescription)")
+            case .failure:
                 DispatchQueue.main.async {
                     self.authStatus = .unauthenticated
                 }
@@ -302,6 +305,9 @@ public class ChatService: ObservableObject {
         DispatchQueue.main.async {
             self.directSessionKeys.removeAll()
             self.knownMessageIds.removeAll()
+            self.messageLimits.removeAll()
+            self.hasMoreMessages.removeAll()
+            self.isLoadingMoreMessages.removeAll()
             self.currentUser = nil
             self.friends = []
             self.chats = []
@@ -345,17 +351,6 @@ public class ChatService: ObservableObject {
     }
 
     
-    public func listenToFriends() {
-        watchFriends()
-    }
-    
-    func addFriend(
-        from payload: FriendsFriendInvitationPayload,
-        explicitPasscode: String? = nil,
-        completion: @escaping (Result<FriendsPublicUserProfile, Error>) -> Void
-    ) {
-        createFriend(from: payload, explicitPasscode: explicitPasscode, completion: completion)
-    }
     
     func createFriend(
         from payload: FriendsFriendInvitationPayload,
@@ -475,7 +470,7 @@ public class ChatService: ObservableObject {
                 payload.passcode = cleanPasscode
                 payload.timestamp = Int64(Date().timeIntervalSince1970)
                 
-                self.addFriend(from: payload, explicitPasscode: cleanPasscode, completion: completion)
+                self.createFriend(from: payload, explicitPasscode: cleanPasscode, completion: completion)
             }
     }
     
@@ -506,12 +501,10 @@ public class ChatService: ObservableObject {
     
     func updateUsername(newUsername: String, completion: @escaping (Result<Void, Error>) -> Void) {
         guard let tenant = currentTenant, let user = currentUser else {
-            print("❌ [ChatService] updateUsername failed: tenant or user is nil")
             completion(.failure(NSError(domain: "UserError", code: 401, userInfo: [NSLocalizedDescriptionKey: L10n.Error.unknown])))
             return
         }
         let cleanUsername = newUsername.lowercased().trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "@", with: "")
-        print("🔍 [ChatService] updateUsername starting for tenant: \(tenant.tenantID), userId: \(user.userID), old: '\(user.username)', new: '\(cleanUsername)'")
         
         UserRepository.shared.updateUsername(
             tenantId: tenant.tenantID,
@@ -523,14 +516,12 @@ public class ChatService: ObservableObject {
             guard let self = self else { return }
             switch result {
             case .success:
-                print("✅ [ChatService] UserRepository.updateUsername succeeded in Firestore")
                 DispatchQueue.main.async {
                     self.objectWillChange.send()
                     self.currentUser?.username = cleanUsername
-                    print("✅ [ChatService] self.currentUser?.username updated to '\(self.currentUser?.username ?? "")' (effectiveUsername: '\(self.currentUser?.effectiveUsername ?? "")')")
                 }
-            case .failure(let err):
-                print("❌ [ChatService] UserRepository.updateUsername failed: \(err.localizedDescription) (Error: \(err))")
+            case .failure:
+                break
             }
             completion(result)
         }
@@ -551,11 +542,12 @@ public class ChatService: ObservableObject {
             }
             for chat in newChats {
                 self.watchMessages(chatId: chat.chatID)
+                self.watchReadReceipts(chatId: chat.chatID)
             }
         }
     }
     
-    // MARK: - Direct Session Key Helper
+    // MARK: - Direct & Group Session Key Helpers
     
     /// 1:1 チャットの相手ユーザーの公開鍵から SK_direct セッション鍵を取得または導出する
     private func getDirectSessionKey(chatId: String, tenantId: String, peerUserId: String? = nil, completion: @escaping (SymmetricKey?) -> Void) {
@@ -570,9 +562,19 @@ public class ChatService: ObservableObject {
         }
         
         // 1. friends キャッシュから相手の公開鍵を探索
-        let targetPeerId = peerUserId ?? chatId.replacingOccurrences(of: "dm_", with: "").components(separatedBy: "_").first(where: { $0 != currentUser?.userID && $0 != myUid }) ?? ""
+        var resolvedPeerId = peerUserId ?? ""
+        if resolvedPeerId.isEmpty && chatId.hasPrefix("dm_") {
+            let rawStr = String(chatId.dropFirst(3))
+            let parts = rawStr.components(separatedBy: "_u_")
+            if parts.count == 2 {
+                let userA = parts[0].hasPrefix("u_") ? parts[0] : "u_" + parts[0]
+                let userB = "u_" + parts[1]
+                resolvedPeerId = [userA, userB].first(where: { $0 != currentUser?.userID }) ?? ""
+            }
+        }
+        let targetPeerId = resolvedPeerId
         
-        if let friend = friends.first(where: { $0.userID == targetPeerId || $0.uid == targetPeerId }), !friend.publicKey.isEmpty {
+        if let friend = friends.first(where: { $0.userID == targetPeerId }), !friend.publicKey.isEmpty {
             if let key = try? CryptoKeyManager.shared.deriveDirectSessionKey(myUid: myUid, peerPublicKeyBase64: friend.publicKey, tenantId: tenantId) {
                 self.directSessionKeys[chatId] = key
                 completion(key)
@@ -584,12 +586,16 @@ public class ChatService: ObservableObject {
         if !targetPeerId.isEmpty {
             UserRepository.shared.getUserProfileByUserId(tenantId: tenantId, userId: targetPeerId) { [weak self] result in
                 guard let self = self else { return }
-                if case .success(let userProfile) = result, !userProfile.publicKey.isEmpty {
-                    if let key = try? CryptoKeyManager.shared.deriveDirectSessionKey(myUid: myUid, peerPublicKeyBase64: userProfile.publicKey, tenantId: tenantId) {
+                switch result {
+                case .success(let userProfile):
+                    if !userProfile.publicKey.isEmpty,
+                       let key = try? CryptoKeyManager.shared.deriveDirectSessionKey(myUid: myUid, peerPublicKeyBase64: userProfile.publicKey, tenantId: tenantId) {
                         self.directSessionKeys[chatId] = key
                         completion(key)
                         return
                     }
+                case .failure:
+                    break
                 }
                 
                 // 3. フォールバック: テナントマスターキー (MK_T)
@@ -602,179 +608,243 @@ public class ChatService: ObservableObject {
         }
     }
     
-    public func watchMessages(chatId: String) {
-        guard messageListeners[chatId] == nil, let tenant = currentTenant else { return }
+    /// グループ会話鍵 (SK_group) を KeyBucket またはキャッシュから取得する (Forward Secrecy 対応)
+    private func getGroupSessionKey(chatId: String, tenantId: String, keyVersion: String = "v_1", completion: @escaping (SymmetricKey?) -> Void) {
+        let cacheKey = "\(chatId)_\(keyVersion)"
+        if let cached = groupSessionKeys[cacheKey] {
+            completion(cached)
+            return
+        }
+        
+        guard let myUid = currentUser?.uid, let myUserId = currentUser?.userID else {
+            let fallbackKey = CryptoKeyManager.shared.getTenantMasterKey(tenantId: tenantId)
+            completion(fallbackKey)
+            return
+        }
+        
+        KeyBucketRepository.shared.getKeyBucket(tenantId: tenantId, chatId: chatId, keyVersion: keyVersion) { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .success(let bucket):
+                // 自分の userId (u_...) に割り当てられた暗号化グループ鍵を探索
+                if let encryptedKey = bucket.encryptedGroupKeys[myUserId] {
+                    // 作成者（自分自身またはグループ内の公開鍵を持つ相手）の公開鍵で復号
+                    // プリセット・フォールバックとして自分の鍵ペアまたはMK_Tを試みる
+                    if let myPubKey = CryptoKeyManager.shared.getPublicKeyBase64(uid: myUid),
+                       let groupKey = try? CryptoKeyManager.shared.decryptGroupKey(
+                        encryptedGroupKeyBase64: encryptedKey,
+                        peerPublicKeyBase64: myPubKey,
+                        myUid: myUid,
+                        tenantId: tenantId
+                       ) {
+                        self.groupSessionKeys[cacheKey] = groupKey
+                        completion(groupKey)
+                        return
+                    }
+                }
+                let fallbackKey = CryptoKeyManager.shared.getTenantMasterKey(tenantId: tenantId)
+                completion(fallbackKey)
+            case .failure:
+                let fallbackKey = CryptoKeyManager.shared.getTenantMasterKey(tenantId: tenantId)
+                completion(fallbackKey)
+            }
+        }
+    }
+    
+    public func watchMessages(chatId: String, limit: Int? = nil) {
+        guard let tenant = currentTenant else { return }
         let tenantId = tenant.tenantID
         
-        let listener = MessageRepository.shared.watchMessagesByChatId(tenantId: tenantId, chatId: chatId) { [weak self] rawMessages in
-            guard let self = self else { return }
+        let targetLimit = limit ?? messageLimits[chatId] ?? 30
+        messageLimits[chatId] = targetLimit
+        
+        // 既存リスナーの安全な差し替え
+        if limit != nil || messageListeners[chatId] == nil {
+            messageListeners[chatId]?.remove()
             
-            let previouslyKnownIds = self.knownMessageIds[chatId]
-            let isInitialLoad = (previouslyKnownIds == nil)
-            let currentMessageIds = Set(rawMessages.map { $0.messageID })
-            self.knownMessageIds[chatId] = currentMessageIds
-            
-            self.getDirectSessionKey(chatId: chatId, tenantId: tenantId) { sessionKey in
-                var newDecryptedMessages: [DecryptedMessage] = []
-                var newlyReceivedMessagesToNotify: [DecryptedMessage] = []
+            let listener = MessageRepository.shared.watchMessagesByChatId(tenantId: tenantId, chatId: chatId, limit: targetLimit) { [weak self] rawMessages in
+                guard let self = self else { return }
                 
-                for msg in rawMessages {
-                    let ciphertext = msg.encryptedPayload.ciphertext
-                    let nonce = msg.encryptedPayload.nonce
+                let previouslyKnownIds = self.knownMessageIds[chatId]
+                let isInitialLoad = (previouslyKnownIds == nil)
+                let currentMessageIds = Set(rawMessages.map { $0.messageID })
+                self.knownMessageIds[chatId] = currentMessageIds
+                
+                DispatchQueue.main.async {
+                    self.hasMoreMessages[chatId] = (rawMessages.count >= targetLimit)
+                    self.isLoadingMoreMessages[chatId] = false
+                }
+                
+                let getKeyHandler: (@escaping (SymmetricKey?) -> Void) -> Void = { handler in
+                    if chatId.hasPrefix("gm_") {
+                        self.getGroupSessionKey(chatId: chatId, tenantId: tenantId, completion: handler)
+                    } else {
+                        self.getDirectSessionKey(chatId: chatId, tenantId: tenantId, completion: handler)
+                    }
+                }
+                
+                getKeyHandler { sessionKey in
+                    var newDecryptedMessages: [DecryptedMessage] = []
+                    var newlyReceivedMessagesToNotify: [DecryptedMessage] = []
                     
-                    // 端末内ローカル復号 (E2EE)
-                    var decryptedText = ""
-                    if let key = sessionKey, !ciphertext.isEmpty, !nonce.isEmpty {
-                        if let dec = try? CryptoKeyManager.shared.decryptDirectMessage(ciphertext: ciphertext, nonce: nonce, sessionKey: key) {
-                            decryptedText = dec
-                        } else if let decWithTenant = try? CryptoKeyManager.shared.decryptWithTenantKey(encryptedData: ciphertext, nonce: nonce, tenantId: tenantId) {
-                            decryptedText = decWithTenant
+                    for msg in rawMessages {
+                        let ciphertext = msg.encryptedPayload.ciphertext
+                        let nonce = msg.encryptedPayload.nonce
+                        
+                        // 端末内ローカル復号 (E2EE)
+                        var decryptedText = ""
+                        if let key = sessionKey, !ciphertext.isEmpty, !nonce.isEmpty {
+                            if let dec = try? CryptoKeyManager.shared.decryptDirectMessage(ciphertext: ciphertext, nonce: nonce, sessionKey: key) {
+                                decryptedText = dec
+                            } else if let decWithTenant = try? CryptoKeyManager.shared.decryptWithTenantKey(encryptedData: ciphertext, nonce: nonce, tenantId: tenantId) {
+                                decryptedText = decWithTenant
+                            }
+                        } else if !ciphertext.isEmpty, !nonce.isEmpty {
+                            if let decWithTenant = try? CryptoKeyManager.shared.decryptWithTenantKey(encryptedData: ciphertext, nonce: nonce, tenantId: tenantId) {
+                                decryptedText = decWithTenant
+                            }
                         }
-                    }
-                    
-                    // 送信者名の解決 (ローカルのユーザー/友達キャッシュから解決)
-                    var senderDisplayName = "送信者"
-                    let isFromMe = (msg.senderID == self.currentUser?.uid || msg.senderID == self.currentUser?.userID)
-                    if isFromMe {
-                        senderDisplayName = self.currentUser?.displayName ?? "自分"
-                    } else if let friend = self.friends.first(where: { $0.uid == msg.senderID || $0.userID == msg.senderID }) {
-                        senderDisplayName = friend.displayName
-                    }
-                    
-                    let myReaction = self.userReactions["\(chatId)_\(msg.messageID)"]
-                    let decryptedMsg = DecryptedMessage(
-                        message: msg,
-                        senderName: senderDisplayName,
-                        decryptedText: decryptedText,
-                        myReaction: myReaction
-                    )
-                    newDecryptedMessages.append(decryptedMsg)
-                    
-                    // 初回同期以降で新しく到着した他者からのメッセージを抽出
-                    if !isInitialLoad, let prevIds = previouslyKnownIds, !prevIds.contains(msg.messageID), !isFromMe {
-                        newlyReceivedMessagesToNotify.append(decryptedMsg)
-                    }
-                    
-                    // 【ハイブリッド同期 第2層】会話・メッセージ受信時に送信者の最新プロファイルをオンデマンド同期
-                    if !isFromMe {
-                        let senderId = msg.senderID
-                        if let friendIdx = self.friends.firstIndex(where: { $0.uid == senderId || $0.userID == senderId }) {
-                            let friendUserId = self.friends[friendIdx].userID
-                            FriendRepository.shared.listFriendsProfilesByUserIds(tenantId: tenantId, friendUserIds: [friendUserId]) { res in
-                                if case .success(let map) = res, let info = map[friendUserId] {
-                                    DispatchQueue.main.async {
-                                        if let idx = self.friends.firstIndex(where: { $0.userID == friendUserId }) {
-                                            var updated = self.friends[idx]
-                                            var changed = false
-                                            if !info.displayName.isEmpty && info.displayName != updated.displayName {
-                                                updated.displayName = info.displayName
-                                                changed = true
-                                            }
-                                            if info.avatarNonce != updated.avatarNonce || info.avatarUpdatedAt != updated.avatarUpdatedDate {
-                                                updated.avatarNonce = info.avatarNonce
-                                                if let date = info.avatarUpdatedAt {
-                                                    updated.avatarUpdatedAt = Google_Protobuf_Timestamp(date: date)
-                                                } else {
-                                                    updated.clearAvatarUpdatedAt()
+                        
+                        // 送信者名の解決 (ローカルのユーザー/友達キャッシュから解決)
+                        var senderDisplayName = "送信者"
+                        let isFromMe = (msg.senderID == self.currentUser?.uid || msg.senderID == self.currentUser?.userID)
+                        if isFromMe {
+                            senderDisplayName = self.currentUser?.displayName ?? "自分"
+                        } else if let friend = self.friends.first(where: { $0.uid == msg.senderID || $0.userID == msg.senderID }) {
+                            senderDisplayName = friend.displayName
+                        }
+                        
+                        let myReaction = self.userReactions["\(chatId)_\(msg.messageID)"]
+                        let decryptedMsg = DecryptedMessage(
+                            message: msg,
+                            senderName: senderDisplayName,
+                            decryptedText: decryptedText,
+                            myReaction: myReaction
+                        )
+                        newDecryptedMessages.append(decryptedMsg)
+                        
+                        // 初回同期以降で新しく到着した他者からのメッセージを抽出
+                        if !isInitialLoad, let prevIds = previouslyKnownIds, !prevIds.contains(msg.messageID), !isFromMe {
+                            newlyReceivedMessagesToNotify.append(decryptedMsg)
+                        }
+                        
+                        // 【ハイブリッド同期 第2層】会話・メッセージ受信時に送信者の最新プロファイルをオンデマンド同期
+                        if !isFromMe {
+                            let senderId = msg.senderID
+                            if let friendIdx = self.friends.firstIndex(where: { $0.uid == senderId || $0.userID == senderId }) {
+                                let friendUserId = self.friends[friendIdx].userID
+                                FriendRepository.shared.listFriendsProfilesByUserIds(tenantId: tenantId, friendUserIds: [friendUserId]) { res in
+                                    if case .success(let map) = res, let info = map[friendUserId] {
+                                        DispatchQueue.main.async {
+                                            if let idx = self.friends.firstIndex(where: { $0.userID == friendUserId }) {
+                                                var updated = self.friends[idx]
+                                                var changed = false
+                                                if !info.displayName.isEmpty && info.displayName != updated.displayName {
+                                                    updated.displayName = info.displayName
+                                                    changed = true
                                                 }
-                                                changed = true
+                                                if info.avatarNonce != updated.avatarNonce || info.avatarUpdatedAt != updated.avatarUpdatedDate {
+                                                    updated.avatarNonce = info.avatarNonce
+                                                    if let date = info.avatarUpdatedAt {
+                                                        updated.avatarUpdatedAt = Google_Protobuf_Timestamp(date: date)
+                                                    } else {
+                                                        updated.clearAvatarUpdatedAt()
+                                                    }
+                                                    changed = true
+                                                }
+                                                if changed {
+                                                    self.friends[idx] = updated
+                                                }
                                             }
-                                            if changed {
-                                                self.friends[idx] = updated
-                                            }
-
                                         }
                                     }
                                 }
                             }
                         }
                     }
-                }
 
-                
-                DispatchQueue.main.async {
-                    self.messages[chatId] = newDecryptedMessages
                     
-                    // チャット一覧の最新メッセージ・時刻をローカル復号メッセージから同期更新
-                    if let lastDec = newDecryptedMessages.last, let chatIdx = self.chats.firstIndex(where: { $0.chatID == chatId }) {
-                        let oldChat = self.chats[chatIdx]
-                        self.chats[chatIdx] = FriendsChatUIModel(
-                            chat: oldChat.chat,
-                            title: oldChat.title,
-                            lastMessage: lastDec.decryptedText,
-                            lastMessageAt: lastDec.createdDate,
-                            unreadCount: oldChat.unreadCount
-                        )
-                    }
-                    
-                    // トースト通知の発火 (該当チャット画面を開いていない場合)
-                    if self.activeChatId != chatId {
-                        let chatModel = self.chats.first(where: { $0.chatID == chatId })
-                        let isGroup = chatModel?.chatType == .group
-                        let toastTitle = isGroup ? (chatModel?.displayTitle ?? "グループ") : nil
+                    DispatchQueue.main.async {
+                        self.messages[chatId] = newDecryptedMessages
                         
-                        for newMsg in newlyReceivedMessagesToNotify {
-                            let senderFriend = self.friends.first(where: { $0.uid == newMsg.senderID || $0.userID == newMsg.senderID })
-                            let senderUserId = senderFriend?.userID ?? newMsg.senderID
-                            let avatarNonce = senderFriend?.avatarNonce ?? ""
-                            let avatarUpdatedAt = senderFriend?.avatarUpdatedDate
-                            let displaySenderName = isGroup ? "\(newMsg.senderName) (\(toastTitle ?? ""))" : newMsg.senderName
-                            
-                            ToastNotificationManager.shared.show(
-                                chatId: chatId,
-                                senderId: senderUserId,
-                                senderName: displaySenderName,
-                                messageText: newMsg.decryptedText,
-                                messageId: newMsg.id,
-                                isGroup: isGroup,
-                                avatarNonce: avatarNonce,
-                                avatarUpdatedAt: avatarUpdatedAt
+                        // チャット一覧の最新メッセージ・時刻をローカル復号メッセージから同期更新
+                        if let lastDec = newDecryptedMessages.last, let chatIdx = self.chats.firstIndex(where: { $0.chatID == chatId }) {
+                            let oldChat = self.chats[chatIdx]
+                            self.chats[chatIdx] = FriendsChatUIModel(
+                                chat: oldChat.chat,
+                                title: oldChat.title,
+                                lastMessage: lastDec.decryptedText,
+                                lastMessageAt: lastDec.createdDate,
+                                unreadCount: oldChat.unreadCount
                             )
+                        }
+                        
+                        // トースト通知の発火 (該当チャット画面を開いていない場合)
+                        if self.activeChatId != chatId {
+                            let chatModel = self.chats.first(where: { $0.chatID == chatId })
+                            let isGroup = chatModel?.chatType == .group
+                            let toastTitle = isGroup ? (chatModel?.displayTitle ?? "グループ") : nil
+                            
+                            for newMsg in newlyReceivedMessagesToNotify {
+                                let senderFriend = self.friends.first(where: { $0.uid == newMsg.senderID || $0.userID == newMsg.senderID })
+                                let senderUserId = senderFriend?.userID ?? newMsg.senderID
+                                let avatarNonce = senderFriend?.avatarNonce ?? ""
+                                let avatarUpdatedAt = senderFriend?.avatarUpdatedDate
+                                let displaySenderName = isGroup ? "\(newMsg.senderName) (\(toastTitle ?? ""))" : newMsg.senderName
+                                
+                                ToastNotificationManager.shared.show(
+                                    chatId: chatId,
+                                    senderId: senderUserId,
+                                    senderName: displaySenderName,
+                                    messageText: newMsg.decryptedText,
+                                    messageId: newMsg.id,
+                                    isGroup: isGroup,
+                                    avatarNonce: avatarNonce,
+                                    avatarUpdatedAt: avatarUpdatedAt
+                                )
+                            }
                         }
                     }
                 }
             }
+            
+            messageListeners[chatId] = listener
         }
+    }
+    
+    /// 過去メッセージのオンデマンド遡りロード (+30件)
+    public func loadMoreMessages(chatId: String) {
+        guard hasMoreMessages[chatId] != false else { return }
+        guard isLoadingMoreMessages[chatId] != true else { return }
         
-        messageListeners[chatId] = listener
-    }
-    
-    // 後方互換性エイリアス
-    public func listenToMessages(chatId: String) {
-        watchMessages(chatId: chatId)
-    }
-    
-    public func listenToChats() {
-        watchChats()
+        let currentLimit = messageLimits[chatId] ?? 30
+        let newLimit = currentLimit + 30
+        
+        DispatchQueue.main.async {
+            self.isLoadingMoreMessages[chatId] = true
+        }
+        watchMessages(chatId: chatId, limit: newLimit)
     }
     
     // MARK: - Send Message to Firestore (Zero-Plaintext E2EE)
     
-    public func sendMessage(chatId: String, text: String, completion: ((Result<Void, Error>) -> Void)? = nil) {
-        createMessage(chatId: chatId, text: text, completion: completion)
-    }
-    
     public func createMessage(chatId: String, text: String, completion: ((Result<Void, Error>) -> Void)? = nil) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            print("⚠️ createMessage ignored: text is empty")
             completion?(.failure(NSError(domain: "ChatError", code: 400, userInfo: [NSLocalizedDescriptionKey: "Text is empty"])))
             return
         }
         guard let tenant = currentTenant else {
-            print("❌ createMessage failed: currentTenant is nil")
             completion?(.failure(NSError(domain: "ChatError", code: 401, userInfo: [NSLocalizedDescriptionKey: "Current tenant is nil"])))
             return
         }
         guard let user = currentUser else {
-            print("❌ createMessage failed: currentUser is nil")
             completion?(.failure(NSError(domain: "ChatError", code: 401, userInfo: [NSLocalizedDescriptionKey: "Current user is nil"])))
             return
         }
         
         let tenantId = tenant.tenantID
         let messageId = "m_\(ULID().ulidString)"
-        print("🚀 [ChatService] Starting createMessage - chatId: \(chatId), tenantId: \(tenantId), user: \(user.userID) (uid: \(user.uid))")
         
         // メンバーリストの導出 (DMの場合は chatId から 2名の userId を抽出し昇順ソート)
         var members: [String] = []
@@ -786,18 +856,20 @@ public class ChatService: ObservableObject {
                 let userA = parts[0].hasPrefix("u_") ? parts[0] : "u_" + parts[0]
                 let userB = "u_" + parts[1]
                 members = [userA, userB].sorted()
-            } else {
-                let fallbackParts = rawStr.components(separatedBy: "_")
-                if fallbackParts.count == 2 {
-                    members = fallbackParts.sorted()
-                }
             }
         } else if let existingChat = chats.first(where: { $0.chatID == chatId }) {
             members = existingChat.chat.members
         }
-        print("👥 [ChatService] Derived members: \(members)")
         
-        getDirectSessionKey(chatId: chatId, tenantId: tenantId) { sessionKey in
+        let getKeyHandler: (@escaping (SymmetricKey?) -> Void) -> Void = { handler in
+            if chatId.hasPrefix("gm_") {
+                self.getGroupSessionKey(chatId: chatId, tenantId: tenantId, completion: handler)
+            } else {
+                self.getDirectSessionKey(chatId: chatId, tenantId: tenantId, completion: handler)
+            }
+        }
+        
+        getKeyHandler { sessionKey in
             var ciphertext = ""
             var nonce = ""
             
@@ -805,7 +877,6 @@ public class ChatService: ObservableObject {
                 if let enc = try? CryptoKeyManager.shared.encryptDirectMessage(plainText: trimmed, sessionKey: key) {
                     ciphertext = enc.ciphertext
                     nonce = enc.nonce
-                    print("🔒 [ChatService] Encrypted with Direct Session Key")
                 }
             }
             
@@ -814,7 +885,6 @@ public class ChatService: ObservableObject {
                 if let enc = try? CryptoKeyManager.shared.encryptWithTenantKey(plainText: trimmed, tenantId: tenantId) {
                     ciphertext = enc.encryptedData
                     nonce = enc.nonce
-                    print("🔒 [ChatService] Encrypted with Tenant Master Key (fallback)")
                 }
             }
             
@@ -822,7 +892,7 @@ public class ChatService: ObservableObject {
                 messageID: messageId,
                 tenantID: tenantId,
                 chatID: chatId,
-                senderID: user.uid,
+                senderID: user.userID,
                 keyVersion: "v_1",
                 ciphertext: ciphertext,
                 nonce: nonce,
@@ -833,10 +903,8 @@ public class ChatService: ObservableObject {
             MessageRepository.shared.createMessage(tenantId: tenantId, chatId: chatId, message: pbMsg, members: members) { result in
                 switch result {
                 case .failure(let err):
-                    print("❌ [ChatService] Firestore Send Message Error: \(err.localizedDescription) (Error: \(err))")
                     completion?(.failure(err))
                 case .success:
-                    print("✅ [ChatService] E2EE Message successfully sent to Firestore! ID: \(messageId)")
                     completion?(.success(()))
                 }
             }
@@ -845,9 +913,6 @@ public class ChatService: ObservableObject {
     
     // MARK: - Profile Update (E02: Display Name Change & Hybrid Sync)
     
-    public func updateDisplayName(newName: String, completion: @escaping (Result<Void, Error>) -> Void) {
-        patchDisplayName(newName: newName, completion: completion)
-    }
     
     public func patchDisplayName(newName: String, completion: @escaping (Result<Void, Error>) -> Void) {
         let cleanName = newName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -953,9 +1018,6 @@ public class ChatService: ObservableObject {
     
     // MARK: - Hybrid Friend Profile Sync (On-Demand / Pull-to-Refresh)
     
-    public func refreshFriendsProfiles(force: Bool = false, completion: (() -> Void)? = nil) {
-        listFriendsProfiles(force: force, completion: completion)
-    }
     
     public func listFriendsProfiles(force: Bool = false, completion: (() -> Void)? = nil) {
         guard let tenant = currentTenant, !friends.isEmpty else {
@@ -1021,15 +1083,12 @@ public class ChatService: ObservableObject {
         readReceiptListeners[chatId] = listener
     }
     
-    public func listenToReadReceipts(chatId: String) {
-        watchReadReceipts(chatId: chatId)
-    }
-    
     public func markAsRead(chatId: String, lastMessageId: String? = nil, lastMessageDate: Date? = nil) {
-        guard let tenant = currentTenant, let user = currentUser else { return }
+        guard let tenant = currentTenant, let user = currentUser else {
+            return
+        }
         let tenantId = tenant.tenantID
-        let userId = user.uid // Firebase Auth UID
-        let userShortId = user.userID // u_xxx
+        let userId = user.userID // u_xxx (Firestore Security Rules requires tenant userId)
         
         let (messageId, readDate): (String, Date) = {
             if let mid = lastMessageId, let mdate = lastMessageDate {
@@ -1052,7 +1111,6 @@ public class ChatService: ObservableObject {
             updatedAt: Date()
         )
         currentMap[userId] = localReceipt
-        currentMap[userShortId] = localReceipt
         readReceipts[chatId] = currentMap
         
         // 2. Debounce Firestore writes (300ms)
@@ -1078,11 +1136,13 @@ public class ChatService: ObservableObject {
         
         // 自分（送信者）以外の参加者の ReadReceipt を探索
         for (userId, receipt) in receipts {
-            // 送信者自身の UID / userID ではないことを確認
-            let isSender = (userId == senderId) || (userId == currentUser?.uid) || (userId == currentUser?.userID)
+            // 送信者自身の userID ではないことを確認
+            let isSender = (userId == senderId) || (userId == currentUser?.userID)
             if !isSender {
                 // 相手の lastReadDate がメッセージ作成日時以降であれば既読
-                if receipt.lastReadDate >= messageDate.addingTimeInterval(-1.0) {
+                let thresholdDate = messageDate.addingTimeInterval(-1.0)
+                let isRead = receipt.lastReadDate >= thresholdDate
+                if isRead {
                     return true
                 }
             }
@@ -1097,7 +1157,7 @@ public class ChatService: ObservableObject {
         var count = 0
         var countedUserIds = Set<String>()
         for (userId, receipt) in receipts {
-            let isSender = (userId == senderId) || (userId == currentUser?.uid) || (userId == currentUser?.userID)
+            let isSender = (userId == senderId) || (userId == currentUser?.userID)
             if !isSender && !countedUserIds.contains(userId) {
                 if receipt.lastReadDate >= messageDate.addingTimeInterval(-1.0) {
                     count += 1
@@ -1110,17 +1170,40 @@ public class ChatService: ObservableObject {
     
     /// 指定チャットの未読メッセージ数を計算
     public func unreadCount(for chatId: String) -> Int {
-        guard let myUid = currentUser?.uid, let myUserId = currentUser?.userID else { return 0 }
+        if activeChatId == chatId {
+            return 0
+        }
+        guard let myUserId = currentUser?.userID else { return 0 }
         guard let chatMessages = messages[chatId], !chatMessages.isEmpty else { return 0 }
         
         let receipts = readReceipts[chatId] ?? [:]
-        let myReceipt = receipts[myUid] ?? receipts[myUserId]
+        let myReceipt = receipts[myUserId]
         let myLastReadDate = myReceipt?.lastReadDate ?? Date.distantPast
+        let myLastReadMessageId = myReceipt?.lastReadMessageID ?? ""
         
+        // 1. 最新メッセージが既に既読されている場合は未読 0
+        if let lastMsg = chatMessages.last, !myLastReadMessageId.isEmpty, lastMsg.id == myLastReadMessageId {
+            return 0
+        }
+        
+        // 2. lastReadMessageID がメッセージ履歴内に存在する場合、それ以降の他者メッセージをカウント
+        if !myLastReadMessageId.isEmpty, let idx = chatMessages.firstIndex(where: { $0.id == myLastReadMessageId }) {
+            var unread = 0
+            for i in (idx + 1)..<chatMessages.count {
+                let msg = chatMessages[i]
+                let isMine = msg.message.senderID == myUserId
+                if !isMine {
+                    unread += 1
+                }
+            }
+            return unread
+        }
+        
+        // 3. messageId で特定できない場合はタイムスタンプ比較 (0.1秒マージン)
         var unread = 0
         for msg in chatMessages {
-            let isMine = (msg.message.senderID == myUid) || (msg.message.senderID == myUserId)
-            if !isMine && msg.createdDate > myLastReadDate.addingTimeInterval(0.5) {
+            let isMine = msg.message.senderID == myUserId
+            if !isMine && msg.createdDate > myLastReadDate.addingTimeInterval(0.1) {
                 unread += 1
             }
         }
@@ -1129,11 +1212,7 @@ public class ChatService: ObservableObject {
     
     /// 全チャットの合計未読メッセージ数
     public var totalUnreadCount: Int {
-        var total = 0
-        for chat in chats {
-            total += unreadCount(for: chat.chatID)
-        }
-        return total
+        totalDmUnreadCount + totalGroupUnreadCount
     }
     
     /// 1:1（DM）チャット一覧
@@ -1157,17 +1236,36 @@ public class ChatService: ObservableObject {
     
     /// 1:1 チャットの合計未読数
     var totalDmUnreadCount: Int {
+        let currentUserId = currentUser?.userID ?? ""
+        var seenDmChatIds = Set<String>()
         var total = 0
-        for chat in dmChats {
-            total += unreadCount(for: chat.chatID)
+        
+        // 1. friends リストから生成される DM チャット ID
+        if !currentUserId.isEmpty {
+            for friend in friends {
+                let dmChatId = "dm_" + [currentUserId, friend.userID].sorted().joined(separator: "_")
+                if !seenDmChatIds.contains(dmChatId) {
+                    seenDmChatIds.insert(dmChatId)
+                    total += unreadCount(for: dmChatId)
+                }
+            }
         }
+        
+        // 2. chats コレクション由来の DM チャット
+        for chat in dmChats {
+            if !seenDmChatIds.contains(chat.chatID) {
+                seenDmChatIds.insert(chat.chatID)
+                total += unreadCount(for: chat.chatID)
+            }
+        }
+        
         return total
     }
     
     // MARK: - Group Management (かいぎ)
     
-    /// 新規グループチャット作成
-    func createGroup(title: String, memberUids: [String], completion: @escaping (Result<FriendsChatUIModel, Error>) -> Void) {
+    /// 新規グループチャット作成 (Forward Secrecy / KeyBucket 初期化)
+    func createGroup(title: String, memberUserIds: [String], completion: @escaping (Result<FriendsChatUIModel, Error>) -> Void) {
         guard let tenant = currentTenant, let currentUser = currentUser else {
             completion(.failure(NSError(domain: "ChatService", code: 401, userInfo: [NSLocalizedDescriptionKey: L10n.Error.unknown])))
             return
@@ -1175,37 +1273,73 @@ public class ChatService: ObservableObject {
         
         let tenantId = tenant.tenantID
         let chatId = "gm_\(ULID().ulidString)"
-        var allMembers = Array(Set([currentUser.uid] + memberUids))
-        if allMembers.isEmpty {
-            allMembers = [currentUser.uid]
+        let otherMembers = memberUserIds.filter { $0 != currentUser.userID }
+        let allMembers = [currentUser.userID] + otherMembers
+        
+        // 1. グループ会話鍵 (SK_group) の生成
+        let groupKey = CryptoKeyManager.shared.generateGroupKey()
+        let keyVersion = "v_1"
+        self.groupSessionKeys["\(chatId)_\(keyVersion)"] = groupKey
+        
+        // 2. メンバーの公開鍵を収集して KeyBucket を作成
+        var memberPubKeys: [String: String] = [:]
+        if let myPubKey = CryptoKeyManager.shared.getPublicKeyBase64(uid: currentUser.uid) {
+            memberPubKeys[currentUser.userID] = myPubKey
+        }
+        for mId in memberUserIds {
+            if let f = friends.first(where: { $0.userID == mId }), !f.publicKey.isEmpty {
+                memberPubKeys[mId] = f.publicKey
+            }
         }
         
-        ChatRepository.shared.createGroupChat(tenantId: tenantId, chatId: chatId, title: title, members: allMembers) { [weak self] result in
+        let encryptedKeys = (try? CryptoKeyManager.shared.encryptGroupKeyForMembers(
+            groupKey: groupKey,
+            myUid: currentUser.uid,
+            memberPublicKeys: memberPubKeys,
+            tenantId: tenantId
+        )) ?? [:]
+        
+        // 3. Firestore へチャット親ドキュメント & KeyBucket を保存
+        ChatRepository.shared.createGroupChat(
+            tenantId: tenantId,
+            chatId: chatId,
+            title: title,
+            members: allMembers,
+            createdBy: currentUser.userID
+        ) { [weak self] result in
             guard let self = self else { return }
             switch result {
             case .success:
-                let pbChat = FriendsChat(
-                    chatID: chatId,
-                    tenantID: tenantId,
-                    chatType: .group,
-                    members: allMembers,
-                    createdAt: Date(),
-                    updatedAt: Date()
-                )
-                let uiChat = FriendsChatUIModel(
-                    chat: pbChat,
-                    title: title,
-                    lastMessage: "",
-                    lastMessageAt: Date(),
-                    unreadCount: 0
-                )
-                DispatchQueue.main.async {
-                    if !self.chats.contains(where: { $0.chatID == chatId }) {
-                        self.chats.insert(uiChat, at: 0)
+                KeyBucketRepository.shared.saveKeyBucket(
+                    tenantId: tenantId,
+                    chatId: chatId,
+                    keyVersion: keyVersion,
+                    encryptedGroupKeys: encryptedKeys,
+                    createdBy: currentUser.userID
+                ) { _ in
+                    let pbChat = FriendsChat(
+                        chatID: chatId,
+                        tenantID: tenantId,
+                        chatType: .group,
+                        members: allMembers,
+                        createdAt: Date(),
+                        updatedAt: Date()
+                    )
+                    let uiChat = FriendsChatUIModel(
+                        chat: pbChat,
+                        title: title,
+                        lastMessage: "",
+                        lastMessageAt: Date(),
+                        unreadCount: 0
+                    )
+                    DispatchQueue.main.async {
+                        if !self.chats.contains(where: { $0.chatID == chatId }) {
+                            self.chats.insert(uiChat, at: 0)
+                        }
+                        self.watchMessages(chatId: chatId)
                     }
-                    self.watchMessages(chatId: chatId)
+                    completion(.success(uiChat))
                 }
-                completion(.success(uiChat))
             case .failure(let error):
                 completion(.failure(error))
             }
@@ -1218,7 +1352,7 @@ public class ChatService: ObservableObject {
     func toggleReaction(chatId: String, messageId: String, reactionType: FriendsReactionType) {
         guard let tenant = currentTenant, let user = currentUser else { return }
         let tenantId = tenant.tenantID
-        let userId = user.uid
+        let userId = user.userID
         let reactionKey = "\(chatId)_\(messageId)"
         let previousReaction = userReactions[reactionKey]
         

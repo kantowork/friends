@@ -19,9 +19,7 @@ final class ChatRepository {
             .order(by: "updatedAt", descending: true)
             .limit(to: limit)
             .addSnapshotListener { snapshot, error in
-                if let error = error {
-                    // 複合インデックス作成前などのフォールバック購読
-                    print("⚠️ Firestore Chats Watch (with index) Error: \(error.localizedDescription). Fallback to standard query.")
+                if error != nil {
                     return
                 }
                 
@@ -38,13 +36,19 @@ final class ChatRepository {
                     let lastMessage = data["lastMessage"] as? String ?? ""
                     let lastMessageTimestamp = (data["lastMessageAt"] as? Timestamp)?.dateValue() ?? Date()
                     let unreadCount = data["unreadCount"] as? Int ?? 0
+                    let createdBy = data["createdBy"] as? String ?? ""
+                    let createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+                    let updatedBy = data["updatedBy"] as? String ?? ""
                     
                     let pbChat = FriendsChat(
                         chatID: chatId,
                         tenantID: tenantId,
                         chatType: chatType,
                         members: members,
-                        createdAt: Date(),
+                        title: title,
+                        createdBy: createdBy,
+                        createdAt: createdAt,
+                        updatedBy: updatedBy,
                         updatedAt: lastMessageTimestamp
                     )
                     
@@ -67,6 +71,7 @@ final class ChatRepository {
         chatId: String,
         title: String,
         members: [String],
+        createdBy: String,
         completion: @escaping (Result<Void, Error>) -> Void
     ) {
         let chatData: [String: Any] = [
@@ -77,7 +82,9 @@ final class ChatRepository {
             "members": members,
             "lastMessage": "",
             "lastMessageAt": FieldValue.serverTimestamp(),
+            "createdBy": createdBy,
             "createdAt": FieldValue.serverTimestamp(),
+            "updatedBy": createdBy,
             "updatedAt": FieldValue.serverTimestamp()
         ]
         
@@ -95,11 +102,13 @@ final class ChatRepository {
         tenantId: String,
         chatId: String,
         newMembers: [String],
+        updatedBy: String,
         completion: @escaping (Result<Void, Error>) -> Void
     ) {
         let chatRef = db.collection("tenants").document(tenantId).collection("chats").document(chatId)
         chatRef.updateData([
             "members": FieldValue.arrayUnion(newMembers),
+            "updatedBy": updatedBy,
             "updatedAt": FieldValue.serverTimestamp()
         ]) { error in
             if let error = error {

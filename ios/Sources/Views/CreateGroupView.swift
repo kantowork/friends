@@ -8,7 +8,7 @@ struct CreateGroupView: View {
     @ObservedObject var chatService = ChatService.shared
     
     @State private var groupName: String = ""
-    @State private var selectedFriendUids: Set<String> = []
+    @State private var selectedFriendUserIds: Set<String> = []
     @State private var isSubmitting: Bool = false
     @State private var errorMessage: String? = nil
     
@@ -28,7 +28,7 @@ struct CreateGroupView: View {
                 }
                 
                 // Section 2: メンバー選択
-                Section(header: Text(L10n.Group.selectMembers(selectedFriendUids.count))) {
+                Section(header: Text(L10n.Group.selectMembers(selectedFriendUserIds.count))) {
                     if chatService.friends.isEmpty {
                         Text(L10n.Group.noFriends)
                             .font(.subheadline)
@@ -37,10 +37,10 @@ struct CreateGroupView: View {
                     } else {
                         ForEach(chatService.friends) { friend in
                             Button {
-                                if selectedFriendUids.contains(friend.uid) {
-                                    selectedFriendUids.remove(friend.uid)
+                                if selectedFriendUserIds.contains(friend.userID) {
+                                    selectedFriendUserIds.remove(friend.userID)
                                 } else {
-                                    selectedFriendUids.insert(friend.uid)
+                                    selectedFriendUserIds.insert(friend.userID)
                                 }
                             } label: {
                                 HStack(spacing: 12) {
@@ -65,7 +65,7 @@ struct CreateGroupView: View {
                                     Spacer()
                                     
                                     // チェックマーク
-                                    if selectedFriendUids.contains(friend.uid) {
+                                    if selectedFriendUserIds.contains(friend.userID) {
                                         Image(systemName: "checkmark.circle.fill")
                                             .foregroundColor(.blue)
                                             .font(.system(size: 22))
@@ -94,14 +94,21 @@ struct CreateGroupView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(L10n.Common.cancel) {
+                    Button {
                         dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.primary)
                     }
+                    .disabled(isSubmitting)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(L10n.Group.submitBtn) {
                         submitCreateGroup()
                     }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.blue)
                     .disabled(groupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSubmitting)
                     .fontWeight(.bold)
                 }
@@ -116,7 +123,7 @@ struct CreateGroupView: View {
         isSubmitting = true
         errorMessage = nil
         
-        chatService.createGroup(title: cleanName, memberUids: Array(selectedFriendUids)) { result in
+        chatService.createGroup(title: cleanName, memberUserIds: Array(selectedFriendUserIds)) { result in
             DispatchQueue.main.async {
                 self.isSubmitting = false
                 switch result {

@@ -414,7 +414,7 @@ struct AddFriendView: View {
         isSubmitting = true
         errorMessage = nil
         
-        chatService.addFriend(from: payload, explicitPasscode: explicitPasscode) { result in
+        chatService.createFriend(from: payload, explicitPasscode: explicitPasscode) { result in
             DispatchQueue.main.async {
                 self.isSubmitting = false
                 switch result {

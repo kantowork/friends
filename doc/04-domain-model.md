@@ -28,6 +28,7 @@
 - `localKeyMetadata`: キー識別子・ストレージ場所など
 - `recoveryPhrase`: 復活の呪文（安全な管理を前提）
 - `profileInfo`, `deviceInfo`
+- `createdBy`, `createdAt`, `updatedBy`, `updatedAt`
 
 ### Device
 
@@ -42,19 +43,21 @@
 - `messageId`: メッセージ一意識別子 (`m_...`)
 - `tenantId`: 所属テナントID (`t_...`)
 - `chatId`: トークID (`dm_...` / `gm_...`)
-- `senderId`: 送信者 `userId`
+- `senderId`: 送信者 `userId` (`u_...`)
 - `keyVersion`: 使用鍵バージョン（例: `v_1`, `v_2`）
 - `encryptedPayload`: Map (`ciphertext`, `nonce`)
-- `createdAt`
 - `messageType`: `text` | `image` | `system`
+- `createdBy`, `createdAt`, `updatedBy`, `updatedAt`
+- `reactionCounts`: リアクション集計マップ
 
 ### Chat (会話/グループ)
 
 - `chatId`: 会話一意識別子 (`dm_...` | `gm_...`)
 - `tenantId`: 所属テナントID (`t_...`)
-- `members`: 配列 (参加者の `uid` リスト)
+- `members`: 配列 (参加者の `userId` リスト)
 - `chatType`: `direct` | `group`
-- `createdAt`, `updatedAt`
+- `title`: グループタイトル（グループ会話時）
+- `createdBy`, `createdAt`, `updatedBy`, `updatedAt`
 
 ### Group
 
@@ -72,9 +75,9 @@
 - `tenantId`: 所属テナントID (`t_...`)
 - `ownerUserId`: ユーザーID (`u_...`)
 - `friendUserId`: 相手のユーザーID (`u_...`)
-- `connectionStatus`: `active` | `blocked`
-- `addedAt`: 作成日時
-- `verifiedVia`: `qr_scan` | `text_passcode`
+- `friendDisplayName`: 相手の表示名
+- `friendPublicKey`: 相手の公開鍵 (Base64)
+- `createdBy`, `createdAt`, `updatedBy`, `updatedAt`
 
 ### FriendInvitation (招待データ・一時ペイロード)
 
