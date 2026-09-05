@@ -1,0 +1,17 @@
+{
+  "name": "friends-workers-backend",
+  "version": "1.0.0",
+  "description": "Friends Cloudflare Workers Serverless Backend API",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "author": "kanto.work",
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260905.1",
+    "typescript": "^5.5.4",
+    "wrangler": "^4.129.0"
+  }
+}

@@ -33,7 +33,7 @@ final class UserRepository {
                 return
             }
             guard let doc = doc, doc.exists, let data = doc.data() else {
-                completion(.failure(NSError(domain: "UserError", code: 404, userInfo: [NSLocalizedDescriptionKey: "復元データが見つかりません。"])))
+                completion(.failure(NSError(domain: "UserError", code: 404, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Recovery.dataNotFound])))
                 return
             }
             
@@ -43,6 +43,36 @@ final class UserRepository {
             privateData.encryptedPrivateKey = data["encryptedPrivateKey"] as? String ?? ""
             privateData.nonce = data["nonce"] as? String ?? ""
             completion(.success(privateData))
+        }
+    }
+
+    /// 端末復元ボルト登録 (/recovery_vault/{recoveryHash})
+    /// - 未ログイン状態の他端末から「ふっかつのじゅもん」で完全復活するために Workers が参照するボルト
+    func saveRecoveryVaultRecord(recoveryHash: String, uid: String, encryptedPrivateKey: String, nonce: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        let payload: [String: Any] = [
+            "recoveryHash": recoveryHash,
+            "uid": uid,
+            "encryptedPrivateKey": encryptedPrivateKey,
+            "nonce": nonce,
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+        db.collection("recovery_vault").document(recoveryHash).setData(payload, merge: true) { error in
+            if let error = error {
+                completion(.failure(error))
+            } else {
+                completion(.success(()))
+            }
+        }
+    }
+
+    /// 端末復元ボルト削除 (/recovery_vault/{recoveryHash})
+    func deleteRecoveryVaultRecord(recoveryHash: String, completion: ((Result<Void, Error>) -> Void)? = nil) {
+        db.collection("recovery_vault").document(recoveryHash).delete { error in
+            if let error = error {
+                completion?(.failure(error))
+            } else {
+                completion?(.success(()))
+            }
         }
     }
     
@@ -55,7 +85,7 @@ final class UserRepository {
                 return
             }
             guard let doc = doc, doc.exists else {
-                completion(.failure(NSError(domain: "UserError", code: 404, userInfo: [NSLocalizedDescriptionKey: "ユーザープロファイルが見つかりません。"])))
+                completion(.failure(NSError(domain: "UserError", code: 404, userInfo: [NSLocalizedDescriptionKey: L10n.Error.User.notFound])))
                 return
             }
             
@@ -73,7 +103,7 @@ final class UserRepository {
                 return
             }
             guard let snapshot = snapshot, let doc = snapshot.documents.first else {
-                completion(.failure(NSError(domain: "UserError", code: 404, userInfo: [NSLocalizedDescriptionKey: "ユーザープロファイルが見つかりません。"])))
+                completion(.failure(NSError(domain: "UserError", code: 404, userInfo: [NSLocalizedDescriptionKey: L10n.Error.User.notFound])))
                 return
             }
             let user = self.mapPublicUserProfile(doc: doc, tenantId: tenantId)
@@ -84,7 +114,7 @@ final class UserRepository {
     /// テナント内プロファイル作成/更新 (UP-05)
     func createOrUpdateUserProfile(tenantId: String, user: FriendsPublicUserProfile, completion: @escaping (Result<Void, Error>) -> Void) {
         let cleanUsername = user.username.isEmpty ? user.userID : user.username.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        var userData: [String: Any] = [
+        let userData: [String: Any] = [
             "userId": user.userID,
             "uid": user.uid,
             "username": cleanUsername,
@@ -97,11 +127,6 @@ final class UserRepository {
             "updatedBy": user.userID,
             "updatedAt": FieldValue.serverTimestamp()
         ]
-        
-        if !user.encryptedDisplayName.isEmpty {
-            userData["encryptedDisplayName"] = user.encryptedDisplayName
-            userData["displayNameNonce"] = user.displayNameNonce
-        }
         
         let batch = db.batch()
         let tenantUserRef = db.collection("tenants").document(tenantId).collection("users").document(user.userID)
@@ -146,7 +171,7 @@ final class UserRepository {
                 return
             }
             guard let doc = doc, doc.exists, let data = doc.data(), let userId = data["userId"] as? String else {
-                let err = NSError(domain: "UserError", code: 404, userInfo: [NSLocalizedDescriptionKey: "ユーザーが見つかりません。"])
+                let err = NSError(domain: "UserError", code: 404, userInfo: [NSLocalizedDescriptionKey: L10n.Error.User.notFound])
                 completion(.failure(err))
                 return
             }
@@ -184,7 +209,7 @@ final class UserRepository {
             // 旧インデックスの存在確認
             let handleBatchWrite = { (deleteOld: Bool) in
                 let batch = self.db.batch()
-                var usernameData: [String: Any] = [
+                let usernameData: [String: Any] = [
                     "userId": userId,
                     "uid": uid,
                     "tenantId": tenantId,
@@ -225,31 +250,12 @@ final class UserRepository {
         }
     }
     
-    /// 表示名更新 (UP-06 / patch)
-    func patchDisplayNameByUserId(tenantId: String, userId: String, encryptedDisplayName: String, nonce: String, completion: @escaping (Result<Void, Error>) -> Void) {
-        let updates: [String: Any] = [
-            "encryptedDisplayName": encryptedDisplayName,
-            "displayNameNonce": nonce,
-            "updatedBy": userId,
-            "updatedAt": FieldValue.serverTimestamp()
-        ]
-        db.collection("tenants").document(tenantId).collection("users").document(userId).updateData(updates) { error in
-            if let error = error {
-                completion(.failure(error))
-            } else {
-                completion(.success(()))
-            }
-        }
-    }
-    
     func mapPublicUserProfile(doc: DocumentSnapshot, tenantId: String) -> FriendsPublicUserProfile {
         let data = doc.data() ?? [:]
         let uId = data["uid"] as? String ?? ""
         let pubKey = data["publicKey"] as? String ?? ""
         let roleVal = data["role"] as? Int ?? 1
         let accTypeVal = data["accountType"] as? Int ?? 1
-        let encryptedName = data["encryptedDisplayName"] as? String ?? ""
-        let nameNonce = data["displayNameNonce"] as? String ?? ""
         let avatarNonce = data["avatarNonce"] as? String ?? ""
         let avatarUpdatedAt = (data["avatarUpdatedAt"] as? Timestamp)?.dateValue()
         let usernameVal = data["username"] as? String ?? String(doc.documentID.prefix(10))
@@ -258,23 +264,14 @@ final class UserRepository {
         let updatedBy = data["updatedBy"] as? String ?? doc.documentID
         let updatedAt = (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date()
         
-        var resolvedName = ""
-        if !encryptedName.isEmpty {
-            if let decrypted = try? CryptoKeyManager.shared.decryptWithTenantKey(encryptedData: encryptedName, nonce: nameNonce, tenantId: tenantId) {
-                resolvedName = decrypted
-            }
-        }
-        
         return FriendsPublicUserProfile(
             userID: doc.documentID,
             uid: uId,
             tenantID: tenantId,
-            displayName: resolvedName,
+            displayName: "",
             publicKey: pubKey,
             role: FriendsUserRole(rawValue: roleVal) ?? .member,
             accountType: FriendsAccountType(rawValue: accTypeVal) ?? .persistent,
-            encryptedDisplayName: encryptedName,
-            displayNameNonce: nameNonce,
             avatarNonce: avatarNonce,
             avatarUpdatedAt: avatarUpdatedAt,
             username: usernameVal,

@@ -1,0 +1,25 @@
+{
+  "type": "tenant_preset",
+  "version": 1,
+  "tenantId": "t_sample_tenant",
+  "tenantCode": "sample.work",
+  "tenantName": "サンプル組織",
+  "tenantMasterKey": "cLE0fTyey1g8CziMAIi7u13c22dQdi/UzgtZXz7+Upo=",
+  "workerApiUrl": "https://friends-api.<your-subdomain>.workers.dev",
+  "r2Config": {
+    "publicBaseUrl": "https://bucket.friends.example.com",
+    "bucketName": "friends-sample-bucket",
+    "endpointUrl": "https://<account_id>.r2.cloudflarestorage.com",
+    "accessKeyId": "<your_r2_access_key_id>",
+    "secretAccessKey": "<your_r2_secret_access_key>"
+  },
+  "isDefaultTenant": true,
+  "description": "サンプルテナント設定テンプレート",
+  "configuration": {
+    "allowGuestLogin": true,
+    "requireApproval": false,
+    "maxMembers": 1000
+  },
+  "createdAt": "2026-08-20T00:00:00Z",
+  "updatedAt": "2026-08-20T00:00:00Z"
+}

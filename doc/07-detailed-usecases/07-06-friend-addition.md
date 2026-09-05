@@ -169,15 +169,17 @@ sequenceDiagram
     participant AppB as "B の Friends App"
     participant Firestore as Cloud Firestore
 
-    Alice->>AppA: テキストタブで「ユーザーID」をコピー
-    AppA->>Alice: ユーザーIDがクリップボードに格納
-    Alice-->>Bob: ユーザーID + 円グラフ横の3桁パスコードを伝達
-    Bob->>AppB: テキストタブで 相手のユーザーID & パスコードを入力して送信
+    Alice->>AppA: テキストタブで「ユーザーID（またはユーザーネーム）」をコピー
+    AppA->>Alice: ユーザー名がクリップボードに格納
+    Alice-->>Bob: ユーザー名 + 円グラフ横の3桁パスコードを対面伝達
+    Bob->>AppB: テキストタブで 相手のユーザー名 & パスコードを入力して送信
     AppB->>Firestore: 相手ユーザープロファイルを取得 (/tenants/{tenantId}/users/{userId})
-    AppB->>AppB: 相手の合言葉(±30秒)突合・検証
-    AppB->>Firestore: 友達関係データの作成
+    Note over AppB: allow list: false のため単一取得 (get) のみ実行
+    AppB->>AppB: 相手の合言葉(±30秒)突合・検証（連続失敗レートリミット保護）
+    AppB->>AppB: 初期表示名として相手の公開ハンドル名 username を設定
+    AppB->>Firestore: 友達関係データの相互作成 (自分側は個人秘密鍵 MK_u で暗号化、相手側へは相手の公開鍵 PK_A との 1:1 E2EE セッション鍵 SK_direct で自分の表示名を暗号化保管)
     Firestore->>AppB: 成功
-    AppB->>Bob: 友達追加完了
+    AppB->>Bob: 友達追加完了（相手の表示名は E2EE メッセージ受信時に自動同期）
 ```
 
 ---

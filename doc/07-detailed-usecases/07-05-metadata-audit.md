@@ -60,7 +60,12 @@ sequenceDiagram
 
 ## 関連 API
 
-- `GET /api/v1/audit/metadata` - メタデータ取得（Firestore 直接アクセスではなく、権限・集計ロジックのため専用サーバーAPIを残します）
+> [!NOTE]
+> **現行ステータス: 未実装（Phase 2 構想）**
+> 現在の Phase 1 では「クライアント直接 Firestore アクセス」を基本方針としており、専用バックエンド API サーバーは構築されていません。
+> 以下の `GET /api/v1/audit/metadata` および監査コンソール機能は、Phase 2 の管理者向け Web コンソール展開時に Cloud Functions / サーバーレス API として実装が予定されている構想仕様です。
+
+- `GET /api/v1/audit/metadata` - メタデータ取得（将来の管理者コンソール用サーバーAPI構想）
 
 ## 関連ドメインモデル
 

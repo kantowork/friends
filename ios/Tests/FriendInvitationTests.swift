@@ -33,7 +33,7 @@ final class FriendInvitationTests: XCTestCase {
         let rotatedDate = Date(timeIntervalSince1970: 1700000035) // +35s (next step)
         
         let code1 = FriendPasscodeGenerator.generatePasscode(uid: uid, tenantId: tenantId, date: baseDate)
-        let code2 = FriendPasscodeGenerator.generatePasscode(uid: uid, tenantId: tenantId, date: rotatedDate)
+        let _ = FriendPasscodeGenerator.generatePasscode(uid: uid, tenantId: tenantId, date: rotatedDate)
         
         // Step differs, should be validated across windows
         let isValidCurrent = FriendPasscodeGenerator.validatePasscode(code: code1, uid: uid, tenantId: tenantId, date: baseDate)
@@ -166,4 +166,5 @@ final class FriendInvitationTests: XCTestCase {
         
         XCTAssertNotEqual(userId1, userId2, "連続生成されたユーザー識別子は一意である必要があります")
     }
+    
 }

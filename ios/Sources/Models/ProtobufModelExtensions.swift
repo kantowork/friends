@@ -71,8 +71,6 @@ extension FriendsPublicUserProfile: Identifiable {
         publicKey: String,
         role: FriendsUserRole = .member,
         accountType: FriendsAccountType = .anonymous,
-        encryptedDisplayName: String = "",
-        displayNameNonce: String = "",
         avatarNonce: String = "",
         avatarUpdatedAt: Date? = nil,
         username: String? = nil,
@@ -89,8 +87,6 @@ extension FriendsPublicUserProfile: Identifiable {
         self.publicKey = publicKey
         self.role = role
         self.accountType = accountType
-        self.encryptedDisplayName = encryptedDisplayName
-        self.displayNameNonce = displayNameNonce
         self.avatarNonce = avatarNonce
         if let avatarUpdatedAt = avatarUpdatedAt {
             self.avatarUpdatedAt = Google_Protobuf_Timestamp(date: avatarUpdatedAt)
@@ -125,7 +121,9 @@ extension FriendsChat: Identifiable {
         createdBy: String = "",
         createdAt: Date = Date(),
         updatedBy: String = "",
-        updatedAt: Date = Date()
+        updatedAt: Date = Date(),
+        memberRoles: [String: FriendsGroupMemberRole] = [:],
+        isDeleted: Bool = false
     ) {
         self.init()
         self.chatID = chatID
@@ -137,6 +135,33 @@ extension FriendsChat: Identifiable {
         self.createdAt = Google_Protobuf_Timestamp(date: createdAt)
         self.updatedBy = updatedBy.isEmpty ? createdBy : updatedBy
         self.updatedAt = Google_Protobuf_Timestamp(date: updatedAt)
+        self.memberRoles = memberRoles
+        self.isDeleted = isDeleted
+    }
+    
+    /// 特定ユーザーのロールを取得（未設定時は .member、作成者初期フォールバック付き）
+    func role(for userId: String) -> FriendsGroupMemberRole {
+        if let role = memberRoles[userId], role != .unspecified {
+            return role
+        }
+        if !createdBy.isEmpty && userId == createdBy {
+            return .owner
+        }
+        return .member
+    }
+    
+    /// オーナーのユーザーIDを取得
+    var ownerUserId: String? {
+        if let pair = memberRoles.first(where: { $0.value == .owner }) {
+            return pair.key
+        }
+        return createdBy.isEmpty ? nil : createdBy
+    }
+    
+    /// 特定ユーザーがオーナーまたは管理者であるか判定
+    func isOwnerOrAdmin(userId: String) -> Bool {
+        let r = role(for: userId)
+        return r == .owner || r == .admin
     }
 }
 
@@ -148,6 +173,8 @@ struct FriendsChatUIModel: Identifiable, Equatable, Hashable {
     let lastMessage: String
     let lastMessageAt: Date
     let unreadCount: Int
+    var avatarNonce: String = ""
+    var avatarUpdatedAt: Date? = nil
     
     var id: String { chat.chatID }
     var chatID: String { chat.chatID }
@@ -156,7 +183,7 @@ struct FriendsChatUIModel: Identifiable, Equatable, Hashable {
     
     var displayTitle: String {
         if !title.isEmpty { return title }
-        return chatType == .group ? "グループトーク" : "1:1トーク"
+        return chatType == .group ? "かいぎ" : "1:1トーク"
     }
     
     var lastMessageDate: Date { lastMessageAt }
@@ -166,13 +193,29 @@ struct FriendsChatUIModel: Identifiable, Equatable, Hashable {
         title: String = "",
         lastMessage: String = "",
         lastMessageAt: Date = Date(),
-        unreadCount: Int = 0
+        unreadCount: Int = 0,
+        avatarNonce: String = "",
+        avatarUpdatedAt: Date? = nil
     ) {
         self.chat = chat
         self.title = title
         self.lastMessage = lastMessage
         self.lastMessageAt = lastMessageAt
         self.unreadCount = unreadCount
+        self.avatarNonce = avatarNonce
+        self.avatarUpdatedAt = avatarUpdatedAt
+    }
+    
+    func role(for userId: String) -> FriendsGroupMemberRole {
+        chat.role(for: userId)
+    }
+    
+    func isOwnerOrAdmin(userId: String) -> Bool {
+        chat.isOwnerOrAdmin(userId: userId)
+    }
+    
+    var ownerUserId: String? {
+        chat.ownerUserId
     }
 }
 
@@ -232,8 +275,8 @@ extension FriendsReactionType: Identifiable {
         case .heart: return "❤️"
         case .ok: return "🆗"
         case .smile: return "😊"
-        case .surprised: return "😲"
         case .sad: return "😢"
+        case .surprised: return "😱"
         case .thinking: return "🤔"
         default: return "❓"
         }
@@ -245,8 +288,8 @@ extension FriendsReactionType: Identifiable {
         case .heart: return "heart"
         case .ok: return "ok"
         case .smile: return "smile"
-        case .surprised: return "surprised"
         case .sad: return "sad"
+        case .surprised: return "surprised"
         case .thinking: return "thinking"
         default: return "unspecified"
         }
@@ -258,8 +301,8 @@ extension FriendsReactionType: Identifiable {
         case .heart: return L10n.Reaction.heart
         case .ok: return L10n.Reaction.ok
         case .smile: return L10n.Reaction.smile
-        case .surprised: return L10n.Reaction.surprised
         case .sad: return L10n.Reaction.sad
+        case .surprised: return L10n.Reaction.surprised
         case .thinking: return L10n.Reaction.thinking
         default: return ""
         }
@@ -271,15 +314,21 @@ extension FriendsReactionType: Identifiable {
         case "heart": return .heart
         case "ok": return .ok
         case "smile": return .smile
-        case "surprised": return .surprised
         case "sad": return .sad
+        case "surprised": return .surprised
         case "thinking": return .thinking
         default: return .unspecified
         }
     }
     
+    /// メッセージ長押し時に直下に表示するクイックアクションリアクション（6種）
+    /// ※「…」（その他の絵文字一覧展開）は今後の実装フェーズで提供予定
+    public static var quickActionTypes: [FriendsReactionType] {
+        [.thumbsUp, .heart, .ok, .smile, .sad, .surprised]
+    }
+    
     public static var allActiveTypes: [FriendsReactionType] {
-        [.thumbsUp, .heart, .ok, .smile, .surprised, .sad, .thinking]
+        [.thumbsUp, .heart, .ok, .smile, .sad, .surprised, .thinking]
     }
 }
 
@@ -324,7 +373,7 @@ extension FriendsMessageReaction: Identifiable {
 
 struct DecryptedMessage: Identifiable, Equatable {
     let message: FriendsMessage
-    let senderName: String
+    var senderName: String
     let plainText: String
     let isDecrypted: Bool
     let reactions: [FriendsMessageReaction]
@@ -356,40 +405,6 @@ struct DecryptedMessage: Identifiable, Equatable {
     }
 }
 
-// MARK: - FriendsFriendRelationship Extensions
-
-extension FriendsFriendRelationship: Identifiable {
-    var id: String { relationshipID.isEmpty ? "\(ownerUserID)_\(friendUserID)" : relationshipID }
-    
-    var addedDate: Date {
-        hasCreatedAt ? createdAt.date : Date()
-    }
-    
-    init(
-        relationshipID: String,
-        tenantID: String,
-        ownerUserID: String,
-        friendUserID: String,
-        friendDisplayName: String,
-        friendPublicKey: String = "",
-        createdBy: String = "",
-        createdAt: Date = Date(),
-        updatedBy: String = "",
-        updatedAt: Date = Date()
-    ) {
-        self.init()
-        self.relationshipID = relationshipID
-        self.tenantID = tenantID
-        self.ownerUserID = ownerUserID
-        self.friendUserID = friendUserID
-        self.friendDisplayName = friendDisplayName
-        self.friendPublicKey = friendPublicKey
-        self.createdBy = createdBy.isEmpty ? ownerUserID : createdBy
-        self.createdAt = Google_Protobuf_Timestamp(date: createdAt)
-        self.updatedBy = updatedBy.isEmpty ? ownerUserID : updatedBy
-        self.updatedAt = Google_Protobuf_Timestamp(date: updatedAt)
-    }
-}
 
 // MARK: - FriendsFriendInvitationPayload Extensions
 

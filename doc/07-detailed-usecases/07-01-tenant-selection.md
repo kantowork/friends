@@ -2,7 +2,7 @@
 
 ロバストネス分析 #2 および暗号化仕様 [10-detailed-design/10-01-tenant-data-encryption.md](../10-detailed-design/10-01-tenant-data-encryption.md) に対応する詳細ユースケースです。
 
-注: テナント用の QR コードは **テナント作成後にサーバー側で生成・出力** されます（管理者がダウンロードや印刷で配布可能）。アプリ側はその QR をスキャンして `tenantId` およびテナントマスターキー（$MK_T$）を取得し、Keychain に保存します。
+注: テナント用の QR コードは **テナント作成後にサーバー側で生成・出力** されます（管理者がダウンロードや印刷で配布可能）。アプリ側はその QR をスキャンして `tenantId`, `tenantCode`, `workerApiUrl` およびテナントマスターキー（$MK_T$）を取得し、Keychain / UserDefaults に保存します。構成管理（Git リポジトリ）にプライベートな接続先 URL を一切保持しないアーキテクチャを採用しています。
 
 ## 1. シーケンス図
 
@@ -13,6 +13,7 @@ sequenceDiagram
   participant App as "iOS App"
   participant QRScanner as "QR Scanner"
   participant Keychain as "iOS Keychain"
+  participant Settings as "UserDefaults / Config"
   participant Firestore as "Cloud Firestore"
 
   User->>App: アプリ起動
@@ -23,14 +24,16 @@ sequenceDiagram
     App->>User: A03m テナント選択画面表示（QR スキャン or 手動設定）
     alt QR スキャン
       User->>QRScanner: QRコードをスキャン
-      QRScanner->>App: QRコード読み込み完了
-      App->>App: tenantId, tenantMasterKey を抽出
+      QRScanner->>App: QRコード読み込み完了 (JSON)
+      App->>App: tenantId, tenantCode, workerApiUrl, MK_T を抽出
       App->>Keychain: saveTenantMasterKey(tenantId, MK_T)
+      App->>Settings: saveWorkerApiUrl(tenantId, workerApiUrl)
       App->>Firestore: /tenants/{tenantId} を取得
     else 手動設定 (JSON)
       User->>App: テナント設定(JSON) を入力
-      App->>App: JSON を検証して tenantId, tenantMasterKey を抽出
+      App->>App: JSON を検証して tenantId, tenantCode, workerApiUrl, MK_T を抽出
       App->>Keychain: saveTenantMasterKey(tenantId, MK_T)
+      App->>Settings: saveWorkerApiUrl(tenantId, workerApiUrl)
       App->>Firestore: /tenants/{tenantId} を取得
     end
     alt テナント存在
@@ -48,14 +51,15 @@ sequenceDiagram
 ## 2. ローカル管理と Firestore 管理の区分
 
 - ローカル管理 (Keychain / UserDefaults)
-  - 選択済み `tenantId` とユーザーが最後に利用したテナント状態
+  - 選択済み `tenantId`, `tenantCode` とユーザーが最後に利用したテナント状態
+  - **Cloudflare Workers 接続先 URL (`workerApiUrl`)**: QR コード経由でのみ動的注入
   - **テナントマスターキー ($MK_T$)** (Keychain: `friends_tenant_key_{tenantId}`)
   - オフライン復帰時のテナント選択リストキャッシュ
 - Firestore 管理
   - テナントの正規構成データ（`/tenants/{tenantId}`）
   - テナントの有効/無効状態、公開設定
 
-> 端末上のローカル保存は暗号化マスターキーの厳重管理とユーザー体験向上用であり、権威あるテナント構成は Firestore 側に置きます。
+> 端末上のローカル保存は暗号化マスターキーの厳重管理とユーザー体験向上用であり、権威あるテナント構成は Firestore 側に置きます。また、`workerApiUrl` はソースコードに埋め込まず QR コードからのみ注入されます。
 
 ## 3. エラーハンドリング
 

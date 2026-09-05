@@ -35,6 +35,8 @@
   - [`07-09-user-profile-update.md`](07-detailed-usecases/07-09-user-profile-update.md) - プロフィール表示名更新および友達間同期仕様書
   - [`07-10-read-receipt-management.md`](07-detailed-usecases/07-10-read-receipt-management.md) - メッセージ既読管理（Read Receipt Management）仕様書
   - [`07-11-message-reactions.md`](07-detailed-usecases/07-11-message-reactions.md) - メッセージリアクション（Message Reactions）仕様書
+  - [`07-12-group-chat.md`](07-detailed-usecases/07-12-group-chat.md) - グループチャット詳細設計書（かいぎ）
+  - [`07-13-group-role-and-deletion.md`](07-detailed-usecases/07-13-group-role-and-deletion.md) - グループロール管理およびグループ削除仕様書
 
 ## 5. 画面設計
 
@@ -54,3 +56,6 @@
   - [`10-03-data-access-patterns.md`](10-detailed-design/10-03-data-access-patterns.md) - Firebase データアクセスパターン一元管理仕様書 (Data Access Patterns & API)
   - [`10-04-background-notification-setup.md`](10-detailed-design/10-04-background-notification-setup.md) - バックグラウンドプッシュ通知 導入準備・設計仕様書 (Background Push Notification Setup & Design)
   - [`10-05-api-strategy-analysis.md`](10-detailed-design/10-05-api-strategy-analysis.md) - API通信戦略分析（gRPC vs Connect vs REST/Firestore SDK 分析）
+  - [`10-06-r2-storage-setup.md`](10-detailed-design/10-06-r2-storage-setup.md) - Cloudflare R2 ストレージ事前準備・運用手順書 (R2 Storage Setup & Operations)
+  - [`10-07-logging-system.md`](10-detailed-design/10-07-logging-system.md) - ロガー基盤・動的ログレベル制御仕様書 (Logging System & OSLog Integration)
+  - [`10-08-cloudflare-workers-setup.md`](10-detailed-design/10-08-cloudflare-workers-setup.md) - Cloudflare Workers サーバー基盤・サービスアカウント・事前準備・運用手順書 (Cloudflare Workers Setup & Operations)

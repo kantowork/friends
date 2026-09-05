@@ -7,7 +7,8 @@
 ## 1. 背景と課題
 
 1. **暗号化保存と公開識別子の分離**:
-   - 表示名（`displayName`）およびアバター画像は個人特定情報（PII）に該当するため、平文で保存せず、テナントマスターキー（$MK_T$）を用いた **AES-256-GCM 暗号化**（`encryptedDisplayName`, `displayNameNonce`, `avatarNonce`, `avatarUpdatedAt`）で Firestore（`/tenants/{tenantId}/users/{userId}`）および **Cloudflare R2**（`avatar.enc`）に格納します（[10-detailed-design/10-01-tenant-data-encryption.md](../10-detailed-design/10-01-tenant-data-encryption.md) 参照）。
+   - 表示名（`displayName`）は重要な個人特定情報（PII）であるため、同一テナント内であっても無差別に閲覧可能な公開プロファイルへの暗号化・平文保存は行いません。
+   - 本人の表示名は自身の端末 Keychain（`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`）に安全に保管され、友達成立後は各自の個人秘密鍵（$MK_u$）で暗号化して `friends` サブコレクションに保管されます。最新の表示名変更は E2EE チャットメッセージ経由（送信者メタデータ）でセッション鍵暗号化されて友達にのみ伝播します。
    - ユーザー識別子（`username`）は検索・メンション用の公開ハンドル名（英数字・アンダースコア）とし、`/tenants/{tenantId}/usernames/{username}` に一意制約インデックスを配置して重複を防止します（初期値は `userId` と同一）。
    - システム内部の参照キーはすべて不変の `userId` (`u_xxx`) を使用し、`username` 変更時にも過去メッセージ・暗号鍵・DMチャット参照が壊れないようにします。
    - **ユーザー名変更時の確認・警告ダイアログ**: ユーザー名を変更すると他者が自身を検索・友達追加する際の識別子が変更されるため、保存実行時に明示的な警告・確認アラートを表示し、合意を得てから更新トランザクションを実行します。
@@ -31,14 +32,14 @@
 ├───────────────────────────────────────────────────────────────────────────┤
 │ 1. [ローカル TTL キャッシュ (24h)]                                        │
 │    - 友達一覧表示時はローカルキャッシュから即時描画（通信 0 回 / 爆速）   │
-│    - 最終取得から 24 時間以上経過した友達のみ、次回画面表示時に 1 回 fetch │
+│    - 個人秘密鍵 (MK_u) で暗号化されたローカル友達データを復号表示         │
 ├───────────────────────────────────────────────────────────────────────────┤
 │ 2. [会話時（メッセージ受信時）の同期]                                    │
-│    - メッセージ送信時に送信者の最新表示名を平文メタデータまたは           │
-│      復号済みメッセージから抽出し、受信側のローカル友達キャッシュを即時更新 │
+│    - メッセージ送信時に送信者の最新表示名を E2EE 暗号化ペイロードから抽出し、│
+│      受信側のローカル友達キャッシュを即時更新                             │
 ├───────────────────────────────────────────────────────────────────────────┤
-│ 3. [手動 Pull-to-Refresh]                                                 │
-│    - 友達一覧を引っ張って更新した際、全友達の最新プロファイルを再同期     │
+│ 3. [手動 Pull-to-Refresh / QR再スキャン]                                  │
+│    - 友達一覧の再取得や対面でのQR再スキャンによる最新化                   │
 └───────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -55,21 +56,15 @@ sequenceDiagram
     participant View as "EditProfileView (E02)"
     participant ChatService as "ChatService"
     participant CryptoKeyManager as "CryptoKeyManager"
-    participant Keychain as "iOS Keychain (MK_T)"
-    participant Firestore as "Cloud Firestore"
 
     User->>View: 新しい表示名「アリス改」を入力 & 「保存」タップ
     View->>ChatService: updateDisplayName(newName: "アリス改")
-    ChatService->>CryptoKeyManager: encryptWithTenantKey("アリス改", tenantId)
-    CryptoKeyManager->>Keychain: getTenantMasterKey(tenantId)
-    Keychain-->>CryptoKeyManager: MK_T
-    CryptoKeyManager->>CryptoKeyManager: AES.GCM.seal("アリス改", using: MK_T)
-    CryptoKeyManager-->>ChatService: encryptedDisplayName, displayNameNonce
-    ChatService->>Firestore: updateDoc(/tenants/{t}/users/{userId}, {encryptedDisplayName, displayNameNonce, updatedAt})
-    Firestore-->>ChatService: 成功応答
+    ChatService->>CryptoKeyManager: saveMyDisplayName(name: "アリス改") (iOS Keychain保管)
+    CryptoKeyManager-->>ChatService: 保存完了
     ChatService->>ChatService: currentUser.displayName = "アリス改"
     ChatService-->>View: 完了
     View-->>User: 画面を閉じて更新完了表示
+    Note over ChatService: 今後のE2EEメッセージ送信時に最新の表示名が友達へ安全に伝播
 ```
 
 ### 3.2 友達への伝播シーケンス (ハイブリッド方式)
@@ -96,6 +91,39 @@ sequenceDiagram
         BobApp->>Bob: 友達一覧の表示名が更新
     end
 ```
+
+### 3.3 友達のカスタム表示名変更シーケンス (秘密鍵 $MK_u$ 暗号化)
+
+利用者が友達一覧やチャット画面で相手の呼び名（カスタム表示名）を変更する際、**自分自身の端末秘密鍵（$SK_u$）から導出される個人専用対称鍵（$MK_u$）** を用いて AES-256-GCM 暗号化を行い、自分側の友達サブコレクションにのみ保存します。
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Alice as "ユーザー (アリス)"
+    participant View as "FriendListView / ChatDetailView"
+    participant ChatService as "ChatService"
+    participant CryptoKeyManager as "CryptoKeyManager"
+    participant Keychain as "iOS Keychain (SK_u)"
+    participant Firestore as "Cloud Firestore"
+
+    Alice->>View: 友達ボブの「表示名を変更」選択 & 「ボブちゃん」と入力
+    View->>ChatService: updateFriendDisplayName(friendUserId: bobId, newDisplayName: "ボブちゃん")
+    ChatService->>CryptoKeyManager: encryptWithPersonalKey("ボブちゃん", uid: aliceUid)
+    CryptoKeyManager->>Keychain: getPrivateKey(aliceUid) (Curve25519 SK_u)
+    Keychain-->>CryptoKeyManager: SK_u raw 32 bytes
+    CryptoKeyManager->>CryptoKeyManager: HKDF-SHA256(SK_u, salt: "friends_personal_encryption_key_v1") -> MK_u
+    CryptoKeyManager->>CryptoKeyManager: AES.GCM.seal("ボブちゃん", using: MK_u, nonce)
+    CryptoKeyManager-->>ChatService: encryptedFriendDisplayName, friendDisplayNameNonce
+    ChatService->>Firestore: updateDoc(/tenants/{t}/users/{aliceId}/friends/{bobId}, {encryptedFriendDisplayName, friendDisplayNameNonce, updatedBy, updatedAt})
+    Firestore-->>ChatService: 成功応答
+    ChatService->>ChatService: friends キャッシュのボブの表示名を "ボブちゃん" に即時反映
+    ChatService-->>View: 完了
+    View-->>Alice: 友達一覧およびチャット画面で「ボブちゃん」と即時表示
+```
+
+> [!IMPORTANT]
+> - 友達のカスタム表示名は **本人しかアクセスできない自分側のサブコレクション** にのみ保存されます。
+> - 暗号化鍵はテナント鍵（$MK_T$）ではなく本人の秘密鍵から導出される $MK_u$ を使用するため、テナント管理者や相手ボブ本人に対しても、アリスが設定したカスタムニックネームは一切漏洩しません（Zero-Knowledge）。
 
 ---
 

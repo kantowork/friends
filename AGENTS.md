@@ -50,6 +50,10 @@
 ### 9. 自律的自己進化 (Self-Evolution)
 - 開発者からの指摘やプロジェクトの進展に応じて、本規約および設計ドキュメントを自律的に最新かつ最適に保つこと。
 
+### 10. レガシー・deprecated・レトロフィットの完全排除原則 (No Legacy / Deprecated / Retrofitting)
+- **過去設計の完全排除**: 本プロジェクトにおいては、古い設計のための `deprecated` 指定やレトロフィット実装（後方互換性維持のためのフォールバック処理、旧フィールドの残置等）は**一切不要**とする。
+- **クリーンな即時刷新**: 仕様変更・設計刷新を行う際は、不要となった旧フィールド・旧ロジック・旧API・旧コメントを妥協なく完全に削除し、常に最新かつ最小限のクリーンな設計・実装を維持すること。
+
 ---
 
 ## 📚 設計ドキュメント参照インデックス (doc/)
@@ -67,10 +71,12 @@
 | **暗号化通信** | [doc/07-detailed-usecases/07-03-message-encryption.md](./doc/07-detailed-usecases/07-03-message-encryption.md) | E2EE メッセージ暗号化、セッション鍵導出 |
 | **端末復旧** | [doc/07-detailed-usecases/07-04-device-recovery.md](./doc/07-detailed-usecases/07-04-device-recovery.md) | 復活の呪文（Mnemonic Phrase）によるアカウント・鍵復元 |
 | **友達追加** | [doc/07-detailed-usecases/07-06-friend-addition.md](./doc/07-detailed-usecases/07-06-friend-addition.md) | QRコード/テキスト連携、30秒更新3桁合言葉 TOTP 仕様 |
-| **通知・プッシュ** | [doc/07-detailed-usecases/07-07-push-notification.md](./doc/07-detailed-usecases/07-push-notification.md)<br>[doc/10-detailed-design/10-04-background-notification-setup.md](./doc/10-detailed-design/10-04-background-notification-setup.md) | アプリ内トースト通知、FCM/APNs バックグラウンドプッシュ通知導入準備仕様 |
+| **通知・プッシュ** | [doc/07-detailed-usecases/07-07-push-notification.md](./doc/07-detailed-usecases/07-07-push-notification.md)<br>[doc/10-detailed-design/10-04-background-notification-setup.md](./doc/10-detailed-design/10-04-background-notification-setup.md) | アプリ内トースト通知、FCM/APNs バックグラウンドプッシュ通知導入準備仕様 |
 | **プロフィール更新** | [doc/07-detailed-usecases/07-09-user-profile-update.md](./doc/07-detailed-usecases/07-09-user-profile-update.md) | 表示名変更の暗号化保存プロトコル・低コストハイブリッド友達同期 |
 | **既読管理** | [doc/07-detailed-usecases/07-10-read-receipt-management.md](./doc/07-detailed-usecases/07-10-read-receipt-management.md) | 水位線カーソル方式によるE2EEチャット既読管理・リアルタイム同期仕様 |
 | **リアクション** | [doc/07-detailed-usecases/07-11-message-reactions.md](./doc/07-detailed-usecases/07-11-message-reactions.md) | メッセージリアクション（7種）、低通信量集計、長押し詳細表示仕様 |
+| **グループチャット** | [doc/07-detailed-usecases/07-12-group-chat.md](./doc/07-detailed-usecases/07-12-group-chat.md) | グループチャット（かいぎ）一覧・作成・詳細・KeyBucket仕様 |
+| **グループ管理・削除** | [doc/07-detailed-usecases/07-13-group-role-and-deletion.md](./doc/07-detailed-usecases/07-13-group-role-and-deletion.md) | メンバー属性role、立候補型オーナー昇格、退室管理、グループ削除仕様 |
 | **画面設計** | [doc/08-screen-design.md](./doc/08-screen-design.md) | 画面一覧、UIレイアウト、画面遷移 |
 | **開発標準・規約** | [doc/09-guidelines/README.md](./doc/09-guidelines/README.md) | 命名規約・多言語化規約インデックス |
 | **命名規約** | [doc/09-guidelines/09-01-id-naming-conventions.md](./doc/09-guidelines/09-01-id-naming-conventions.md) | ID プレフィックスおよびキー命名ルール |
@@ -82,6 +88,7 @@
 | **API戦略** | [doc/10-detailed-design/10-05-api-strategy-analysis.md](./doc/10-detailed-design/10-05-api-strategy-analysis.md) | クライアント直接Firestore vs サーバーAPIの通信戦略分析 |
 | **R2ストレージ準備** | [doc/10-detailed-design/10-06-r2-storage-setup.md](./doc/10-detailed-design/10-06-r2-storage-setup.md) | Cloudflare R2 バケット作成・カスタムドメイン・CORS・APIトークン発行・事前準備手順書 |
 | **ロガー基盤** | [doc/10-detailed-design/10-07-logging-system.md](./doc/10-detailed-design/10-07-logging-system.md) | OSLog連携、動的ログレベル制御（DEBUG/INFO/WARN/ERROR）仕様 |
+| **Workers基盤準備** | [doc/10-detailed-design/10-08-cloudflare-workers-setup.md](./doc/10-detailed-design/10-08-cloudflare-workers-setup.md) | Cloudflare Workers サーバー基盤・サービスアカウント・事前準備・運用手順書 |
 
 ---
 *This document is optimized for AI context injection.*

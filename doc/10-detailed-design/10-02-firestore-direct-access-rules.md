@@ -33,6 +33,15 @@ Firestore に保存されるすべてのフィールドは、セキュリティ�
 
 > **注意**: テナント管理者はメタデータ（「誰が・いつ・どのチャットで送信したか」）の取得権限を持ちますが、暗号化ペイロード (`ciphertext`) を復号するためのセッションキーを持たないため、本文閲覧は不可能です。
 
+### 2.3 秘密鍵バックアップ・復元データ領域 (/users/{uid}/private/data)
+- **読み取り認可**: 本人（`request.auth.uid == uid`）のみ許可。第三者・未認証の直接読み取りは完全禁止。
+- **書き込み認可**: 本人のみ許可。作成・更新時は以下のスキーマ・サイズをセキュリティルールで強制：
+  - `uid == request.auth.uid`
+  - `recoveryHash` は 64 文字の Hex 文字列（SHA-256）
+  - `encryptedPrivateKey` は 2048 文字未満の Base64 文字列
+  - `nonce` は 128 文字未満の Base64 文字列
+- **削除認可**: 完全禁止（`allow delete: if false;`）。誤操作や不正リクエストによる秘密鍵バックアップの消失を防止。
+
 ---
 
 ## 3. クライアント直接格納における運用ルール
@@ -44,12 +53,18 @@ Firestore に保存されるすべてのフィールドは、セキュリティ�
    - 配列の 0 番目には **辞書順（文字列昇順）で若い方の `userId`**、1 番目には大きい方の `userId` を格納します（`members[0] < members[1]`）。
    - チャット ID も `dm_${members[0]}_${members[1]}` の形式に従います。
    - セキュリティルールにおいて `members.size() == 2` かつ `members[0] < members[1]` かつ `chatId == 'dm_' + members[0] + '_' + members[1]` を強制します。
+   - **親ドキュメント先行購読・未作成耐性**: クライアントが友達一覧から DM 画面を開いた際、親チャットドキュメント作成完了前にメッセージリスナーが初期化されるレースコンディションを防ぐため、セキュリティルール `isChatMember` は `chatId.matches('^dm_u_[a-zA-Z0-9]+_u_[a-zA-Z0-9]+$')` による未作成時読み取りを許容します。
+   - **クエリ一覧と単一取得の認可分離**: `tenants/{tenantId}/chats` コレクションに対する `whereField("members", arrayContains: userId)` クエリ（CP-01）を確実に動作させるため、親チャットの読み取りルールは `allow get`（ドキュメント単一取得・メンバー判定）と `allow list`（認証済みクエリ）に分離・定義します。
 3. **オフライン同期と競合管理**:
    - Firestore SDK のローカルキャッシュ機能（Local Cache）を活用し、オフライン時のメッセージ送信はローカルキューに保持されます。
-4. **ユーザー識別子 (`username`) の一意性インデックス**:
+4. **ユーザー識別子 (`username`) の一意性インデックスと一覧取得禁止**:
    - `/tenants/{tenantId}/usernames/{username}` コレクションを設け、ドキュメントIDとして小文字化された `username` を配置します。
    - 作成時は「ドキュメントが存在しないこと（重複禁止）」、更新・削除時は「紐づく `userId` / `uid` が一致すること」をセキュリティルールで強制します。
-5. **インデックスの最適化**:
+   - **名簿スキャン防止**: `allow list: if false;` を強制し、指定ユーザーネームの存在確認および単一取得（`allow get: if isAuthenticated();`）のみを許可します。
+5. **ユーザープロファイルの一覧取得禁止 (`list: false`) と表示名公開撤廃**:
+   - `/tenants/{tenantId}/users/{userId}` に対する `allow list: if false;` を強制し、全件スキャンやスクレイピングを物理的に遮断します。
+   - テナントマスターキー（$MK_T$）による `encryptedDisplayName` の公開プロファイル格納を完全撤廃し、対面（QRコード直接）または30秒合言葉（TOTP）から導出した鍵（$K_{pass}$）で保護された一時データのみを許容します。
+6. **インデックスの最適化**:
    - メッセージ取得クエリおよび `members` 配列を含むチャット一覧取得クエリ（`CP-01`）に必要な複合インデックス (Composite Indexes) を事前作成します。
 
 ---
@@ -82,4 +97,44 @@ Firestore に保存されるすべてのフィールドは、セキュリティ�
     && isTenantUser(tenantId, request.resource.data.updatedBy)
     && request.resource.data.updatedAt == request.time;
   ```
+
+---
+
+## 5. グループチャットのアクセス制御・ロール・削除ルール
+
+### 5.1 メンバー属性とロール制御
+- グループチャットドキュメント（`/tenants/{tenantId}/chats/{chatId}`）において、`chatType == "group"` の場合は各メンバーの属性として `memberRoles` マップ（`userId -> role`）を保持します。
+- **ロール種別**:
+  - `owner`: オーナー（1名のみ。脱退不可）
+  - `admin`: 管理者（複数可。立候補型オーナー昇格権限）
+  - `member`: 一般メンバー
+- **オーナー・管理者による削除ルール**:
+  - グループ削除は物理削除（`delete`）ではなく、`members: []`（空配列）への更新および `isDeleted: true` の付与による論理削除として実行します。
+  - `members` を空に更新できる操作者は、変更前の `resource.data.memberRoles[request.auth.uid]` が `owner` または `admin` である場合に限定されます。
+  - ルール検証ロジック例:
+    ```javascript
+    function isGroupOwnerOrAdmin(chatData) {
+      let role = chatData.memberRoles[request.auth.uid];
+      return role == 'owner' || role == 'admin';
+    }
+
+// 削除（membersクリア）更新の検証
+    allow update: if isTenantUser(tenantId, request.resource.data.updatedBy)
+      && (
+        // 通常のメンバー・メッセージ更新
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isDeleted', 'title']))
+        ||
+        // グループ名変更 (title更新: オーナーまたは管理者のみ)
+        (isGroupOwnerOrAdmin(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'updatedBy', 'updatedAt']))
+        ||
+        // グループ削除（オーナーまたは管理者のみ）
+        (isGroupOwnerOrAdmin(resource.data) && request.resource.data.members.size() == 0 && request.resource.data.isDeleted == true)
+      );
+    ```
+
+### 5.2 グループ名の変更権限 (Group Title Update)
+- グループチャットのタイトル（`title`）変更は、グループの改ざん・スパム防止のため**グループオーナー (`owner`) または グループ管理者 (`admin`)** に限定されます。
+- セキュリティルール上、`title` が変更対象キーに含まれる場合は `isGroupOwnerOrAdmin` が真であることを必須とします。
+
+
 

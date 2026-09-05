@@ -32,7 +32,6 @@ struct AddFriendView: View {
     @State private var showSuccessAlert = false
     @State private var addedFriendName: String = ""
     @State private var scannedPayload: FriendsFriendInvitationPayload? = nil
-    @State private var showingConfirmSheet = false
     @State private var isCopiedUserId = false
     
     var body: some View {
@@ -78,16 +77,6 @@ struct AddFriendView: View {
             } message: {
                 Text(L10n.Friend.successAlertMsg(addedFriendName))
             }
-            .sheet(isPresented: $showingConfirmSheet) {
-                if let payload = scannedPayload {
-                    FriendScanConfirmSheet(payload: payload) { confirmed in
-                        showingConfirmSheet = false
-                        if confirmed {
-                            performAddFriend(payload: payload)
-                        }
-                    }
-                }
-            }
         }
     }
     
@@ -115,13 +104,12 @@ struct AddFriendView: View {
                         Button {
                             simulateScan()
                         } label: {
-                            Label(L10n.Friend.cameraSimulatorBtn, systemImage: "qrcode")
-                                .font(.caption2)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
+                            Image(systemName: "qrcode")
+                                .font(.system(size: 16, weight: .semibold))
+                                .frame(width: 38, height: 38)
                                 .background(Color.blue.opacity(0.85))
                                 .foregroundColor(.white)
-                                .cornerRadius(8)
+                                .clipShape(Circle())
                         }
                         .padding(.bottom, 12)
                     }
@@ -163,72 +151,67 @@ struct AddFriendView: View {
     private var textCodeView: some View {
         ScrollView {
             VStack(spacing: 20) {
-                // Section A: 自分の情報表示 (ユーザー名/ID + 3桁パスコード & 円グラフカウントダウン)
-                VStack(alignment: .leading, spacing: 14) {
+                // Section A: 自分の情報表示 (ユーザー名 + アイコンコピー / 合言葉 + 3桁数字 + 円グラフ)
+                VStack(alignment: .leading, spacing: 10) {
                     Text(L10n.Friend.myInfoSection)
-                        .font(.subheadline)
+                        .font(.footnote)
                         .fontWeight(.bold)
                         .foregroundColor(.secondary)
                     
-                    // User ID Row with Copy button
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
+                    VStack(spacing: 12) {
+                        // 行1: ユーザ名 (ユーザー名) (コピーボタン)
+                        HStack(spacing: 12) {
                             Text(L10n.Friend.userIdLabel)
-                                .font(.caption)
+                                .font(.subheadline)
                                 .foregroundColor(.secondary)
+                                .fixedSize(horizontal: true, vertical: false)
+                            
                             Text(myDisplayUserId)
-                                .font(.system(.title3, design: .monospaced))
+                                .font(.system(.body, design: .monospaced))
                                 .bold()
                                 .foregroundColor(.primary)
-                        }
-                        
-                        Spacer()
-                        
-                        Button {
-                            copyUserId()
-                        } label: {
-                            HStack(spacing: 4) {
+                            
+                            Spacer()
+                            
+                            Button {
+                                copyUserId()
+                            } label: {
                                 Image(systemName: isCopiedUserId ? "checkmark" : "doc.on.doc")
-                                Text(isCopiedUserId ? L10n.Common.copied : L10n.Common.copy)
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundColor(isCopiedUserId ? .green : .blue)
+                                    .frame(width: 32, height: 32)
+                                    .background(Color(uiColor: .tertiarySystemGroupedBackground))
+                                    .clipShape(Circle())
                             }
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(isCopiedUserId ? Color.green : Color.blue)
-                            .cornerRadius(10)
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(L10n.Common.copy)
                         }
-                    }
-                    .padding(14)
-                    .background(Color(uiColor: .secondarySystemGroupedBackground))
-                    .cornerRadius(14)
-                    
-                    // Passcode Display (30s rotation with Circular Countdown Meter)
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(L10n.Friend.passcodeTitle)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
                         
-                        HStack(spacing: 14) {
-                            // 3-digit number boxes
-                            HStack(spacing: 8) {
+                        Divider()
+                        
+                        // 行2: 合言葉 (０)(０)(０) (円グラフと数字)
+                        HStack(spacing: 12) {
+                            Text(L10n.Friend.passcodeTitle)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: true, vertical: false)
+                            
+                            HStack(spacing: 6) {
                                 ForEach(Array(currentPasscode.enumerated()), id: \.offset) { _, char in
                                     Text(String(char))
-                                        .font(.system(size: 26, weight: .bold, design: .monospaced))
-                                        .frame(width: 44, height: 48)
+                                        .font(.system(size: 22, weight: .bold, design: .monospaced))
+                                        .frame(width: 36, height: 40)
                                         .background(Color(uiColor: .tertiarySystemGroupedBackground))
-                                        .cornerRadius(10)
+                                        .cornerRadius(8)
                                         .overlay(
-                                            RoundedRectangle(cornerRadius: 10)
-                                                .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
                                         )
                                 }
                             }
                             
                             Spacer()
                             
-                            // Circular Countdown Meter
                             CircularCountdownView(remainingSeconds: passcodeRemainingSeconds)
                         }
                     }
@@ -242,24 +225,30 @@ struct AddFriendView: View {
                 Divider()
                     .padding(.horizontal, 20)
                 
-                // Section B: 相手のユーザーを追加 (ユーザーID + 3桁合言葉入力)
-                VStack(alignment: .leading, spacing: 14) {
+                // Section B: 相手を追加
+                VStack(alignment: .leading, spacing: 10) {
                     Text(L10n.Friend.textInputSection)
-                        .font(.subheadline)
+                        .font(.footnote)
                         .fontWeight(.bold)
                         .foregroundColor(.secondary)
                     
-                    VStack(alignment: .leading, spacing: 10) {
-                        // User ID Input
-                        TextField(L10n.Friend.targetUserIdPlaceholder, text: $targetInput)
-                            .font(.system(.body, design: .monospaced))
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .padding(12)
-                            .background(Color(uiColor: .secondarySystemGroupedBackground))
-                            .cornerRadius(12)
+                    VStack(spacing: 10) {
+                        // 行1: 相手のユーザー名 (頭に@を自動表示、入力時は黒字へ動的変更)
+                        HStack(spacing: 4) {
+                            Text("@")
+                                .font(.system(.body, design: .monospaced))
+                                .foregroundColor(targetInput.isEmpty ? Color.secondary : Color.primary)
+                            
+                            TextField(L10n.Friend.targetUserIdPlaceholder, text: $targetInput)
+                                .font(.system(.body, design: .monospaced))
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                        }
+                        .padding(12)
+                        .background(Color(uiColor: .secondarySystemGroupedBackground))
+                        .cornerRadius(12)
                         
-                        // Passcode Input
+                        // 行2: 合言葉
                         HStack {
                             TextField(L10n.Friend.targetPasscodePlaceholder, text: $targetPasscode)
                                 .font(.system(.body, design: .monospaced))
@@ -370,11 +359,12 @@ struct AddFriendView: View {
     }
     
     private func handleScannedCode(_ code: String) {
+        guard !isSubmitting else { return }
         guard let payload = FriendInvitationHelper.decode(rawInput: code) else {
             return
         }
         scannedPayload = payload
-        showingConfirmSheet = true
+        performAddFriend(payload: payload)
     }
     
     private func submitTextFriendAddition() {
@@ -480,72 +470,6 @@ struct CircularCountdownView: View {
                 .foregroundColor(.orange)
         }
         .frame(width: 32, height: 32)
-    }
-}
-
-// MARK: - Friend Confirmation Sheet
-
-struct FriendScanConfirmSheet: View {
-    let payload: FriendsFriendInvitationPayload
-    let onConfirm: (Bool) -> Void
-    
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 24) {
-                Spacer()
-                
-                Circle()
-                    .fill(Color.blue.opacity(0.12))
-                    .frame(width: 88, height: 88)
-                    .overlay(
-                        Image(systemName: "person.crop.circle.badge.plus")
-                            .font(.system(size: 44))
-                            .foregroundColor(.blue)
-                    )
-                
-                VStack(spacing: 6) {
-                    Text(payload.displayName)
-                        .font(.title2)
-                        .bold()
-                    Text(L10n.Friend.userIdPrefix(payload.userID))
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                
-                Text(L10n.Friend.confirmSheetMsg(payload.displayName, payload.userID))
-                    .font(.body)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
-                
-                Spacer()
-                
-                VStack(spacing: 12) {
-                    Button {
-                        onConfirm(true)
-                    } label: {
-                        Text(L10n.Friend.confirmAdditionBtn)
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 52)
-                            .background(Color.blue)
-                            .cornerRadius(14)
-                    }
-                    
-                    Button(L10n.Common.cancel) {
-                        onConfirm(false)
-                    }
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .padding(.bottom, 8)
-                }
-                .padding(.horizontal, 24)
-            }
-            .navigationTitle(L10n.Friend.confirmSheetTitle)
-            .navigationBarTitleDisplayMode(.inline)
-        }
-        .presentationDetents([.medium])
     }
 }
 

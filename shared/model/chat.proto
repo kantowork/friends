@@ -8,6 +8,14 @@ import "common.proto";
 option go_package = "work.kanto.friends/model;friendsmodel";
 option swift_prefix = "Friends";
 
+// グループメンバーロール
+enum GroupMemberRole {
+  GROUP_MEMBER_ROLE_UNSPECIFIED = 0;
+  GROUP_MEMBER_ROLE_MEMBER = 1;
+  GROUP_MEMBER_ROLE_ADMIN = 2;
+  GROUP_MEMBER_ROLE_OWNER = 3;
+}
+
 // チャット・会話 (/tenants/{tenantId}/chats/{chatId})
 message Chat {
   string chat_id = 1;   // ID 命名規約: dm_xxx または gm_xxx
@@ -19,6 +27,8 @@ message Chat {
   google.protobuf.Timestamp created_at = 7;
   string updated_by = 8;       // 最終更新者の userId (u_xxx)
   google.protobuf.Timestamp updated_at = 9;
+  map<string, GroupMemberRole> member_roles = 10; // member_userId -> GroupMemberRole
+  bool is_deleted = 11;        // 削除フラグ (members: [] と併用)
 }
 
 // グループ会話共有鍵バケット (/tenants/{tenantId}/chats/{chatId}/keys/{keyVersion})

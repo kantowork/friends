@@ -88,18 +88,32 @@ public struct EditProfileView: View {
                         
                         Spacer()
                         
-                        // 右側: @xxxxxx アカウント入力 (右寄せ・@と入力欄を密着)
-                        HStack(spacing: 2) {
+                        // 右側: @xxxxxx アカウント入力 (右寄せ・@と入力欄を密着・右端にスペースが出ない動的レイアウト)
+                        HStack(spacing: 0) {
                             Text("@")
                                 .font(.system(.body, design: .monospaced))
                                 .foregroundColor(.secondary)
-                            TextField(L10n.Settings.profileUsernamePlaceholder, text: $usernameText)
-                                .font(.system(.body, design: .monospaced))
-                                .multilineTextAlignment(.leading)
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled()
-                                .keyboardType(.asciiCapable)
-                                .fixedSize(horizontal: true, vertical: false)
+                            
+                            ZStack(alignment: .trailing) {
+                                if usernameText.isEmpty {
+                                    Text(L10n.Settings.profileUsernamePlaceholder)
+                                        .font(.system(.body, design: .monospaced))
+                                        .foregroundColor(Color(uiColor: .placeholderText))
+                                }
+                                
+                                // 幅をテキストまたはプレースホルダーに合わせる不可視テキスト
+                                Text(usernameText.isEmpty ? L10n.Settings.profileUsernamePlaceholder : usernameText)
+                                    .font(.system(.body, design: .monospaced))
+                                    .opacity(0)
+                                    .padding(.horizontal, 1)
+                                
+                                TextField("", text: $usernameText)
+                                    .font(.system(.body, design: .monospaced))
+                                    .multilineTextAlignment(.trailing)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled()
+                                    .keyboardType(.asciiCapable)
+                            }
                         }
                     }
                     .padding(.vertical, 4)
@@ -340,7 +354,7 @@ public struct EditProfileView: View {
 
 // MARK: - PresetAvatarPickerSheet (プリセットアイコン選択シート)
 
-private struct PresetAvatarPickerSheet: View {
+struct PresetAvatarPickerSheet: View {
     @Environment(\.dismiss) private var dismiss
     let onSelect: (UIImage) -> Void
     
@@ -424,7 +438,7 @@ private struct PresetAvatarPickerSheet: View {
     }
 }
 
-private struct PresetAvatar: Identifiable {
+struct PresetAvatar: Identifiable {
     let id = UUID()
     let symbol: String
     let bgColors: [Color]

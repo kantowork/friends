@@ -34,6 +34,10 @@ public enum L10n {
         public static var resetDeviceConfirmMsg: String { tr("auth.login.reset_device_confirm_msg") }
         public static var tenantChange: String { tr("auth.login.tenant_change") }
         public static var displayNamePlaceholder: String { tr("auth.login.display_name_placeholder") }
+        public static var recoveryRestoreButton: String { tr("auth.recovery.restore_button") }
+        public static func recoveryWordCountError(count: Int) -> String { String(format: tr("auth.recovery.word_count_error"), count) }
+        public static var recoveryInvalidPhrase: String { tr("auth.recovery.invalid_phrase") }
+        public static var recoveryRestoredUserPrefix: String { tr("auth.recovery.restored_user_prefix") }
     }
     
     // MARK: - Tenant Selection
@@ -62,6 +66,14 @@ public enum L10n {
         public static var groups: String { tr("tab.groups") }
     }
     
+    // MARK: - Home
+    public enum Home {
+        public static var quickActionTitle: String { tr("home.quick_action.title") }
+        public static var quickActionAddFriend: String { tr("home.quick_action.add_friend") }
+        public static var notificationTitle: String { tr("home.notification.title") }
+        public static var notificationEmpty: String { tr("home.notification.empty") }
+    }
+    
     // MARK: - Groups
     public enum Group {
         public static var listTitle: String { tr("group.list.title") }
@@ -78,6 +90,42 @@ public enum L10n {
         public static func membersSection(_ count: Int) -> String {
             String(format: tr("group.detail.members_section"), count)
         }
+        
+        // Roles & Actions
+        public static var roleOwner: String { tr("group.role.owner") }
+        public static var roleAdmin: String { tr("group.role.admin") }
+        public static var roleMember: String { tr("group.role.member") }
+        public static var claimOwner: String { tr("group.action.claim_owner") }
+        public static var claimOwnerConfirm: String { tr("group.action.claim_owner_confirm") }
+        public static var assignAdmin: String { tr("group.action.assign_admin") }
+        public static func assignAdminConfirm(_ name: String) -> String {
+            String(format: tr("group.action.assign_admin_confirm"), name)
+        }
+        public static var removeMember: String { tr("group.action.remove_member") }
+        public static func removeMemberConfirm(_ name: String) -> String {
+            String(format: tr("group.action.remove_member_confirm"), name)
+        }
+        public static var leaveGroup: String { tr("group.action.leave_group") }
+        public static var leaveGroupConfirm: String { tr("group.action.leave_group_confirm") }
+        public static var cannotLeaveOwner: String { tr("group.action.cannot_leave_owner") }
+        public static var editTitle: String { tr("group.action.edit_title") }
+        public static var editTitlePrompt: String { tr("group.action.edit_title_prompt") }
+        public static var addMemberAction: String { tr("group.action.add_member") }
+        public static var addMemberTitle: String { tr("group.add_member.title") }
+        public static var addMemberSubmitBtn: String { tr("group.add_member.submit_btn") }
+        public static var addMemberNoCandidates: String { tr("group.add_member.no_candidates") }
+        public static func addMemberSelectCount(_ count: Int) -> String {
+            String(format: tr("group.add_member.select_count"), count)
+        }
+        public static var avatarChangeTitle: String { tr("group.avatar.change_title") }
+        
+        // Deletion (Single Confirmation with Important Warning)
+        public static var deleteButton: String { tr("group.delete.button") }
+        public static func deleteConfirmTitle(_ title: String) -> String {
+            String(format: tr("group.delete.confirm_title"), title)
+        }
+        public static var deleteConfirmMessage: String { tr("group.delete.confirm_message") }
+        public static var deleteConfirmAction: String { tr("group.delete.confirm_action") }
     }
     
     // MARK: - Chats
@@ -88,6 +136,7 @@ public enum L10n {
         public static var send: String { tr("chat.detail.send") }
         public static var newMessagesBadge: String { tr("chat.detail.new_messages_badge") }
         public static var scrollToLatest: String { tr("chat.detail.scroll_to_latest") }
+        public static var detailEmpty: String { tr("chat.detail.empty") }
         public static var readStatus: String { tr("chat.read.status") }
         public static func readCount(_ count: Int) -> String {
             String(format: tr("chat.read.count"), count)
@@ -138,6 +187,14 @@ public enum L10n {
         public static func confirmSheetMsg(_ name: String, _ id: String) -> String {
             String(format: tr("friend.add.confirm_sheet_msg"), name, id)
         }
+        
+        // Edit Friend Display Name
+        public static var editNameAction: String { tr("friend.edit_name.action") }
+        public static var editNameTitle: String { tr("friend.edit_name.title") }
+        public static var editNameMessage: String { tr("friend.edit_name.message") }
+        public static var editNamePlaceholder: String { tr("friend.edit_name.placeholder") }
+        public static var editNameSave: String { tr("friend.edit_name.save") }
+        public static var editNameSuccess: String { tr("friend.edit_name.success") }
     }
     
     // MARK: - Settings
@@ -168,6 +225,14 @@ public enum L10n {
         public static var securityResetSuccessMsg: String { tr("settings.security.reset_success_msg") }
         public static var recoveryTitle: String { tr("settings.recovery.title") }
         public static var recoveryDesc: String { tr("settings.recovery.desc") }
+        public static var recoveryRegenerateBtn: String { tr("settings.recovery.regenerate_btn") }
+        public static var recoveryRegenerateTitle: String { tr("settings.recovery.regenerate_title") }
+        public static var recoveryRegeneratePrompt: String { tr("settings.recovery.regenerate_prompt") }
+        public static var recoveryRegenerateAction: String { tr("settings.recovery.regenerate_action") }
+        public static var recoveryRegenerateSuccess: String { tr("settings.recovery.regenerate_success") }
+        public static var recoveryCopyButton: String { tr("settings.recovery.copy_button") }
+        public static var recoveryCopied: String { tr("settings.recovery.copied") }
+        public static var recoveryNotFound: String { tr("settings.recovery.not_found") }
         public static var logout: String { tr("settings.logout") }
         public static var logoutConfirmTitle: String { tr("settings.logout.confirm_title") }
         public static var logoutConfirmMsg: String { tr("settings.logout.confirm_msg") }
@@ -194,6 +259,16 @@ public enum L10n {
             public static var passcodeExpired: String { tr("error.friend.passcode_expired") }
             public static var tenantMismatch: String { tr("error.friend.tenant_mismatch") }
             public static var selfAdd: String { tr("error.friend.self_add") }
+        }
+        
+        public enum Recovery {
+            public static var dataNotFound: String { tr("error.recovery.data_not_found") }
+            public static var decryptionFailed: String { tr("error.recovery.decryption_failed") }
+            public static var tenantNotConfigured: String { tr("error.recovery.tenant_not_configured") }
+        }
+        
+        public enum User {
+            public static var notFound: String { tr("error.user.not_found") }
         }
     }
     

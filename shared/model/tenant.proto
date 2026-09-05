@@ -22,18 +22,3 @@ message Tenant {
   google.protobuf.Timestamp updated_at = 9;
 }
 
-// テナント内組織グループ (g_)
-message Group {
-  string group_id = 1;                  // ID 命名規約: g_xxx
-  string tenant_id = 2;                 // ID 命名規約: t_xxx
-  string group_name = 3;                // アプリ内復号済みグループ名
-  string description = 4;               // アプリ内復号済み説明文
-  bool is_default_group = 5;
-  repeated string member_uids = 6;      // 所属ユーザーの Firebase Auth UID リスト
-  string encrypted_group_name = 7;      // MK_T で暗号化したグループ名 (Base64)
-  string group_name_nonce = 8;          // 暗号化 Nonce (Base64)
-  string encrypted_description = 9;     // MK_T で暗号化した説明文 (Base64)
-  string description_nonce = 10;        // 暗号化 Nonce (Base64)
-  google.protobuf.Timestamp created_at = 11;
-  google.protobuf.Timestamp updated_at = 12;
-}

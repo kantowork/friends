@@ -5,6 +5,9 @@ public struct MainTabView: View {
     @ObservedObject private var toastManager = ToastNotificationManager.shared
     @State private var selectedTab: Tab = .home
     
+    @State private var friendNavigationPath = NavigationPath()
+    @State private var groupNavigationPath = NavigationPath()
+    
     public enum Tab {
         case home
         case friends
@@ -21,14 +24,14 @@ public struct MainTabView: View {
                 }
                 .tag(Tab.home)
             
-            FriendListView()
+            FriendListView(navigationPath: $friendNavigationPath)
                 .tabItem {
                     Label(L10n.Tab.friends, systemImage: "bubble.left.and.bubble.right.fill")
                 }
                 .badge(chatService.totalDmUnreadCount > 0 ? chatService.totalDmUnreadCount : 0)
                 .tag(Tab.friends)
             
-            GroupListView()
+            GroupListView(navigationPath: $groupNavigationPath)
                 .tabItem {
                     Label(L10n.Tab.groups, systemImage: "person.3.fill")
                 }
@@ -36,17 +39,19 @@ public struct MainTabView: View {
                 .tag(Tab.groups)
         }
         .tint(.blue)
-        .sheet(item: $toastManager.navigationTargetChat) { chat in
-            NavigationStack {
-                ChatDetailView(chat: chat)
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarLeading) {
-                            Button(L10n.Common.close) {
-                                toastManager.navigationTargetChat = nil
-                            }
-                        }
-                    }
+        .onChange(of: toastManager.navigationTargetChat) { targetChat in
+            guard let chat = targetChat else { return }
+            let isGroup = chat.chatType == .group || chat.chatID.hasPrefix("gm_")
+            
+            if isGroup {
+                selectedTab = .groups
+                groupNavigationPath = NavigationPath([chat])
+            } else {
+                selectedTab = .friends
+                friendNavigationPath = NavigationPath([chat])
             }
+            
+            toastManager.navigationTargetChat = nil
         }
     }
 }

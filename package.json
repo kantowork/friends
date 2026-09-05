@@ -8,7 +8,8 @@
     "tenant:init": "node ./scripts/add_tenant.mjs --preset",
     "tenant:create": "node ./scripts/add_tenant.mjs",
     "deploy:sims": "./scripts/deploy_simulators.sh",
-    "deploy:rules": "firebase deploy --config infra/firebase.json --only firestore:rules,firestore:indexes"
+    "deploy:rules": "firebase deploy --config infra/firebase.json --only firestore:rules,firestore:indexes",
+    "clean:messages": "node ./scripts/clean_messages.mjs"
   },
   "devDependencies": {
     "markdownlint-cli": "^0.44.0"

@@ -103,6 +103,9 @@ final class TenantSelectionViewModel: ObservableObject {
                 if let masterKey = json["tenantMasterKey"] as? String ?? json["masterKey"] as? String {
                     CryptoKeyManager.shared.saveTenantMasterKey(tenantId: tid, masterKeyBase64: masterKey)
                 }
+                if let workerUrl = json["workerApiUrl"] as? String {
+                    RecoveryConfig.saveWorkersBaseURL(workerUrl)
+                }
                 return tid
             }
             return nil
@@ -113,6 +116,9 @@ final class TenantSelectionViewModel: ObservableObject {
            let tid = json["tenantId"] as? String {
             if let masterKey = json["tenantMasterKey"] as? String ?? json["masterKey"] as? String {
                 CryptoKeyManager.shared.saveTenantMasterKey(tenantId: tid, masterKeyBase64: masterKey)
+            }
+            if let workerUrl = json["workerApiUrl"] as? String {
+                RecoveryConfig.saveWorkersBaseURL(workerUrl)
             }
             return tid
         }
@@ -584,11 +590,7 @@ private struct SimulatorQRFallback: View {
                 VStack(spacing: 14) {
                     Image(systemName: "camera.slash.fill")
                         .font(.system(size: 44))
-                        .foregroundColor(.secondary)
-                    Text(L10n.Tenant.cameraSimulatorNote)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
+                        .foregroundColor(.secondary.opacity(0.6))
                 }
                 .padding(.horizontal, 24)
             }
@@ -596,8 +598,8 @@ private struct SimulatorQRFallback: View {
             Button {
                 viewModel.verifyFromText(samplePayload)
             } label: {
-                Label(L10n.Tenant.cameraSimulatorBtn, systemImage: "qrcode")
-                    .font(.subheadline.weight(.semibold))
+                Image(systemName: "qrcode")
+                    .font(.system(size: 20, weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .frame(height: 46)
                     .background(Color.blue.opacity(0.1))

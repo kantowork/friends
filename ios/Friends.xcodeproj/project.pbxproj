@@ -14,6 +14,8 @@
 		0C76FD7A75628CC25692A256 /* ChatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED5E80E96490083CC2CF785 /* ChatService.swift */; };
 		0CD0520C9EC19FA17B2C896B /* AppLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F1F7949FDFBF8F8AAAB3A10 /* AppLogger.swift */; };
 		0FD9DDF5C496A8CDBCCB82A1 /* AddFriendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F806734AD019C0DB45155686 /* AddFriendView.swift */; };
+		106EE5972E356C200B8C475C /* SwiftMnemonic in Frameworks */ = {isa = PBXBuildFile; productRef = 13413BA24E06763D326438CC /* SwiftMnemonic */; };
+		1119D5EC886404FA020789B6 /* AddGroupMemberSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B49DD43F64120C286745702 /* AddGroupMemberSheet.swift */; };
 		11C0697C000DF7E93DDFF5D3 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 843D20C5C1EE219362DCBF39 /* FirebaseFirestore */; };
 		14026010C5E38940B2E0EF14 /* ULID in Frameworks */ = {isa = PBXBuildFile; productRef = 7051210C1CCF956B15728EB2 /* ULID */; };
 		19147032001F1578E179221F /* CryptoKeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB174DA53133AD4E358D0543 /* CryptoKeyManager.swift */; };
@@ -21,6 +23,7 @@
 		226F6A4764327930953CE0E8 /* FriendInvitationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 110A108EC499613F06260DAB /* FriendInvitationTests.swift */; };
 		24D0348E9A56818D2DB4F5D3 /* MessageRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91746E05151A8A98BB35283E /* MessageRepository.swift */; };
 		2790B236D73056B512FD5521 /* GoogleService-Info.plist.example in Resources */ = {isa = PBXBuildFile; fileRef = E47EB0AAA0942E9FAD966EAF /* GoogleService-Info.plist.example */; };
+		2860766FCE37605A1AF65C28 /* MnemonicManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34418B284BBA78F6590B6F76 /* MnemonicManager.swift */; };
 		287E1013270E85408A12F57D /* SwiftProtobuf in Frameworks */ = {isa = PBXBuildFile; productRef = F34AF2C8808DC5C87DBA377C /* SwiftProtobuf */; };
 		2E3D44FEDEE83CF5E7E60D0D /* FriendRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C3372477D89C3B7C93682B3 /* FriendRepository.swift */; };
 		30CC652E859111996CF99B3A /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91D3C03BA1244EA258513B9C /* LoginView.swift */; };
@@ -33,10 +36,12 @@
 		45F275B906350B5D1BF4105C /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B80054EF7CBD323CD9C1207 /* L10n.swift */; };
 		46F53CA0F7783E87945541DA /* Base58Swift in Frameworks */ = {isa = PBXBuildFile; productRef = F7675460E7EC690DE77B2CF3 /* Base58Swift */; };
 		4A49D1C8F50F6A2045C2D8B6 /* ReadReceiptServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 740BFAEC84E77B0229BF5FDD /* ReadReceiptServiceTests.swift */; };
+		4A7880FE529F84723CD094D9 /* SwiftMnemonic in Frameworks */ = {isa = PBXBuildFile; productRef = 79A5D86B008FB84CD73674AA /* SwiftMnemonic */; };
 		4BDA6B8814AF5417E8C7888B /* ToastNotificationManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1210A3AB46980769A184FB5 /* ToastNotificationManagerTests.swift */; };
 		4BF224C168AD13B15D566172 /* PresetTenant.plist in Resources */ = {isa = PBXBuildFile; fileRef = 8CF1E654734996084DE28F2D /* PresetTenant.plist */; };
 		4C9D8C6EE9217D1523467001 /* ChatDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B602697905FD0D50788D4AA /* ChatDetailView.swift */; };
 		4D81E4E4CBDED389B9A6C03F /* Base58Swift in Frameworks */ = {isa = PBXBuildFile; productRef = F8EF690242180F32CE8BB5A3 /* Base58Swift */; };
+		53B07D6A9EB801FF0EE68EDD /* RecoveryPhraseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94AE9645F86F97088044D698 /* RecoveryPhraseTests.swift */; };
 		64C65F4F92D43373B15AB8BA /* common.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9474BB46F28B24E4D2E05D1E /* common.pb.swift */; };
 		654EC337D4FB3017B9EF5251 /* R2Config.plist in Resources */ = {isa = PBXBuildFile; fileRef = 24A914712C89236342ED35B3 /* R2Config.plist */; };
 		6568875089F32FD52FBAF027 /* KeyBucketRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D9BC65F5B28B01CDA532088 /* KeyBucketRepository.swift */; };
@@ -44,6 +49,7 @@
 		6D1FAFC0C2A48805D938742D /* message.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = C865A7F08BE5EE75FA404A86 /* message.pb.swift */; };
 		6E56001E6D461263F26716D4 /* InAppToast.swift in Sources */ = {isa = PBXBuildFile; fileRef = E398E98BC6D08ED8318A22C7 /* InAppToast.swift */; };
 		763AD6C13FBC1F6457066D47 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = F118FFCB9DD858C7A0A80E52 /* FirebaseAuth */; };
+		7A183168969883E04BF26D65 /* RecoveryConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = E35773E9E58A89073DA590EC /* RecoveryConfig.swift */; };
 		827EC8EA02C8BC5DAB1B12B1 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B0446CB35BD1DED70441109 /* GoogleService-Info.plist */; };
 		87CA0724A7824B7EB8C4F035 /* user.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DC45DCE17FFA7BE9C344104 /* user.pb.swift */; };
 		8A68F86C2F1CB50E9AFA13A9 /* TenantSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 677874861ECB1893E610DCB1 /* TenantSelectionView.swift */; };
@@ -59,6 +65,7 @@
 		D2205A3B3B8BCBBFFF4867FE /* FriendListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EA5643E77B341F122508AC1 /* FriendListView.swift */; };
 		D3CC3E86D075BC2B9BD1E310 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E98D73A923F12CB9E9048015 /* MainTabView.swift */; };
 		DA5E9DA388B3B67CB35E692A /* ULID in Frameworks */ = {isa = PBXBuildFile; productRef = CF4A672980744C252CE0BE17 /* ULID */; };
+		DC00F8C02D033B1FA16F30CE /* GroupAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF710A85A5DA8E610494B10F /* GroupAvatarView.swift */; };
 		DC31A55ADD9D19D59CCA2431 /* FriendsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001733C0CD611DF9D3816ED7 /* FriendsApp.swift */; };
 		DCDD9973FE6E89F151C88707 /* ReactionRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AAE26812CD356FC8FD5F061 /* ReactionRepository.swift */; };
 		DF1F14A70A5BC8E62DB4D4CC /* EditProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 126499C67BE5E96FA83A30AD /* EditProfileView.swift */; };
@@ -94,6 +101,7 @@
 		265075ED18C1D4EC2DC2D965 /* FriendsTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = FriendsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2CDEFACC8A3FA9C99CF8DF38 /* CreateGroupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateGroupView.swift; sourceTree = "<group>"; };
 		2DE77C113E25A5A25D866CBD /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		34418B284BBA78F6590B6F76 /* MnemonicManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MnemonicManager.swift; sourceTree = "<group>"; };
 		37D9B246340375349DB680A2 /* UserRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserRepository.swift; sourceTree = "<group>"; };
 		3B0446CB35BD1DED70441109 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		473C7EC7238FB504E3E71A7B /* Friends.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Friends.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -104,6 +112,7 @@
 		5DE80AD746183BADA346EAC5 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		61D0F0DDEF6511C713FE2F6C /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		677874861ECB1893E610DCB1 /* TenantSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TenantSelectionView.swift; sourceTree = "<group>"; };
+		6B49DD43F64120C286745702 /* AddGroupMemberSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddGroupMemberSheet.swift; sourceTree = "<group>"; };
 		6EA5643E77B341F122508AC1 /* FriendListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendListView.swift; sourceTree = "<group>"; };
 		735B7A1DC4D7010E59719EFF /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
 		73EFF9BEBF88BD245D30582A /* ProtobufModelExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtobufModelExtensions.swift; sourceTree = "<group>"; };
@@ -118,7 +127,9 @@
 		91746E05151A8A98BB35283E /* MessageRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageRepository.swift; sourceTree = "<group>"; };
 		91D3C03BA1244EA258513B9C /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		9474BB46F28B24E4D2E05D1E /* common.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = common.pb.swift; sourceTree = "<group>"; };
+		94AE9645F86F97088044D698 /* RecoveryPhraseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryPhraseTests.swift; sourceTree = "<group>"; };
 		9AAE26812CD356FC8FD5F061 /* ReactionRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReactionRepository.swift; sourceTree = "<group>"; };
+		AF710A85A5DA8E610494B10F /* GroupAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupAvatarView.swift; sourceTree = "<group>"; };
 		B461A6C43DFB89F0B7FE3978 /* GroupDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDetailView.swift; sourceTree = "<group>"; };
 		C865A7F08BE5EE75FA404A86 /* message.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = message.pb.swift; sourceTree = "<group>"; };
 		CB174DA53133AD4E358D0543 /* CryptoKeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CryptoKeyManager.swift; sourceTree = "<group>"; };
@@ -126,6 +137,7 @@
 		CFD78F78EE81CC78390C270B /* FriendInvitationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendInvitationService.swift; sourceTree = "<group>"; };
 		D2E3C3E86AD519CD32721AC3 /* ToastBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastBannerView.swift; sourceTree = "<group>"; };
 		D565C3091DA5BECD9CC25D05 /* CryptoKeyManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CryptoKeyManagerTests.swift; sourceTree = "<group>"; };
+		E35773E9E58A89073DA590EC /* RecoveryConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryConfig.swift; sourceTree = "<group>"; };
 		E398E98BC6D08ED8318A22C7 /* InAppToast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InAppToast.swift; sourceTree = "<group>"; };
 		E47EB0AAA0942E9FAD966EAF /* GoogleService-Info.plist.example */ = {isa = PBXFileReference; path = "GoogleService-Info.plist.example"; sourceTree = "<group>"; };
 		E98D73A923F12CB9E9048015 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
@@ -148,6 +160,7 @@
 				287E1013270E85408A12F57D /* SwiftProtobuf in Frameworks */,
 				14026010C5E38940B2E0EF14 /* ULID in Frameworks */,
 				4D81E4E4CBDED389B9A6C03F /* Base58Swift in Frameworks */,
+				106EE5972E356C200B8C475C /* SwiftMnemonic in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -157,6 +170,7 @@
 			files = (
 				DA5E9DA388B3B67CB35E692A /* ULID in Frameworks */,
 				46F53CA0F7783E87945541DA /* Base58Swift in Frameworks */,
+				4A7880FE529F84723CD094D9 /* SwiftMnemonic in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -170,6 +184,14 @@
 				265075ED18C1D4EC2DC2D965 /* FriendsTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		0C85DC66854ABC3C2359058D /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				E35773E9E58A89073DA590EC /* RecoveryConfig.swift */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 		19F587344C230F875CFEBFE6 /* Toast */ = {
@@ -216,6 +238,7 @@
 				110A108EC499613F06260DAB /* FriendInvitationTests.swift */,
 				191294B086311E44BAB0875A /* GroupChatServiceTests.swift */,
 				740BFAEC84E77B0229BF5FDD /* ReadReceiptServiceTests.swift */,
+				94AE9645F86F97088044D698 /* RecoveryPhraseTests.swift */,
 				F1210A3AB46980769A184FB5 /* ToastNotificationManagerTests.swift */,
 			);
 			path = Tests;
@@ -225,10 +248,12 @@
 			isa = PBXGroup;
 			children = (
 				F806734AD019C0DB45155686 /* AddFriendView.swift */,
+				6B49DD43F64120C286745702 /* AddGroupMemberSheet.swift */,
 				7B602697905FD0D50788D4AA /* ChatDetailView.swift */,
 				2CDEFACC8A3FA9C99CF8DF38 /* CreateGroupView.swift */,
 				126499C67BE5E96FA83A30AD /* EditProfileView.swift */,
 				6EA5643E77B341F122508AC1 /* FriendListView.swift */,
+				AF710A85A5DA8E610494B10F /* GroupAvatarView.swift */,
 				B461A6C43DFB89F0B7FE3978 /* GroupDetailView.swift */,
 				50C94084CD89A705B5BAF54F /* GroupListView.swift */,
 				571756FF5FB335DACAEE8222 /* HomeView.swift */,
@@ -250,6 +275,7 @@
 				1ED5E80E96490083CC2CF785 /* ChatService.swift */,
 				CB174DA53133AD4E358D0543 /* CryptoKeyManager.swift */,
 				CFD78F78EE81CC78390C270B /* FriendInvitationService.swift */,
+				34418B284BBA78F6590B6F76 /* MnemonicManager.swift */,
 				7E870B04CB55396AA196C5EA /* ToastNotificationManager.swift */,
 			);
 			path = Services;
@@ -311,6 +337,7 @@
 			children = (
 				001733C0CD611DF9D3816ED7 /* FriendsApp.swift */,
 				3B0446CB35BD1DED70441109 /* GoogleService-Info.plist */,
+				0C85DC66854ABC3C2359058D /* Config */,
 				BE3E0DC6C98BDAB81310FEDE /* Models */,
 				438107943C6BD4FE3E4A2979 /* Repositories */,
 				E4A513E463C085E69D600CAF /* Resources */,
@@ -339,6 +366,7 @@
 			packageProductDependencies = (
 				CF4A672980744C252CE0BE17 /* ULID */,
 				F7675460E7EC690DE77B2CF3 /* Base58Swift */,
+				79A5D86B008FB84CD73674AA /* SwiftMnemonic */,
 			);
 			productName = FriendsTests;
 			productReference = 265075ED18C1D4EC2DC2D965 /* FriendsTests.xctest */;
@@ -363,6 +391,7 @@
 				F34AF2C8808DC5C87DBA377C /* SwiftProtobuf */,
 				7051210C1CCF956B15728EB2 /* ULID */,
 				F8EF690242180F32CE8BB5A3 /* Base58Swift */,
+				13413BA24E06763D326438CC /* SwiftMnemonic */,
 			);
 			productName = Friends;
 			productReference = 473C7EC7238FB504E3E71A7B /* Friends.app */;
@@ -392,6 +421,7 @@
 			packageReferences = (
 				E92046FD9422801DFC684791 /* XCRemoteSwiftPackageReference "Base58Swift" */,
 				6BCE5C38D169A1D085900560 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				1A85B3F021FC6356EB2FCC94 /* XCRemoteSwiftPackageReference "swift-mnemonic" */,
 				AE7780B0CFE5F3C7D315384A /* XCRemoteSwiftPackageReference "swift-protobuf" */,
 				1315CD584F221955ED6C7EFC /* XCRemoteSwiftPackageReference "ULID.swift" */,
 			);
@@ -431,6 +461,7 @@
 				226F6A4764327930953CE0E8 /* FriendInvitationTests.swift in Sources */,
 				34A77CA3C504F568E54CAD70 /* GroupChatServiceTests.swift in Sources */,
 				4A49D1C8F50F6A2045C2D8B6 /* ReadReceiptServiceTests.swift in Sources */,
+				53B07D6A9EB801FF0EE68EDD /* RecoveryPhraseTests.swift in Sources */,
 				4BDA6B8814AF5417E8C7888B /* ToastNotificationManagerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -440,6 +471,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0FD9DDF5C496A8CDBCCB82A1 /* AddFriendView.swift in Sources */,
+				1119D5EC886404FA020789B6 /* AddGroupMemberSheet.swift in Sources */,
 				0CD0520C9EC19FA17B2C896B /* AppLogger.swift in Sources */,
 				B053E73BD86493140B7E098C /* AvatarRepository.swift in Sources */,
 				4C9D8C6EE9217D1523467001 /* ChatDetailView.swift in Sources */,
@@ -452,6 +484,7 @@
 				D2205A3B3B8BCBBFFF4867FE /* FriendListView.swift in Sources */,
 				2E3D44FEDEE83CF5E7E60D0D /* FriendRepository.swift in Sources */,
 				DC31A55ADD9D19D59CCA2431 /* FriendsApp.swift in Sources */,
+				DC00F8C02D033B1FA16F30CE /* GroupAvatarView.swift in Sources */,
 				AC175272B9C3FB36433698FB /* GroupDetailView.swift in Sources */,
 				EAB58CA5EB81786B9D5825FA /* GroupListView.swift in Sources */,
 				05A50EBE2E202EAFF039AED8 /* HomeView.swift in Sources */,
@@ -461,11 +494,13 @@
 				30CC652E859111996CF99B3A /* LoginView.swift in Sources */,
 				D3CC3E86D075BC2B9BD1E310 /* MainTabView.swift in Sources */,
 				24D0348E9A56818D2DB4F5D3 /* MessageRepository.swift in Sources */,
+				2860766FCE37605A1AF65C28 /* MnemonicManager.swift in Sources */,
 				1C4F574FB6EBCB185BC8BDE7 /* PresetTenantConfig.swift in Sources */,
 				902C92EF0710E58688137F3D /* ProtobufModelExtensions.swift in Sources */,
 				AEA4132FF9C61035DAF1DECF /* R2Config.swift in Sources */,
 				DCDD9973FE6E89F151C88707 /* ReactionRepository.swift in Sources */,
 				F1DDFBD4665010D70C37F766 /* ReadReceiptRepository.swift in Sources */,
+				7A183168969883E04BF26D65 /* RecoveryConfig.swift in Sources */,
 				66A1AF58928A09C812A78929 /* RootView.swift in Sources */,
 				36D7EA7F1F3A393026C80DA0 /* SettingsView.swift in Sources */,
 				ED2EF6650654E1EFC07EBE74 /* SplashView.swift in Sources */,
@@ -753,6 +788,14 @@
 				minimumVersion = 1.3.1;
 			};
 		};
+		1A85B3F021FC6356EB2FCC94 /* XCRemoteSwiftPackageReference "swift-mnemonic" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Kingpin-Apps/swift-mnemonic.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.2.5;
+			};
+		};
 		6BCE5C38D169A1D085900560 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
@@ -780,10 +823,20 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		13413BA24E06763D326438CC /* SwiftMnemonic */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1A85B3F021FC6356EB2FCC94 /* XCRemoteSwiftPackageReference "swift-mnemonic" */;
+			productName = SwiftMnemonic;
+		};
 		7051210C1CCF956B15728EB2 /* ULID */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 1315CD584F221955ED6C7EFC /* XCRemoteSwiftPackageReference "ULID.swift" */;
 			productName = ULID;
+		};
+		79A5D86B008FB84CD73674AA /* SwiftMnemonic */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1A85B3F021FC6356EB2FCC94 /* XCRemoteSwiftPackageReference "swift-mnemonic" */;
+			productName = SwiftMnemonic;
 		};
 		843D20C5C1EE219362DCBF39 /* FirebaseFirestore */ = {
 			isa = XCSwiftPackageProductDependency;

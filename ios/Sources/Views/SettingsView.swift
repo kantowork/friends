@@ -118,7 +118,13 @@ public struct SettingsView: View {
         .alert(L10n.Settings.securityResetConfirmTitle, isPresented: $showingSecurityResetAlert) {
             Button(L10n.Common.cancel, role: .cancel) {}
             Button(L10n.Settings.securityResetExecute, role: .destructive) {
-                resetSuccessAlert = true
+                chatService.performSecurityReset { result in
+                    DispatchQueue.main.async {
+                        if case .success = result {
+                            resetSuccessAlert = true
+                        }
+                    }
+                }
             }
         } message: {
             Text(L10n.Settings.securityResetConfirmMsg)
@@ -143,11 +149,11 @@ public struct SettingsView: View {
 
 struct RecoveryPhraseSheetView: View {
     @Environment(\.dismiss) private var dismiss
-    
-    private let words = [
-        "apple", "river", "mountain", "cloud", "ocean", "forest",
-        "stone", "silent", "breeze", "crystal", "silver", "echo"
-    ]
+    @State private var words: [String] = []
+    @State private var isCopied = false
+    @State private var showRegenerateAlert = false
+    @State private var isRegenerating = false
+    @State private var errorMessage: String? = nil
     
     var body: some View {
         NavigationStack {
@@ -169,37 +175,144 @@ struct RecoveryPhraseSheetView: View {
                 }
                 .padding(.top, 16)
                 
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    ForEach(Array(words.enumerated()), id: \.offset) { index, word in
-                        HStack {
-                            Text("\(index + 1).")
-                                .font(.caption)
-                                .bold()
-                                .foregroundColor(.secondary)
-                                .frame(width: 24, alignment: .trailing)
-                            Text(word)
-                                .font(.system(.body, design: .monospaced))
-                                .bold()
-                            Spacer()
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-                        .background(Color(uiColor: .secondarySystemBackground))
-                        .cornerRadius(10)
-                    }
+                if let err = errorMessage {
+                    Text(err)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                        .padding(.horizontal, 24)
                 }
-                .padding(.horizontal, 20)
+                
+                if words.isEmpty || isRegenerating {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text(isRegenerating ? L10n.Common.loading : L10n.Common.loading)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxHeight: .infinity)
+                } else {
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                        ForEach(Array(words.enumerated()), id: \.offset) { index, word in
+                            HStack {
+                                Text("\(index + 1).")
+                                    .font(.caption)
+                                    .bold()
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 24, alignment: .trailing)
+                                Text(word)
+                                    .font(.system(.body, design: .monospaced))
+                                    .bold()
+                                Spacer()
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(Color(uiColor: .secondarySystemBackground))
+                            .cornerRadius(10)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    
+                    Button {
+                        copyWordsToClipboard()
+                    } label: {
+                        Label(isCopied ? L10n.Settings.recoveryCopied : L10n.Settings.recoveryCopyButton, systemImage: isCopied ? "checkmark" : "doc.on.doc")
+                            .font(.subheadline)
+                            .bold()
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color(uiColor: .secondarySystemBackground))
+                            .foregroundColor(isCopied ? .green : .blue)
+                            .cornerRadius(10)
+                    }
+                    .padding(.horizontal, 20)
+                }
                 
                 Spacer()
             }
             .navigationTitle(L10n.Settings.recoveryTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(L10n.Common.ok) {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(L10n.Common.close) {
                         dismiss()
                     }
+                    .disabled(isRegenerating)
                 }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showRegenerateAlert = true
+                    } label: {
+                        if isRegenerating {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 16, weight: .semibold))
+                        }
+                    }
+                    .disabled(isRegenerating || words.isEmpty)
+                    .accessibilityLabel(L10n.Settings.recoveryRegenerateBtn)
+                }
+            }
+            .alert(L10n.Settings.recoveryRegenerateTitle, isPresented: $showRegenerateAlert) {
+                Button(L10n.Common.cancel, role: .cancel) {}
+                Button(L10n.Settings.recoveryRegenerateAction, role: .destructive) {
+                    executeRegenerate()
+                }
+            } message: {
+                Text(L10n.Settings.recoveryRegeneratePrompt)
+            }
+            .onAppear {
+                loadOrCreateRecoveryPhrase()
+            }
+        }
+    }
+    
+    private func executeRegenerate() {
+        isRegenerating = true
+        errorMessage = nil
+        ChatService.shared.regenerateRecoveryPhrase { result in
+            DispatchQueue.main.async {
+                self.isRegenerating = false
+                switch result {
+                case .success(let newWords):
+                    self.words = newWords
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                case .failure(let error):
+                    self.errorMessage = error.localizedDescription
+                }
+            }
+        }
+    }
+    
+    private func loadOrCreateRecoveryPhrase() {
+        guard let uid = ChatService.shared.currentUser?.uid else { return }
+        if let savedWords = CryptoKeyManager.shared.getMnemonicPhrase(uid: uid), !savedWords.isEmpty {
+            self.words = savedWords
+            return
+        }
+        
+        // Keychain にまだ未保存の場合、秘密鍵を取得して新規生成 & バックアップ
+        if let privKey = CryptoKeyManager.shared.getPrivateKey(uid: uid) {
+            ChatService.shared.backupPrivateKeyWithRecoveryPhrase(uid: uid, privateKey: privKey) { result in
+                DispatchQueue.main.async {
+                    if case .success(let generated) = result {
+                        self.words = generated
+                    }
+                }
+            }
+        }
+    }
+    
+    private func copyWordsToClipboard() {
+        let phrase = words.joined(separator: " ")
+        UIPasteboard.general.string = phrase
+        withAnimation {
+            isCopied = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            withAnimation {
+                isCopied = false
             }
         }
     }

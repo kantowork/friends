@@ -19,8 +19,6 @@ message PublicUserProfile {
   string public_key = 5;             // X25519/Ed25519 公開鍵 (Base64)
   UserRole role = 6;
   AccountType account_type = 7;
-  string encrypted_display_name = 8; // MK_T で AES-256-GCM 暗号化した表示名 (Base64)
-  string display_name_nonce = 9;      // 暗号化 Nonce (Base64)
   string avatar_nonce = 11;           // MK_T で暗号化したアバターの Nonce (Base64)
   google.protobuf.Timestamp avatar_updated_at = 12; // アバター最終更新日時
   string username = 13;               // ユーザー識別子 (初期値: user_id と同値、変更可能、小文字一意)

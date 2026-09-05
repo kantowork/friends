@@ -1,10 +1,10 @@
-# 07-08: 外部REST API経由のグループ通知送信
+# 07-08: 外部REST API経由のかいぎ（グループ）通知送信
 
-外部システムからの REST API コールにより、指定された1つのテナントおよび複数のグループに所属するユーザー端末群へ通知を一括送信する機能の詳細設計です。
+外部システムからの REST API コールにより、指定された1つのテナントおよび複数のかいぎ（グループチャット）に所属するユーザー端末群へ通知を一括送信する機能の詳細設計です。
 
 ## 概要
 
-基幹システムや外部の監視・連絡サービスから、特定のテナントに属する単数または複数のグループの所属メンバーに対してリアルタイムでプッシュ通知を配信します。
+基幹システムや外部の監視・連絡サービスから、特定のテナントに属する単数または複数のかいぎ（グループチャット / `gm_...`）の所属メンバーに対してリアルタイムでプッシュ通知を配信します。
 iOSデバイスに対しては、緊急性の高いメッセージ配信をサポートするため **Time Sensitive Notifications（即時通知）** に対応します。
 
 ---
@@ -33,9 +33,9 @@ Authorization: Bearer sec_ext_api_key_xxxxxxxx
 ```json
 {
   "tenantId": "t_corp_001",
-  "targetGroupIds": [
-    "g_sales_dept",
-    "g_support_team"
+  "targetChatIds": [
+    "gm_sales_dept",
+    "gm_support_team"
   ],
   "notification": {
     "title": "【重要】緊急システムメンテナンスのお知らせ",
@@ -55,7 +55,7 @@ Authorization: Bearer sec_ext_api_key_xxxxxxxx
 | フィールド | 型 | 必須 | 説明 |
 |---|---|---|---|
 | `tenantId` | String | ○ | 対象のテナント一意識別子（1つ指定） |
-| `targetGroupIds` | Array[String] | - | 対象のグループ識別子リスト（複数指定可）。未指定または空配列の場合は、該当テナントの「デフォルトグループ」が自動適用されます。 |
+| `targetChatIds` | Array[String] | - | 対象のかいぎ（グループチャット）識別子リスト（`gm_...`、複数指定可）。未指定または空配列の場合は、該当テナントの「デフォルトかいぎ」が自動適用されます。 |
 | `notification.title` | String | ○ | 通知タイトル |
 | `notification.body` | String | ○ | 通知本文 |
 | `notification.urgency` | String | - | 通知の割り込み優先度 (`normal` \| `time-sensitive`)。デフォルト: `normal` |
@@ -102,14 +102,14 @@ sequenceDiagram
     participant iOSDevice@{ "type": "boundary" } as "iOS デバイス"
     participant App@{ "type": "boundary" } as "iOS アプリ"
 
-    ExtService->>APIServer: POST /api/v1/external/notifications/send (API Key, tenantId, targetGroupIds, notification)
+    ExtService->>APIServer: POST /api/v1/external/notifications/send (API Key, tenantId, targetChatIds, notification)
     APIServer->>APIServer: API Key 認証 & テナント権限検証
     
     alt 認証失敗 / 権限なし
         APIServer-->>ExtService: 401 Unauthorized / 403 Forbidden
     end
 
-    APIServer->>DB: 指定テナント内の指定グループメンバー抽出 (memberUserIds)
+    APIServer->>DB: 指定テナント内の指定かいぎ参加メンバー抽出 (/chats/{chatId}.members)
     DB-->>APIServer: ユーザーIDリスト (重複排除)
     
     APIServer->>DB: ユーザーの有効な FCM デバイストークン取得 (/devices)
@@ -159,7 +159,7 @@ FCM を介して APNs へ配信される際の通知ペイロード構造です�
           "relevance-score": 1.0
         },
         "tenantId": "t_corp_001",
-        "targetGroupIds": ["g_sales_dept", "g_support_team"]
+        "targetChatIds": ["gm_sales_dept", "gm_support_team"]
       }
     }
   }
@@ -188,7 +188,7 @@ FCM を介して APNs へ配信される際の通知ペイロード構造です�
 ## 監査およびエラーハンドリング
 
 1. **メタデータ監査 (`AuditLog`)**:
-   - 本文平文は保管せず、`action: "EXTERNAL_GROUP_NOTIFICATION"`、`tenantId`、`targetGroupIds`、`sentDeviceCount`、`actorId` (API Key Identifier) のみを `AuditLog` に安全に記録します。
+   - 本文平文は保管せず、`action: "EXTERNAL_GROUP_NOTIFICATION"`、`tenantId`、`targetChatIds`、`sentDeviceCount`、`actorId` (API Key Identifier) のみを `AuditLog` に安全に記録します。
 2. **エラーハンドリング**:
    - 無効な FCM トークンが検出された場合、DB (`Device`) の該当トークンに無効フラグを立てるか削除処理を行います。
    - 配信失敗時は指数バックオフ戦略を用いて FCM 再送信を最大3回リトライします。

@@ -26,6 +26,7 @@ public class ChatService: ObservableObject {
     @Published var readReceipts: [String: [String: FriendsReadReceipt]] = [:] // chatId -> [userId: FriendsReadReceipt]
     @Published var userReactions: [String: FriendsReactionType] = [:] // "\(chatId)_\(messageId)" -> reactionType
     @Published public var activeChatId: String? = nil
+    @Published var groupMemberProfiles: [String: FriendsPublicUserProfile] = [:] // userId/uid -> profile
     
     private let db = Firestore.firestore()
     private var messageListeners: [String: ListenerRegistration] = [:]
@@ -41,6 +42,20 @@ public class ChatService: ObservableObject {
     
     private init() {
         checkAuthState()
+    }
+    
+    /// ユーザーIDまたはUIDに対応するプロファイル（表示名・アバター）を返す（友達キャッシュ -> グループメンバーキャッシュの順で探索）
+    func userProfile(for userIdOrUid: String) -> FriendsPublicUserProfile? {
+        if let current = currentUser, (current.userID == userIdOrUid || current.uid == userIdOrUid) {
+            return current
+        }
+        if let friend = friends.first(where: { $0.userID == userIdOrUid || $0.uid == userIdOrUid }) {
+            return friend
+        }
+        if let profile = groupMemberProfiles[userIdOrUid] {
+            return profile
+        }
+        return groupMemberProfiles.values.first(where: { $0.userID == userIdOrUid || $0.uid == userIdOrUid })
     }
     
     // MARK: - Initial Auth & Tenant Checking
@@ -168,20 +183,27 @@ public class ChatService: ObservableObject {
         }
     }
     
-    private func createAndSaveUserProfile(uid: String, tenantId: String, displayName: String, accountType: FriendsAccountType = .anonymous, completion: @escaping (Result<Void, Error>) -> Void) {
+    private func createAndSaveUserProfile(
+        uid: String,
+        tenantId: String,
+        displayName: String,
+        accountType: FriendsAccountType = .anonymous,
+        recoveryWords: [String]? = nil,
+        completion: @escaping (Result<Void, Error>) -> Void
+    ) {
         let userId = UserIDHelper.generateUserId()
         
         // 🔐 Curve25519 鍵ペアを生成し、秘密鍵をローカル Keychain に保存
         let keypair = try? CryptoKeyManager.shared.getOrCreateKeypair(uid: uid)
         let publicKey = keypair?.publicKeyBase64 ?? "defaultPublicKeyBase64=="
         
-        // 🔐 テナントマスターキー (MK_T) で表示名を暗号化
-        var encryptedName = ""
-        var nameNonce = ""
-        if let enc = try? CryptoKeyManager.shared.encryptWithTenantKey(plainText: displayName, tenantId: tenantId) {
-            encryptedName = enc.encryptedData
-            nameNonce = enc.nonce
+        // 🔐 ふっかつのじゅもんの生成とバックアップ保存
+        if let privKey = keypair?.privateKey {
+            self.backupPrivateKeyWithRecoveryPhrase(uid: uid, privateKey: privKey, words: recoveryWords, completion: nil)
         }
+        
+        // 🔐 表示名を自身の端末 Keychain に安全に保管
+        CryptoKeyManager.shared.saveMyDisplayName(uid: uid, name: displayName)
         
         // 🏷 username 初期値は userId の先頭10文字
         let initialUsername = String(userId.prefix(10))
@@ -194,8 +216,6 @@ public class ChatService: ObservableObject {
             publicKey: publicKey,
             role: .member,
             accountType: accountType,
-            encryptedDisplayName: encryptedName,
-            displayNameNonce: nameNonce,
             username: initialUsername
         )
         
@@ -216,28 +236,297 @@ public class ChatService: ObservableObject {
         }
     }
     
+    // MARK: - Recovery Phrase & Private Key Backup
+    
+    /// 秘密鍵をふっかつのじゅもん（Mnemonic Phrase）で暗号化し、Keychain および Firestore /users/{uid}/private/data に保存する
+    public func backupPrivateKeyWithRecoveryPhrase(
+        uid: String,
+        privateKey: Curve25519.KeyAgreement.PrivateKey,
+        words: [String]? = nil,
+        completion: ((Result<[String], Error>) -> Void)? = nil
+    ) {
+        do {
+            let phrase: [String]
+            if let existingWords = words, MnemonicManager.shared.validateMnemonic(words: existingWords) {
+                phrase = existingWords
+            } else if let savedWords = CryptoKeyManager.shared.getMnemonicPhrase(uid: uid) {
+                phrase = savedWords
+            } else {
+                phrase = try MnemonicManager.shared.generateMnemonic(language: .japanese)
+            }
+            
+            // Keychain に保存
+            try CryptoKeyManager.shared.saveMnemonicPhrase(uid: uid, words: phrase)
+            
+            // 鍵導出 & 秘密鍵暗号化
+            let (_, _, privEncKey, recoveryHash) = try MnemonicManager.shared.deriveKeys(from: phrase)
+            let (ciphertext, nonce) = try MnemonicManager.shared.encryptPrivateKey(privateKey, using: privEncKey)
+            
+            // Firestore /users/{uid}/private/data に保存
+            var privateData = FriendsUserPrivateData()
+            privateData.uid = uid
+            privateData.recoveryHash = recoveryHash
+            privateData.encryptedPrivateKey = ciphertext
+            privateData.nonce = nonce
+            privateData.updatedAt = Google_Protobuf_Timestamp(date: Date())
+            
+            UserRepository.shared.setUserPrivateDataByUid(uid: uid, data: privateData) { result in
+                switch result {
+                case .success:
+                    // 端末復元ボルト (/recovery_vault/{recoveryHash}) にも同時に保存
+                    UserRepository.shared.saveRecoveryVaultRecord(
+                        recoveryHash: recoveryHash,
+                        uid: uid,
+                        encryptedPrivateKey: ciphertext,
+                        nonce: nonce
+                    ) { vaultResult in
+                        switch vaultResult {
+                        case .success:
+                            AppLogger.info("Successfully backed up private key, recovery hash, and vault for uid: \(uid)", category: .crypto)
+                            completion?(.success(phrase))
+                        case .failure(let vaultErr):
+                            AppLogger.warning("Failed to save recovery vault (non-blocking): \(vaultErr)", category: .crypto)
+                            completion?(.success(phrase))
+                        }
+                    }
+                case .failure(let err):
+                    AppLogger.error("Failed to save private data backup to Firestore: \(err)", category: .crypto)
+                    completion?(.failure(err))
+                }
+            }
+        } catch {
+            AppLogger.error("Failed to generate recovery backup: \(error)", category: .crypto)
+            completion?(.failure(error))
+        }
+    }
+    
+    /// ふっかつのじゅもん（Mnemonic Phrase）を強制再作成し、現在の秘密鍵を暗号化してKeychainおよびFirestoreに上書き保存する
+    public func regenerateRecoveryPhrase(
+        completion: @escaping (Result<[String], Error>) -> Void
+    ) {
+        guard let currentUser = currentUser else {
+            completion(.failure(NSError(domain: "ChatService", code: 401, userInfo: [NSLocalizedDescriptionKey: L10n.Error.unknown])))
+            return
+        }
+        let uid = currentUser.uid
+        guard let privKey = CryptoKeyManager.shared.getPrivateKey(uid: uid) else {
+            completion(.failure(NSError(domain: "ChatService", code: 404, userInfo: [NSLocalizedDescriptionKey: L10n.Error.unknown])))
+            return
+        }
+        
+        do {
+            let newPhrase = try MnemonicManager.shared.generateMnemonic(language: .japanese)
+            backupPrivateKeyWithRecoveryPhrase(uid: uid, privateKey: privKey, words: newPhrase) { result in
+                completion(result)
+            }
+        } catch {
+            completion(.failure(error))
+        }
+    }
+    
     // MARK: - Restore with Recovery Phrase
     
     public func restoreWithRecoveryPhrase(words: [String], completion: @escaping (Result<Void, Error>) -> Void) {
-        Auth.auth().signInAnonymously { [weak self] authResult, error in
+        guard MnemonicManager.shared.validateMnemonic(words: words) else {
+            completion(.failure(NSError(domain: "ChatService", code: 400, userInfo: [NSLocalizedDescriptionKey: L10n.Auth.recoveryInvalidPhrase])))
+            return
+        }
+        
+        // 1. もし既にログイン中のユーザーが存在する場合（同一UIDでの鍵復旧）
+        if let currentUser = Auth.auth().currentUser {
+            restoreKeysForAuthenticatedUser(user: currentUser, words: words, completion: completion)
+            return
+        }
+        
+        // 2. 未ログイン状態からの完全復旧（Cloudflare Workers による Custom Token 発行 + 元のアカウントでログイン）
+        guard let baseURL = RecoveryConfig.workersBaseURL else {
+            AppLogger.error("Workers API URL not configured. Tenant QR must be scanned first.", category: .repo)
+            completion(.failure(NSError(domain: "ChatService", code: 400, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Recovery.tenantNotConfigured])))
+            return
+        }
+        
+        do {
+            let (_, _, privEncKey, recoveryHash) = try MnemonicManager.shared.deriveKeys(from: words)
+            
+            // Cloudflare Workers API へリクエスト
+            let url = baseURL.appendingPathComponent("api/v1/auth/recover-anonymous")
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            let requestBody = ["recoveryHash": recoveryHash]
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody, options: [])
+            
+            URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    AppLogger.error("Recovery API request failed: \(error)", category: .repo)
+                    DispatchQueue.main.async {
+                        completion(.failure(error))
+                    }
+                    return
+                }
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    let err = NSError(domain: "ChatService", code: 500, userInfo: [NSLocalizedDescriptionKey: L10n.Error.unknown])
+                    DispatchQueue.main.async { completion(.failure(err)) }
+                    return
+                }
+                
+                guard let data = data else {
+                    let err = NSError(domain: "ChatService", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Recovery.dataNotFound])
+                    DispatchQueue.main.async { completion(.failure(err)) }
+                    return
+                }
+                
+                guard httpResponse.statusCode == 200 else {
+                    let errorMessage: String
+                    if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let msg = json["error"] as? String {
+                        errorMessage = msg
+                    } else if httpResponse.statusCode == 404 {
+                        errorMessage = L10n.Error.Recovery.dataNotFound
+                    } else {
+                        errorMessage = L10n.Error.unknown
+                    }
+                    let err = NSError(domain: "ChatService", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])
+                    DispatchQueue.main.async { completion(.failure(err)) }
+                    return
+                }
+                
+                do {
+                    guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                          let customToken = json["customToken"] as? String,
+                          let recoveredUid = json["uid"] as? String,
+                          let encryptedPrivateKey = json["encryptedPrivateKey"] as? String,
+                          let nonce = json["nonce"] as? String else {
+                        throw NSError(domain: "ChatService", code: 500, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Recovery.dataNotFound])
+                    }
+                    
+                    // 3. 元の UID に対応する Firebase Custom Token でサインイン
+                    Auth.auth().signIn(withCustomToken: customToken) { authResult, signInError in
+                        if let signInError = signInError {
+                            AppLogger.error("Failed to sign in with custom token: \(signInError)", category: .auth)
+                            DispatchQueue.main.async { completion(.failure(signInError)) }
+                            return
+                        }
+                        
+                        do {
+                            // 4. 暗号化秘密鍵の復号
+                            let restoredPrivateKey = try MnemonicManager.shared.decryptPrivateKey(
+                                ciphertext: encryptedPrivateKey,
+                                nonce: nonce,
+                                using: privEncKey
+                            )
+                            
+                            // 5. ローカル Keychain への保存
+                            try CryptoKeyManager.shared.savePrivateKey(uid: recoveredUid, privateKey: restoredPrivateKey)
+                            try CryptoKeyManager.shared.saveMnemonicPhrase(uid: recoveredUid, words: words)
+                            
+                            // 6. テナントプロファイル読込とリスナー再接続
+                            self.fetchDefaultTenant { tenantResult in
+                                switch tenantResult {
+                                case .success(let tenant):
+                                    DispatchQueue.main.async {
+                                        self.currentTenant = tenant
+                                        self.loadUserProfile(uid: recoveredUid, tenantId: tenant.tenantID)
+                                        completion(.success(()))
+                                    }
+                                case .failure:
+                                    DispatchQueue.main.async {
+                                        self.loadUserProfile(uid: recoveredUid, tenantId: PresetTenantConfig.tenantId)
+                                        completion(.success(()))
+                                    }
+                                }
+                            }
+                        } catch {
+                            AppLogger.error("Failed to decrypt restored private key: \(error)", category: .crypto)
+                            DispatchQueue.main.async { completion(.failure(error)) }
+                        }
+                    }
+                } catch {
+                    AppLogger.error("Failed to parse recovery response: \(error)", category: .crypto)
+                    DispatchQueue.main.async { completion(.failure(error)) }
+                }
+            }.resume()
+        } catch {
+            AppLogger.error("Failed to derive recovery keys: \(error)", category: .crypto)
+            completion(.failure(error))
+        }
+    }
+    
+    private func restoreKeysForAuthenticatedUser(user: FirebaseAuth.User, words: [String], completion: @escaping (Result<Void, Error>) -> Void) {
+        UserRepository.shared.getUserPrivateDataByUid(uid: user.uid) { [weak self] result in
             guard let self = self else { return }
-            if let error = error {
-                completion(.failure(error))
-                return
+            switch result {
+            case .success(let privateData):
+                do {
+                    let (_, _, privEncKey, recoveryHash) = try MnemonicManager.shared.deriveKeys(from: words)
+                    if !privateData.recoveryHash.isEmpty && privateData.recoveryHash != recoveryHash {
+                        let err = NSError(domain: "ChatService", code: 400, userInfo: [NSLocalizedDescriptionKey: L10n.Auth.recoveryInvalidPhrase])
+                        DispatchQueue.main.async { completion(.failure(err)) }
+                        return
+                    }
+                    let restoredPrivateKey = try MnemonicManager.shared.decryptPrivateKey(
+                        ciphertext: privateData.encryptedPrivateKey,
+                        nonce: privateData.nonce,
+                        using: privEncKey
+                    )
+                    
+                    // ローカル Keychain に保存
+                    try CryptoKeyManager.shared.savePrivateKey(uid: user.uid, privateKey: restoredPrivateKey)
+                    try CryptoKeyManager.shared.saveMnemonicPhrase(uid: user.uid, words: words)
+                    
+                    let tenantId = self.currentTenant?.tenantID ?? PresetTenantConfig.tenantId
+                    DispatchQueue.main.async {
+                        self.loadUserProfile(uid: user.uid, tenantId: tenantId)
+                        completion(.success(()))
+                    }
+                } catch {
+                    DispatchQueue.main.async { completion(.failure(error)) }
+                }
+            case .failure(let err):
+                DispatchQueue.main.async { completion(.failure(err)) }
             }
+        }
+    }
+    
+    // MARK: - Security Reset (Key Rotation & Backup Update)
+    
+    /// セキュリティリセット: 端末の鍵ペアを再生成し、公開鍵を更新した上で既存の「ふっかつのじゅもん」でバックアップを再暗号化更新する
+    public func performSecurityReset(completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let currentUser = currentUser, let authUid = Auth.auth().currentUser?.uid else {
+            completion(.failure(NSError(domain: "ChatService", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])))
+            return
+        }
+        
+        do {
+            // 1. 秘密鍵の再生成
+            let newPrivateKey = Curve25519.KeyAgreement.PrivateKey()
+            let newPublicKeyBase64 = newPrivateKey.publicKey.rawRepresentation.base64EncodedString()
+            try CryptoKeyManager.shared.savePrivateKey(uid: authUid, privateKey: newPrivateKey)
             
-            guard let user = authResult?.user else { return }
+            // 2. プロファイルの公開鍵更新
+            var updatedProfile = currentUser
+            updatedProfile.publicKey = newPublicKeyBase64
             
-            self.fetchDefaultTenant { tenantResult in
-                switch tenantResult {
-                case .success(let tenant):
-                    DispatchQueue.main.async { self.currentTenant = tenant }
-                    let recoveredName = "復元ユーザー (\(words.first ?? "ゲスト"))"
-                    self.createAndSaveUserProfile(uid: user.uid, tenantId: tenant.tenantID, displayName: recoveredName, completion: completion)
-                case .failure(let err):
-                    completion(.failure(err))
+            let tenantId = currentUser.tenantID
+            UserRepository.shared.createOrUpdateUserProfile(tenantId: tenantId, user: updatedProfile) { [weak self] result in
+                guard let self = self else { return }
+                switch result {
+                case .success:
+                    DispatchQueue.main.async {
+                        self.currentUser = updatedProfile
+                    }
+                    // 3. ふっかつのじゅもんによる暗号化バックアップを自動更新
+                    self.backupPrivateKeyWithRecoveryPhrase(uid: authUid, privateKey: newPrivateKey) { _ in }
+                    completion(.success(()))
+                case .failure(let error):
+                    completion(.failure(error))
                 }
             }
+        } catch {
+            completion(.failure(error))
         }
     }
     
@@ -257,6 +546,11 @@ public class ChatService: ObservableObject {
                     UserRepository.shared.createOrUpdateUserProfile(tenantId: tenantId, user: profile) { _ in }
                 }
                 
+                // 🔐 自身の表示名を端末 Keychain から復元
+                if let savedName = CryptoKeyManager.shared.getMyDisplayName(uid: uid), !savedName.isEmpty {
+                    profile.displayName = savedName
+                }
+                
                 DispatchQueue.main.async {
                     self.currentUser = profile
                     self.authStatus = .authenticated
@@ -264,23 +558,8 @@ public class ChatService: ObservableObject {
                     self.watchFriends()
                 }
             case .failure:
-                // uid で見つからない場合は従来の u_prefix(8) もフォールバック確認
-                let legacyUserId = "u_\(uid.prefix(8))"
-                UserRepository.shared.getUserProfileByUserId(tenantId: tenantId, userId: legacyUserId) { [weak self] legacyResult in
-                    guard let self = self else { return }
-                    switch legacyResult {
-                    case .success(let userProfile):
-                        DispatchQueue.main.async {
-                            self.currentUser = userProfile
-                            self.authStatus = .authenticated
-                            self.watchChats()
-                            self.watchFriends()
-                        }
-                    case .failure:
-                        DispatchQueue.main.async {
-                            self.authStatus = .unauthenticated
-                        }
-                    }
+                DispatchQueue.main.async {
+                    self.authStatus = .unauthenticated
                 }
             }
         }
@@ -332,7 +611,7 @@ public class ChatService: ObservableObject {
         let userId = user.userID
         
         friendListener?.remove()
-        friendListener = FriendRepository.shared.watchFriendsByUserId(tenantId: tenantId, userId: userId) { [weak self] loadedFriends in
+        friendListener = FriendRepository.shared.watchFriendsByUserId(tenantId: tenantId, userId: userId, myUid: user.uid) { [weak self] loadedFriends in
             guard let self = self else { return }
             DispatchQueue.main.async {
                 self.friends = loadedFriends
@@ -446,12 +725,9 @@ public class ChatService: ObservableObject {
                 }
                 
                 let targetUid = data["uid"] as? String ?? ""
-                var targetDisplayName = data["displayName"] as? String ?? "ユーザー"
-                if let encName = data["encryptedDisplayName"] as? String,
-                   let nonce = data["displayNameNonce"] as? String,
-                   let decrypted = try? CryptoKeyManager.shared.decryptWithTenantKey(encryptedData: encName, nonce: nonce, tenantId: tenant.tenantID) {
-                    targetDisplayName = decrypted
-                }
+                let targetUsername = data["username"] as? String ?? cleanUserId
+                // 初期表示名は公開ハンドル名（username）を使用（最新の表示名は成立後のE2EEメッセージで伝播）
+                let targetDisplayName = targetUsername
                 let targetPublicKey = data["publicKey"] as? String ?? ""
                 
                 guard !targetUid.isEmpty else {
@@ -524,6 +800,44 @@ public class ChatService: ObservableObject {
                 break
             }
             completion(result)
+        }
+    }
+    
+    /// 友達のカスタム表示名を自身の秘密鍵 (Personal Key) で暗号化して更新する
+    public func updateFriendDisplayName(
+        friendUserId: String,
+        newDisplayName: String,
+        completion: @escaping (Result<Void, Error>) -> Void
+    ) {
+        guard let tenant = currentTenant, let user = currentUser else {
+            completion(.failure(NSError(domain: "ChatError", code: 401, userInfo: [NSLocalizedDescriptionKey: "Authentication required"])))
+            return
+        }
+        let trimmed = newDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            completion(.failure(NSError(domain: "ChatError", code: 400, userInfo: [NSLocalizedDescriptionKey: "Display name cannot be empty"])))
+            return
+        }
+        
+        FriendRepository.shared.updateFriendDisplayName(
+            tenantId: tenant.tenantID,
+            userId: user.userID,
+            uid: user.uid,
+            friendUserId: friendUserId,
+            newDisplayName: trimmed
+        ) { [weak self] result in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                if case .success = result {
+                    // ローカルの friends 配列の表示名を即時更新
+                    if let idx = self.friends.firstIndex(where: { $0.userID == friendUserId }) {
+                        var updated = self.friends[idx]
+                        updated.displayName = trimmed
+                        self.friends[idx] = updated
+                    }
+                }
+                completion(result)
+            }
         }
     }
     
@@ -658,6 +972,11 @@ public class ChatService: ObservableObject {
         let targetLimit = limit ?? messageLimits[chatId] ?? 30
         messageLimits[chatId] = targetLimit
         
+        // 1:1 DM チャットの場合、親ドキュメントが未作成なら初期化を試みる
+        if chatId.hasPrefix("dm_"), let currentUserId = currentUser?.userID {
+            ChatRepository.shared.ensureDirectChat(tenantId: tenantId, chatId: chatId, currentUserId: currentUserId)
+        }
+        
         // 既存リスナーの安全な差し替え
         if limit != nil || messageListeners[chatId] == nil {
             messageListeners[chatId]?.remove()
@@ -670,6 +989,17 @@ public class ChatService: ObservableObject {
                 let currentMessageIds = Set(rawMessages.map { $0.messageID })
                 self.knownMessageIds[chatId] = currentMessageIds
                 
+                if rawMessages.isEmpty {
+                    DispatchQueue.main.async {
+                        if self.messages[chatId]?.isEmpty ?? true {
+                            self.messages[chatId] = []
+                        }
+                        self.hasMoreMessages[chatId] = false
+                        self.isLoadingMoreMessages[chatId] = false
+                    }
+                    return
+                }
+                
                 DispatchQueue.main.async {
                     self.hasMoreMessages[chatId] = (rawMessages.count >= targetLimit)
                     self.isLoadingMoreMessages[chatId] = false
@@ -677,7 +1007,8 @@ public class ChatService: ObservableObject {
                 
                 let getKeyHandler: (@escaping (SymmetricKey?) -> Void) -> Void = { handler in
                     if chatId.hasPrefix("gm_") {
-                        self.getGroupSessionKey(chatId: chatId, tenantId: tenantId, completion: handler)
+                        let targetKeyVersion = rawMessages.last?.keyVersion ?? "v_1"
+                        self.getGroupSessionKey(chatId: chatId, tenantId: tenantId, keyVersion: targetKeyVersion, completion: handler)
                     } else {
                         self.getDirectSessionKey(chatId: chatId, tenantId: tenantId, completion: handler)
                     }
@@ -691,9 +1022,18 @@ public class ChatService: ObservableObject {
                         let ciphertext = msg.encryptedPayload.ciphertext
                         let nonce = msg.encryptedPayload.nonce
                         
+                        // メッセージの keyVersion に応じた会話鍵を探索
+                        var effectiveKey = sessionKey
+                        if chatId.hasPrefix("gm_") && !msg.keyVersion.isEmpty {
+                            let msgCacheKey = "\(chatId)_\(msg.keyVersion)"
+                            if let cachedKey = self.groupSessionKeys[msgCacheKey] {
+                                effectiveKey = cachedKey
+                            }
+                        }
+                        
                         // 端末内ローカル復号 (E2EE)
                         var decryptedText = ""
-                        if let key = sessionKey, !ciphertext.isEmpty, !nonce.isEmpty {
+                        if let key = effectiveKey, !ciphertext.isEmpty, !nonce.isEmpty {
                             if let dec = try? CryptoKeyManager.shared.decryptDirectMessage(ciphertext: ciphertext, nonce: nonce, sessionKey: key) {
                                 decryptedText = dec
                             } else if let decWithTenant = try? CryptoKeyManager.shared.decryptWithTenantKey(encryptedData: ciphertext, nonce: nonce, tenantId: tenantId) {
@@ -705,13 +1045,15 @@ public class ChatService: ObservableObject {
                             }
                         }
                         
-                        // 送信者名の解決 (ローカルのユーザー/友達キャッシュから解決)
+                        // 送信者名の解決 (自分 -> 友達キャッシュ -> グループメンバーキャッシュ)
                         var senderDisplayName = "送信者"
                         let isFromMe = (msg.senderID == self.currentUser?.uid || msg.senderID == self.currentUser?.userID)
                         if isFromMe {
                             senderDisplayName = self.currentUser?.displayName ?? "自分"
                         } else if let friend = self.friends.first(where: { $0.uid == msg.senderID || $0.userID == msg.senderID }) {
                             senderDisplayName = friend.displayName
+                        } else if let member = self.userProfile(for: msg.senderID) {
+                            senderDisplayName = member.displayName
                         }
                         
                         let myReaction = self.userReactions["\(chatId)_\(msg.messageID)"]
@@ -754,6 +1096,41 @@ public class ChatService: ObservableObject {
                                                 }
                                                 if changed {
                                                     self.friends[idx] = updated
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                // グループメンバー（友達未登録）のプロファイルオンデマンド取得
+                                FriendRepository.shared.listFriendsProfilesByUserIds(tenantId: tenantId, friendUserIds: [senderId]) { res in
+                                    if case .success(let map) = res, let info = map[senderId] {
+                                        DispatchQueue.main.async {
+                                            var profileObj = FriendsPublicUserProfile()
+                                            profileObj.userID = senderId
+                                            profileObj.uid = senderId
+                                            profileObj.tenantID = tenantId
+                                            profileObj.displayName = info.displayName.isEmpty ? senderId : info.displayName
+                                            profileObj.role = .member
+                                            profileObj.accountType = .persistent
+                                            profileObj.avatarNonce = info.avatarNonce
+                                            if let date = info.avatarUpdatedAt {
+                                                profileObj.avatarUpdatedAt = Google_Protobuf_Timestamp(date: date)
+                                            }
+                                            profileObj.username = info.username
+                                            
+                                            self.groupMemberProfiles[senderId] = profileObj
+                                            if let currentMsgs = self.messages[chatId] {
+                                                var updatedMsgs = currentMsgs
+                                                var modified = false
+                                                for i in 0..<updatedMsgs.count {
+                                                    if updatedMsgs[i].senderID == senderId && (updatedMsgs[i].senderName == "送信者" || updatedMsgs[i].senderName.isEmpty) {
+                                                        updatedMsgs[i].senderName = info.displayName
+                                                        modified = true
+                                                    }
+                                                }
+                                                if modified {
+                                                    self.messages[chatId] = updatedMsgs
                                                 }
                                             }
                                         }
@@ -814,7 +1191,7 @@ public class ChatService: ObservableObject {
     
     /// 過去メッセージのオンデマンド遡りロード (+30件)
     public func loadMoreMessages(chatId: String) {
-        guard hasMoreMessages[chatId] != false else { return }
+        guard hasMoreMessages[chatId] == true else { return }
         guard isLoadingMoreMessages[chatId] != true else { return }
         
         let currentLimit = messageLimits[chatId] ?? 30
@@ -900,11 +1277,36 @@ public class ChatService: ObservableObject {
                 createdAt: Date()
             )
             
-            MessageRepository.shared.createMessage(tenantId: tenantId, chatId: chatId, message: pbMsg, members: members) { result in
+            let decryptedMsg = DecryptedMessage(
+                message: pbMsg,
+                senderName: user.displayName,
+                decryptedText: trimmed,
+                myReaction: nil
+            )
+            
+            MessageRepository.shared.createMessage(tenantId: tenantId, chatId: chatId, message: pbMsg, members: members) { [weak self] result in
+                guard let self = self else { return }
                 switch result {
                 case .failure(let err):
                     completion?(.failure(err))
                 case .success:
+                    DispatchQueue.main.async {
+                        var list = self.messages[chatId] ?? []
+                        if !list.contains(where: { $0.id == decryptedMsg.id }) {
+                            list.append(decryptedMsg)
+                            self.messages[chatId] = list
+                        }
+                        if let chatIdx = self.chats.firstIndex(where: { $0.chatID == chatId }) {
+                            let oldChat = self.chats[chatIdx]
+                            self.chats[chatIdx] = FriendsChatUIModel(
+                                chat: oldChat.chat,
+                                title: oldChat.title,
+                                lastMessage: trimmed,
+                                lastMessageAt: pbMsg.createdDate,
+                                unreadCount: oldChat.unreadCount
+                            )
+                        }
+                    }
                     completion?(.success(()))
                 }
             }
@@ -921,35 +1323,19 @@ public class ChatService: ObservableObject {
             return
         }
         
-        guard let tenant = currentTenant, var user = currentUser else {
+        guard let _ = currentTenant, var user = currentUser else {
             completion(.failure(NSError(domain: "ProfileError", code: 401, userInfo: [NSLocalizedDescriptionKey: L10n.Error.unknown])))
             return
         }
         
-        let tenantId = tenant.tenantID
-        let userId = user.userID
+        // 1. 自身の端末 Keychain に安全に保管
+        CryptoKeyManager.shared.saveMyDisplayName(uid: user.uid, name: cleanName)
         
-        // 1. Encrypt new display name using Tenant Master Key (MK_T)
-        var encryptedName = ""
-        var nameNonce = ""
-        if let enc = try? CryptoKeyManager.shared.encryptWithTenantKey(plainText: cleanName, tenantId: tenantId) {
-            encryptedName = enc.encryptedData
-            nameNonce = enc.nonce
-        }
-        
-        UserRepository.shared.patchDisplayNameByUserId(tenantId: tenantId, userId: userId, encryptedDisplayName: encryptedName, nonce: nameNonce) { errorResult in
-            if case .failure(let err) = errorResult {
-                completion(.failure(err))
-                return
-            }
-            
-            DispatchQueue.main.async {
-                user.displayName = cleanName
-                user.encryptedDisplayName = encryptedName
-                user.displayNameNonce = nameNonce
-                self.currentUser = user
-                completion(.success(()))
-            }
+        // 2. メモリ上の現在のユーザー表示名を更新（友達への最新表示名伝播はE2EEメッセージ経由）
+        DispatchQueue.main.async {
+            user.displayName = cleanName
+            self.currentUser = user
+            completion(.success(()))
         }
     }
     
@@ -1063,6 +1449,94 @@ public class ChatService: ObservableObject {
                 }
             } else {
                 completion?()
+            }
+        }
+    }
+
+    // MARK: - Group Chats Pull-to-Refresh & Synchronization (GP-08)
+    
+    /// かいぎ一覧の同期・全参加メンバープロファイル一括取得 (GP-08)
+    func listGroupChats(force: Bool = false, completion: (() -> Void)? = nil) {
+        guard let tenant = currentTenant, let user = currentUser else {
+            completion?()
+            return
+        }
+        let tenantId = tenant.tenantID
+        let userId = user.userID
+        
+        // 1. チャット一覧を再フェッチ
+        ChatRepository.shared.listChatsByUserId(tenantId: tenantId, userId: userId) { [weak self] result in
+            guard let self = self else {
+                completion?()
+                return
+            }
+            
+            switch result {
+            case .success(let fetchedChats):
+                DispatchQueue.main.async {
+                    self.chats = fetchedChats
+                }
+                
+                // 2. 参加中グループチャットの全メンバーIDを収集
+                var allMemberIds = Set<String>()
+                for chat in fetchedChats where chat.chatType == .group {
+                    for memberId in chat.chat.members {
+                        if memberId != userId && memberId != user.uid {
+                            allMemberIds.insert(memberId)
+                        }
+                    }
+                }
+                
+                // 3. 友達一覧のプロファイルも並行更新
+                self.listFriendsProfiles(force: true)
+                
+                // 4. グループ参加メンバーのプロファイルを一括取得してキャッシュ更新
+                if !allMemberIds.isEmpty {
+                    FriendRepository.shared.listFriendsProfilesByUserIds(tenantId: tenantId, friendUserIds: Array(allMemberIds)) { profileResult in
+                        DispatchQueue.main.async {
+                            if case .success(let profileMap) = profileResult {
+                                for (uid, profile) in profileMap {
+                                    var profileObj = FriendsPublicUserProfile()
+                                    profileObj.userID = uid
+                                    profileObj.uid = uid
+                                    profileObj.tenantID = tenantId
+                                    profileObj.displayName = profile.displayName.isEmpty ? uid : profile.displayName
+                                    profileObj.role = .member
+                                    profileObj.accountType = .persistent
+                                    profileObj.avatarNonce = profile.avatarNonce
+                                    if let date = profile.avatarUpdatedAt {
+                                        profileObj.avatarUpdatedAt = Google_Protobuf_Timestamp(date: date)
+                                    }
+                                    profileObj.username = profile.username
+                                    
+                                    self.groupMemberProfiles[uid] = profileObj
+                                }
+                            }
+                            
+                            // 5. 各グループの最新メッセージリスナーを再確認
+                            for chat in fetchedChats where chat.chatType == .group {
+                                self.watchMessages(chatId: chat.chatID)
+                                self.watchReadReceipts(chatId: chat.chatID)
+                            }
+                            completion?()
+                        }
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        // グループメッセージのリスナー再確認
+                        for chat in fetchedChats where chat.chatType == .group {
+                            self.watchMessages(chatId: chat.chatID)
+                            self.watchReadReceipts(chatId: chat.chatID)
+                        }
+                        completion?()
+                    }
+                }
+                
+            case .failure(let error):
+                AppLogger.error("Failed to refresh group chats: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    completion?()
+                }
             }
         }
     }
@@ -1317,13 +1791,23 @@ public class ChatService: ObservableObject {
                     encryptedGroupKeys: encryptedKeys,
                     createdBy: currentUser.userID
                 ) { _ in
+                    var initialRoles: [String: FriendsGroupMemberRole] = [:]
+                    for m in allMembers {
+                        initialRoles[m] = (m == currentUser.userID) ? .owner : .member
+                    }
+                    
                     let pbChat = FriendsChat(
                         chatID: chatId,
                         tenantID: tenantId,
                         chatType: .group,
                         members: allMembers,
+                        title: title,
+                        createdBy: currentUser.userID,
                         createdAt: Date(),
-                        updatedAt: Date()
+                        updatedBy: currentUser.userID,
+                        updatedAt: Date(),
+                        memberRoles: initialRoles,
+                        isDeleted: false
                     )
                     let uiChat = FriendsChatUIModel(
                         chat: pbChat,
@@ -1340,6 +1824,253 @@ public class ChatService: ObservableObject {
                     }
                     completion(.success(uiChat))
                 }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+    
+    /// グループ削除 (GP-03: オーナー/管理者による2段階確認後の削除実行)
+    func deleteGroup(chatId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let tenant = currentTenant, let currentUser = currentUser else {
+            completion(.failure(NSError(domain: "ChatService", code: 401, userInfo: [NSLocalizedDescriptionKey: L10n.Error.unknown])))
+            return
+        }
+        
+        ChatRepository.shared.deleteGroupChat(
+            tenantId: tenant.tenantID,
+            chatId: chatId,
+            deletedBy: currentUser.userID
+        ) { [weak self] result in
+            guard let self = self else { return }
+            if case .success = result {
+                DispatchQueue.main.async {
+                    self.chats.removeAll(where: { $0.chatID == chatId })
+                    self.messages.removeValue(forKey: chatId)
+                    self.messageListeners[chatId]?.remove()
+                    self.messageListeners.removeValue(forKey: chatId)
+                }
+            }
+            completion(result)
+        }
+    }
+    
+    /// 管理者任命 (GP-04)
+    func assignAdmin(chatId: String, targetUserId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let tenant = currentTenant, let currentUser = currentUser else {
+            completion(.failure(NSError(domain: "ChatService", code: 401, userInfo: [NSLocalizedDescriptionKey: L10n.Error.unknown])))
+            return
+        }
+        
+        ChatRepository.shared.assignAdmin(
+            tenantId: tenant.tenantID,
+            chatId: chatId,
+            targetUserId: targetUserId,
+            updatedBy: currentUser.userID,
+            completion: completion
+        )
+    }
+    
+    /// 立候補型オーナー交代 (GP-05)
+    func claimOwnership(chatId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let tenant = currentTenant, let currentUser = currentUser else {
+            completion(.failure(NSError(domain: "ChatService", code: 401, userInfo: [NSLocalizedDescriptionKey: L10n.Error.unknown])))
+            return
+        }
+        
+        let currentChat = chats.first(where: { $0.chatID == chatId })
+        let oldOwnerId = currentChat?.ownerUserId
+        
+        ChatRepository.shared.claimOwnership(
+            tenantId: tenant.tenantID,
+            chatId: chatId,
+            newOwnerId: currentUser.userID,
+            oldOwnerId: oldOwnerId,
+            completion: completion
+        )
+    }
+    
+    /// メンバー除外 / キック (GP-06)
+    func kickMember(chatId: String, targetUserId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let tenant = currentTenant, let currentUser = currentUser else {
+            completion(.failure(NSError(domain: "ChatService", code: 401, userInfo: [NSLocalizedDescriptionKey: L10n.Error.unknown])))
+            return
+        }
+        
+        ChatRepository.shared.removeGroupMember(
+            tenantId: tenant.tenantID,
+            chatId: chatId,
+            targetUserId: targetUserId,
+            updatedBy: currentUser.userID,
+            completion: completion
+        )
+    }
+    
+    /// グループ名変更 (GP-07)
+    func updateGroupTitle(chatId: String, newTitle: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let tenant = currentTenant, let currentUser = currentUser else {
+            completion(.failure(NSError(domain: "ChatService", code: 401, userInfo: [NSLocalizedDescriptionKey: L10n.Error.unknown])))
+            return
+        }
+        
+        ChatRepository.shared.updateGroupTitle(
+            tenantId: tenant.tenantID,
+            chatId: chatId,
+            newTitle: newTitle,
+            updatedBy: currentUser.userID
+        ) { [weak self] result in
+            guard let self = self else { return }
+            if case .success = result {
+                DispatchQueue.main.async {
+                    if let idx = self.chats.firstIndex(where: { $0.chatID == chatId }) {
+                        let old = self.chats[idx]
+                        var updatedChat = old.chat
+                        updatedChat.title = newTitle
+                        self.chats[idx] = FriendsChatUIModel(
+                            chat: updatedChat,
+                            title: newTitle,
+                            lastMessage: old.lastMessage,
+                            lastMessageAt: old.lastMessageAt,
+                            unreadCount: old.unreadCount
+                        )
+                    }
+                }
+            }
+            completion(result)
+        }
+    }
+    
+    /// グループに新しいメンバーを追加 (GP-08)
+    func addMembersToGroup(chatId: String, newMemberUserIds: [String], completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let tenant = currentTenant, let currentUser = currentUser else {
+            completion(.failure(NSError(domain: "ChatService", code: 401, userInfo: [NSLocalizedDescriptionKey: L10n.Error.unknown])))
+            return
+        }
+        
+        let tenantId = tenant.tenantID
+        let keyVersion = "v_1"
+        
+        getGroupSessionKey(chatId: chatId, tenantId: tenantId, keyVersion: keyVersion) { [weak self] resolvedGroupKey in
+            guard let self = self else { return }
+            guard let groupKey = resolvedGroupKey else {
+                completion(.failure(NSError(domain: "ChatService", code: 500, userInfo: [NSLocalizedDescriptionKey: L10n.Error.unknown])))
+                return
+            }
+            
+            var newMemberPubKeys: [String: String] = [:]
+            for mId in newMemberUserIds {
+                if let f = self.friends.first(where: { $0.userID == mId }), !f.publicKey.isEmpty {
+                    newMemberPubKeys[mId] = f.publicKey
+                }
+            }
+            
+            let newEncryptedKeys = (try? CryptoKeyManager.shared.encryptGroupKeyForMembers(
+                groupKey: groupKey,
+                myUid: currentUser.uid,
+                memberPublicKeys: newMemberPubKeys,
+                tenantId: tenantId
+            )) ?? [:]
+            
+            // 2. KeyBucket に新規メンバー用暗号化鍵を追加保存
+            KeyBucketRepository.shared.saveKeyBucket(
+                tenantId: tenantId,
+                chatId: chatId,
+                keyVersion: keyVersion,
+                encryptedGroupKeys: newEncryptedKeys,
+                createdBy: currentUser.userID
+            ) { _ in
+            // 3. Firestore の chats ドキュメントにメンバーを追加
+            ChatRepository.shared.addGroupMembers(
+                tenantId: tenantId,
+                chatId: chatId,
+                newMemberUserIds: newMemberUserIds,
+                updatedBy: currentUser.userID
+            ) { [weak self] result in
+                guard let self = self else { return }
+                if case .success = result {
+                    DispatchQueue.main.async {
+                        if let idx = self.chats.firstIndex(where: { $0.chatID == chatId }) {
+                            let old = self.chats[idx]
+                            var updatedChat = old.chat
+                            for m in newMemberUserIds {
+                                if !updatedChat.members.contains(m) {
+                                    updatedChat.members.append(m)
+                                }
+                                updatedChat.memberRoles[m] = .member
+                            }
+                            self.chats[idx] = FriendsChatUIModel(
+                                chat: updatedChat,
+                                title: old.title,
+                                lastMessage: old.lastMessage,
+                                lastMessageAt: old.lastMessageAt,
+                                unreadCount: old.unreadCount,
+                                avatarNonce: old.avatarNonce,
+                                avatarUpdatedAt: old.avatarUpdatedAt
+                            )
+                        }
+                    }
+                }
+                completion(result)
+            }
+        }
+        }
+    }
+    
+    /// グループアバターの更新 (GP-09)
+    func updateGroupAvatar(chatId: String, image: UIImage, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let tenant = currentTenant, let currentUser = currentUser else {
+            completion(.failure(NSError(domain: "ChatService", code: 401, userInfo: [NSLocalizedDescriptionKey: L10n.Error.unknown])))
+            return
+        }
+        
+        AvatarRepository.shared.uploadGroupAvatar(
+            tenantId: tenant.tenantID,
+            chatId: chatId,
+            image: image,
+            updatedBy: currentUser.userID
+        ) { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .success(let (updatedAt, nonce)):
+                DispatchQueue.main.async {
+                    if let idx = self.chats.firstIndex(where: { $0.chatID == chatId }) {
+                        var model = self.chats[idx]
+                        model.avatarNonce = nonce
+                        model.avatarUpdatedAt = updatedAt
+                        self.chats[idx] = model
+                    }
+                }
+                completion(.success(()))
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+    
+    /// グループアバターの削除 (GP-10)
+    func deleteGroupAvatar(chatId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let tenant = currentTenant, let currentUser = currentUser else {
+            completion(.failure(NSError(domain: "ChatService", code: 401, userInfo: [NSLocalizedDescriptionKey: L10n.Error.unknown])))
+            return
+        }
+        
+        AvatarRepository.shared.deleteGroupAvatar(
+            tenantId: tenant.tenantID,
+            chatId: chatId,
+            updatedBy: currentUser.userID
+        ) { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .success:
+                DispatchQueue.main.async {
+                    if let idx = self.chats.firstIndex(where: { $0.chatID == chatId }) {
+                        var model = self.chats[idx]
+                        model.avatarNonce = ""
+                        model.avatarUpdatedAt = nil
+                        self.chats[idx] = model
+                    }
+                }
+                completion(.success(()))
             case .failure(let error):
                 completion(.failure(error))
             }

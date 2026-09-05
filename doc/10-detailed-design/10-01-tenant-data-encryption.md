@@ -15,12 +15,13 @@ Cloud Firestore 上に保存されるデータのうち、テナント組織内�
 | カテゴリ | フィールド名 | 保管形式 | 理由 / 役割 |
 |:---|:---|:---|:---|
 | **暗号化対象** ($MK_T$) | `tenantName` (テナント表示名) | **AES-256-GCM 暗号化** (`encryptedTenantName`, `nonce`) | 組織・企業名をクラウド上で秘匿 |
-| **暗号化対象** ($MK_T$) | `displayName` (表示名) | **AES-256-GCM 暗号化** (`encryptedDisplayName`, `nonce`) | ユーザー個人の氏名・ニックネームをクラウド上で秘匿 |
+| **暗号化対象** ($MK_u$) | `friendDisplayName` (友達表示名) | **AES-256-GCM 暗号化** (`encryptedFriendDisplayName`, `friendDisplayNameNonce`) | 友達サブコレクション内の表示名を本人の秘密鍵（$SK_u$）導出鍵（$MK_u$）で秘匿（他者・管理者への平文秘匿） |
+| **E2EE伝播** ($SK_{direct}$) | `displayName` (本人表示名) | **X25519 E2EE 暗号化** (チャット/友達サブコレクション経由) | 公開プロファイルへの暗号化保存は全廃。友達追加成立後に 1:1 E2EE セッション鍵で相手に安全に伝播 |
 | **暗号化対象** ($MK_T$) | `groupName` (グループ名) | **AES-256-GCM 暗号化** (`encryptedGroupName`, `nonce`) | 組織内の機密プロジェクト名・部署名を秘匿 |
 | **暗号化対象** ($MK_T$) | `description` (グループ説明) | **AES-256-GCM 暗号化** (`encryptedDescription`, `nonce`) | 組織内の業務詳細・説明を秘匿 |
 | **暗号化対象** ($MK_T$) | カスタムステータス・アバターURL | **AES-256-GCM 暗号化** | プライベートなプロファイルメタデータを秘匿 |
 | **平文保持** | `tenantId`, `tenantCode` | **平文** | ルーティング、ドキュメントパス、Firestore クエリに必須 |
-| **平文保持** | `userId`, `uid`, `groupId`, `chatId` | **平文** | ルーティング、ドキュメントパス、Firestore クエリに必須 |
+| **平文保持** | `userId`, `uid`, `username`, `groupId`, `chatId` | **平文** | ルーティング、ドキュメントパス、Firestore クエリに必須 |
 | **平文保持** | `publicKey` (X25519 Base64) | **平文** | ユーザー公開鍵（$PK_u$）。E2EE メッセージ通信および友達追加時の ECDH 鍵導出に必須（※テナント鍵は保持しない） |
 | **平文保持** | `role`, `accountType`, `isDefaultTenant` | **平文** | Firestore セキュリティルール（認可・アクセス制御）での判定に必須 |
 | **平文保持** | `createdAt`, `updatedAt` | **平文** | Firestore 上でのタイムスタンプソートおよび同期クエリに必須 |
@@ -80,14 +81,32 @@ $MK_T$ は端末のセキュア領域（iOS Keychain）に保管され、サー�
   "userId": "u_12345678",
   "uid": "firebase_auth_uid_abc",
   "tenantId": "t_kanto_corp",
-  "encryptedDisplayName": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA...",
-  "displayNameNonce": "MDEyMzQ1Njc4OWFi",
+  "username": "alice",
   "publicKey": "dGVzdFB1YmxpY0tleU1vY2szMmJ5dGVzQmFzZTY0PT0=",
   "role": 1,
   "accountType": 1,
   "updatedAt": "2026-08-27T00:00:00Z"
 }
 ```
+
+### 3.1.1 友達サブコレクション (`/tenants/{tenantId}/users/{userId}/friends/{friendUserId}`)
+
+```json
+{
+  "friendUserId": "u_87654321",
+  "friendUsername": "alice",
+  "encryptedFriendDisplayName": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA...",
+  "friendDisplayNameNonce": "MDEyMzQ1Njc4OWFi",
+  "friendPublicKey": "dGVzdFB1YmxpY0tleU1vY2szMmJ5dGVzQmFzZTY0PT0=",
+  "tenantId": "t_kanto_corp",
+  "createdBy": "u_12345678",
+  "createdAt": "2026-08-27T00:00:00Z",
+  "updatedBy": "u_12345678",
+  "updatedAt": "2026-08-27T00:00:00Z"
+}
+```
+> [!IMPORTANT]
+> 友達の氏名・ニックネーム等の表示名はクラウドDB上に平文（`friendDisplayName`）として一切保管してはならず、必ず $MK_T$ による暗号化フィールド（`encryptedFriendDisplayName`, `friendDisplayNameNonce`）のみを書き込みます。
 
 ### 3.2 チャット/グループ情報 (`/tenants/{tenantId}/chats/{chatId}`)
 

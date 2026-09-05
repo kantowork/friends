@@ -16,6 +16,9 @@ packages:
   Base58Swift:
     url: https://github.com/keefertaylor/Base58Swift.git
     from: 2.1.0
+  SwiftMnemonic:
+    url: https://github.com/Kingpin-Apps/swift-mnemonic.git
+    from: 0.2.5
 
 targets:
   Friends:
@@ -35,6 +38,8 @@ targets:
         product: ULID
       - package: Base58Swift
         product: Base58Swift
+      - package: SwiftMnemonic
+        product: SwiftMnemonic
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: work.kanto.friends
@@ -57,6 +62,8 @@ targets:
         product: ULID
       - package: Base58Swift
         product: Base58Swift
+      - package: SwiftMnemonic
+        product: SwiftMnemonic
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: work.kanto.friends.tests

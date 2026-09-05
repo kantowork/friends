@@ -31,27 +31,23 @@ let tenantId = "";
 let tenantCode = "";
 let tenantName = "";
 let isDefaultTenant = false;
-
-if (existsSync(presetPlistPath)) {
-  try {
-    const plistRaw = readFileSync(presetPlistPath, "utf-8");
-    const match = plistRaw.match(/<key>TENANT_MASTER_KEY<\/key>\s*<string>([^<]+)<\/string>/);
-    if (match && match[1]) {
-      existingMasterKey = match[1].trim();
-      console.log(`ℹ️ [Preset] 既存の PresetTenant.plist を検出しました (既存マスターキーを再利用します)`);
-    }
-  } catch {
-    // パース失敗時はスキップ
-  }
-}
+let workerApiUrl = "";
+let r2Config = null;
 
 // 1. 引数が無い場合、または --preset / --from-file が渡された場合は preset-tenant.json を読み込み
 if (args.length === 0 || args.includes("--preset") || args.includes("--from-file")) {
   const filePathIndex = args.indexOf("--from-file");
-  const jsonPath = filePathIndex !== -1 ? args[filePathIndex + 1] : defaultPresetPath;
+  let jsonPath = filePathIndex !== -1 ? args[filePathIndex + 1] : defaultPresetPath;
   if (!existsSync(jsonPath)) {
-    console.error(`❌ 指定されたJSONファイルが見つかりません: ${jsonPath}`);
-    process.exit(1);
+    // preset-tenant.json が未作成の場合は .example の確認案内
+    const examplePath = join(rootDir, "shared/data/preset-tenant.json.example");
+    if (existsSync(examplePath)) {
+      console.log(`ℹ️ '${jsonPath}' が見つからないため、テンプレート '${examplePath}' を利用します。`);
+      jsonPath = examplePath;
+    } else {
+      console.error(`❌ 指定されたJSONファイルが見つかりません: ${jsonPath}`);
+      process.exit(1);
+    }
   }
   console.log(`📄 [Friends] '${jsonPath}' からプリセット設定を読み込みます...`);
   const preset = JSON.parse(readFileSync(jsonPath, "utf-8"));
@@ -59,6 +55,11 @@ if (args.length === 0 || args.includes("--preset") || args.includes("--from-file
   tenantCode = preset.tenantCode || "sample";
   tenantName = preset.tenantName || "サンプル";
   isDefaultTenant = preset.isDefaultTenant === true;
+  workerApiUrl = preset.workerApiUrl || "";
+  r2Config = preset.r2Config || null;
+  if (preset.tenantMasterKey) {
+    existingMasterKey = preset.tenantMasterKey;
+  }
 } else {
   // 2. コマンドライン引数から直接取得
   tenantName = args[0] || "サンプル";
@@ -73,7 +74,7 @@ if (args.length === 0 || args.includes("--preset") || args.includes("--from-file
 let masterKeyBuffer;
 let tenantMasterKey;
 
-if (isDefaultTenant && existingMasterKey) {
+if (existingMasterKey) {
   tenantMasterKey = existingMasterKey;
   masterKeyBuffer = Buffer.from(existingMasterKey, "base64");
 } else {
@@ -142,7 +143,9 @@ const invitePayload = {
   tenantCode: tenantCode,
   tenantName: tenantName,
   tenantMasterKey: tenantMasterKey,
-  isDefaultTenant: isDefaultTenant
+  isDefaultTenant: isDefaultTenant,
+  ...(workerApiUrl ? { workerApiUrl } : {}),
+  ...(r2Config ? { r2Config } : {})
 };
 
 const tenantJson = JSON.stringify(invitePayload, null, 2);
@@ -156,6 +159,8 @@ console.log(`📌 内部システムID (不変): ${tenantId}`);
 console.log(`🏷  表示用テナントコード: ${tenantCode}`);
 console.log(`🏢 テナント表示名:       ${tenantName}`);
 console.log(`⭐ デフォルトテナント:   ${isDefaultTenant}`);
+if (workerApiUrl) console.log(`⚡️ Workers API URL:    ${workerApiUrl}`);
+if (r2Config)     console.log(`📦 R2 Bucket Name:     ${r2Config.bucketName || "設定あり"}`);
 console.log("");
 console.log("------------------------------------------------------------");
 console.log("🔑 テナントマスターキー (MK_T):");
@@ -170,9 +175,14 @@ console.log("📷 [コンソール用 QRコード (iOSアプリでスキャン�
 qrcode.generate(qrDataString, { small: true });
 
 // ---------------------------------------------------------------------------
-// プリセットテナント情報 (PresetTenant.plist) の自動生成 (未存在かつ isDefaultTenant 時)
+// プリセット設定 (PresetTenant.plist / R2Config.plist) のローカル自動生成・同期
 // ---------------------------------------------------------------------------
-if (isDefaultTenant && !existsSync(presetPlistPath)) {
+const resourcesDir = join(rootDir, "ios/Sources/Resources");
+if (!existsSync(resourcesDir)) {
+  mkdirSync(resourcesDir, { recursive: true });
+}
+
+if (isDefaultTenant) {
   const plistContent = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -193,12 +203,38 @@ if (isDefaultTenant && !existsSync(presetPlistPath)) {
 `;
   try {
     writeFileSync(presetPlistPath, plistContent, "utf-8");
-    console.log(`✅ [Preset] iOS プリセット設定を新規作成しました: ${presetPlistPath}`);
+    console.log(`✅ [Preset] iOS プリセット設定を自動生成・同期しました: ${presetPlistPath}`);
   } catch (err) {
     console.warn(`⚠️ [Preset] PresetTenant.plist の作成に失敗しました: ${err.message}`);
   }
-} else if (isDefaultTenant) {
-  console.log(`ℹ️ [Preset] 既存の PresetTenant.plist を保持しました (再作成・上書きはスキップされました)`);
+}
+
+if (r2Config) {
+  const r2PlistPath = join(resourcesDir, "R2Config.plist");
+  const r2PlistContent = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+\t<!-- Cloudflare R2 設定 (npm run tenant:init で自動生成・同期) -->
+\t<key>R2_PUBLIC_BASE_URL</key>
+\t<string>${r2Config.publicBaseUrl || ""}</string>
+\t<key>R2_BUCKET_NAME</key>
+\t<string>${r2Config.bucketName || ""}</string>
+\t<key>R2_ENDPOINT_URL</key>
+\t<string>${r2Config.endpointUrl || ""}</string>
+\t<key>R2_ACCESS_KEY_ID</key>
+\t<string>${r2Config.accessKeyId || ""}</string>
+\t<key>R2_SECRET_ACCESS_KEY</key>
+\t<string>${r2Config.secretAccessKey || ""}</string>
+</dict>
+</plist>
+`;
+  try {
+    writeFileSync(r2PlistPath, r2PlistContent, "utf-8");
+    console.log(`✅ [R2] iOS R2設定を自動生成・同期しました: ${r2PlistPath}`);
+  } catch (err) {
+    console.warn(`⚠️ [R2] R2Config.plist の作成に失敗しました: ${err.message}`);
+  }
 }
 
 console.log("");

@@ -51,17 +51,47 @@
 "tab.friends" = "ともだち";
 "tab.groups" = "かいぎ";
 
+// MARK: - Home
+"home.quick_action.title" = "クイックアクション";
+"home.quick_action.add_friend" = "友達を追加";
+"home.notification.title" = "お知らせ";
+"home.notification.empty" = "新しいお知らせはありません";
+
 // MARK: - Groups (かいぎ)
 "group.list.title" = "かいぎ";
-"group.list.empty" = "参加しているグループはありません\n右上の「＋」ボタンから新しいグループを作成しましょう";
-"group.create.title" = "グループを作成";
-"group.create.name_label" = "グループ名";
-"group.create.name_placeholder" = "グループ名を入力";
+"group.list.empty" = "参加しているかいぎはありません\n右上の「＋」ボタンから新しいかいぎを作成しましょう";
+"group.create.title" = "かいぎを作成";
+"group.create.name_label" = "かいぎ名";
+"group.create.name_placeholder" = "かいぎ名を入力";
 "group.create.select_members" = "メンバーを選択 (%d人選択中)";
 "group.create.submit_btn" = "作成";
 "group.create.no_friends" = "招待できる友達がいません。先に友達を追加してください。";
-"group.detail.title" = "グループ情報";
+"group.detail.title" = "かいぎ情報";
 "group.detail.members_section" = "参加メンバー (%d人)";
+"group.role.owner" = "オーナー";
+"group.role.admin" = "管理者";
+"group.role.member" = "メンバー";
+"group.action.claim_owner" = "オーナーを引き継ぐ";
+"group.action.claim_owner_confirm" = "このかいぎのオーナー権限を引き継ぎますか？前任のオーナーは管理者になります。";
+"group.action.assign_admin" = "管理者にする";
+"group.action.assign_admin_confirm" = "「%@」を管理者にしますか？";
+"group.action.remove_member" = "退出させる";
+"group.action.remove_member_confirm" = "「%@」をかいぎから退出させますか？";
+"group.action.leave_group" = "退室する";
+"group.action.leave_group_confirm" = "このかいぎを退室しますか？";
+"group.action.cannot_leave_owner" = "オーナーはかいぎを退室できません。先に他の管理者にオーナーを交代してください。";
+"group.action.edit_title" = "かいぎ名の変更";
+"group.action.edit_title_prompt" = "グループメンバー全員に表示されるかいぎ名を変更します。";
+"group.action.add_member" = "メンバーを追加";
+"group.add_member.title" = "メンバーを追加";
+"group.add_member.submit_btn" = "追加";
+"group.add_member.no_candidates" = "追加できる友達がいません";
+"group.add_member.select_count" = "%d人選択中";
+"group.avatar.change_title" = "かいぎのアイコンを変更";
+"group.delete.button" = "かいぎを完全に削除";
+"group.delete.confirm_title" = "かいぎ「%@」を完全に削除しますか？";
+"group.delete.confirm_message" = "この操作は取り消せません。かいぎを削除すると、メッセージの送受信ができなくなり、メンバー全員の一覧から完全に削除されます。";
+"group.delete.confirm_action" = "完全に削除する";
 
 // MARK: - Home
 
@@ -72,6 +102,7 @@
 "chat.detail.send" = "送信";
 "chat.detail.new_messages_badge" = "新着メッセージがあります ↓";
 "chat.detail.scroll_to_latest" = "最新メッセージへ移動";
+"chat.detail.empty" = "メッセージのやり取りはまだありません\n最初のメッセージを送信してみましょう";
 "chat.read.status" = "既読";
 "chat.read.count" = "既読 %d";
 
@@ -104,13 +135,19 @@
 "friend.add.my_info_section" = "自分の情報";
 "friend.add.user_id_label" = "ユーザー名";
 "friend.add.text_input_section" = "相手を追加";
-"friend.add.target_user_id_placeholder" = "相手のユーザー名 (@username)";
-"friend.add.target_passcode_placeholder" = "3桁の合言葉 (例: 782)";
+"friend.add.target_user_id_placeholder" = "相手のユーザー名";
+"friend.add.target_passcode_placeholder" = "合言葉";
 "friend.add.confirm_addition_btn" = "友達に追加する";
 "friend.add.success_alert_title" = "友達追加完了";
 "friend.add.success_alert_msg" = "%@ を友達に追加しました！";
 "friend.add.confirm_sheet_title" = "友達の追加確認";
 "friend.add.confirm_sheet_msg" = "「%@」(@%@) を友達に追加しますか？";
+"friend.edit_name.action" = "表示名の変更";
+"friend.edit_name.title" = "表示名の変更";
+"friend.edit_name.message" = "相手には見えません。あなた専用に表示名を設定します。";
+"friend.edit_name.placeholder" = "表示名を入力";
+"friend.edit_name.save" = "保存";
+"friend.edit_name.success" = "表示名を変更しました";
 
 // MARK: - Settings
 "settings.title" = "設定";
@@ -138,7 +175,15 @@
 "settings.security.reset_success_title" = "セキュリティリセット完了";
 "settings.security.reset_success_msg" = "新しい公開鍵 (PK_u) が公開され、セッションが保護されました。";
 "settings.recovery.title" = "ふっかつのじゅもん";
-"settings.recovery.desc" = "端末移行時やバックアップ復元に必要な12個の英単語です。第三者に絶対に共有しないでください。";
+"settings.recovery.desc" = "端末移行時やバックアップ復元に必要な12個の単語です。第三者に絶対に共有しないでください。";
+"settings.recovery.regenerate_btn" = "再作成";
+"settings.recovery.regenerate_title" = "ふっかつのじゅもんの再作成";
+"settings.recovery.regenerate_prompt" = "ふっかつのじゅもんを新しく作成しますか？これまでのふっかつのじゅもんは使用できなくなります。";
+"settings.recovery.regenerate_action" = "再作成する";
+"settings.recovery.regenerate_success" = "ふっかつのじゅもんを再作成しました。";
+"settings.recovery.copy_button" = "呪文をコピー";
+"settings.recovery.copied" = "ふっかつのじゅもんをコピーしました。";
+"settings.recovery.not_found" = "ふっかつのじゅもんが見つかりません。";
 "settings.logout" = "ログアウト";
 "settings.logout.confirm_title" = "ログアウトして初期化しますか？";
 "settings.logout.confirm_msg" = "アカウントからログアウトします。「ふっかつのじゅもん」がなければ復元できなくなります。";
@@ -152,6 +197,15 @@
 "settings.profile.avatar_preset_title" = "プリセットから選択";
 "settings.profile.avatar_remove" = "アバターを削除";
 
+// MARK: - Recovery
+"auth.recovery.restore_button" = "アカウントと鍵を復元";
+"auth.recovery.word_count_error" = "12個の英単語を入力してください (現在 %d 単語)";
+"auth.recovery.invalid_phrase" = "ふっかつのじゅもんが無効です。単語のスペルや順序を確認してください。";
+"auth.recovery.restored_user_prefix" = "復元ユーザー";
+"settings.recovery.copy_button" = "呪文をコピー";
+"settings.recovery.copied" = "ふっかつのじゅもんをコピーしました。";
+"settings.recovery.not_found" = "ふっかつのじゅもんが見つかりません。";
+
 // MARK: - Errors
 "error.unknown" = "不明なエラーが発生しました。";
 "error.friend.invalid_format" = "友達追加コードの形式が正しくありません。";
@@ -159,7 +213,12 @@
 "error.friend.passcode_expired" = "合言葉が一致しないか、有効期限が切れています。最新のコードを再入力してください。";
 "error.friend.tenant_mismatch" = "異なる組織（テナント）のユーザーです。同一組織内でのみ友達追加が可能です。";
 "error.friend.self_add" = "自分自身を友達に追加することはできません。";
+"error.recovery.data_not_found" = "復元データが見つかりません。";
+"error.recovery.decryption_failed" = "秘密鍵の復号に失敗しました。正しいふっかつのじゅもんを入力してください。";
+"error.recovery.tenant_not_configured" = "組織（テナント）が未設定です。先にテナントQRコードをスキャンしてください。";
+"error.user.not_found" = "ユーザープロファイルが見つかりません。";
 
 // MARK: - Toast Notification
 "toast.new_message" = "新着メッセージ";
+
 

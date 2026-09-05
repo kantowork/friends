@@ -65,6 +65,7 @@ struct FriendPasscodeGenerator {
         }
         return false
     }
+
 }
 
 // MARK: - Friend Invitation Payload Encoder / Decoder

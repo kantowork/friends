@@ -51,6 +51,12 @@
 "tab.friends" = "Friends";
 "tab.groups" = "Groups";
 
+// MARK: - Home
+"home.quick_action.title" = "Quick Actions";
+"home.quick_action.add_friend" = "Add Friend";
+"home.notification.title" = "Notifications";
+"home.notification.empty" = "No new notifications";
+
 // MARK: - Groups
 "group.list.title" = "Groups";
 "group.list.empty" = "No groups joined yet.\nTap \"+\" in the top right to create a new group.";
@@ -62,6 +68,30 @@
 "group.create.no_friends" = "No friends to invite. Please add friends first.";
 "group.detail.title" = "Group Details";
 "group.detail.members_section" = "Members (%d)";
+"group.role.owner" = "Owner";
+"group.role.admin" = "Admin";
+"group.role.member" = "Member";
+"group.action.claim_owner" = "Take Over Ownership";
+"group.action.claim_owner_confirm" = "Do you want to take over ownership of this group chat? The current owner will become an admin.";
+"group.action.assign_admin" = "Make Admin";
+"group.action.assign_admin_confirm" = "Are you sure you want to make \"%@\" an admin?";
+"group.action.remove_member" = "Remove from Group";
+"group.action.remove_member_confirm" = "Are you sure you want to remove \"%@\" from this group?";
+"group.action.leave_group" = "Leave Group";
+"group.action.leave_group_confirm" = "Are you sure you want to leave this group?";
+"group.action.cannot_leave_owner" = "The group owner cannot leave. Please transfer ownership to another admin first.";
+"group.action.edit_title" = "Change Group Name";
+"group.action.edit_title_prompt" = "Change the group name visible to all members.";
+"group.action.add_member" = "Add Members";
+"group.add_member.title" = "Add Members";
+"group.add_member.submit_btn" = "Add";
+"group.add_member.no_candidates" = "No friends available to add";
+"group.add_member.select_count" = "%d selected";
+"group.avatar.change_title" = "Change Group Icon";
+"group.delete.button" = "Delete Group";
+"group.delete.confirm_title" = "Delete \"%@\"?";
+"group.delete.confirm_message" = "This action cannot be undone. Deleting this group will disable sending and receiving messages, and permanently remove it for all members.";
+"group.delete.confirm_action" = "Delete";
 
 // MARK: - Home
 
@@ -72,6 +102,7 @@
 "chat.detail.send" = "Send";
 "chat.detail.new_messages_badge" = "New messages below ↓";
 "chat.detail.scroll_to_latest" = "Jump to latest";
+"chat.detail.empty" = "No messages yet\nSend a message to start chatting";
 "chat.read.status" = "Read";
 "chat.read.count" = "Read %d";
 
@@ -104,13 +135,19 @@
 "friend.add.my_info_section" = "My Information";
 "friend.add.user_id_label" = "Username";
 "friend.add.text_input_section" = "Add Friend";
-"friend.add.target_user_id_placeholder" = "Friend's Username (@username)";
-"friend.add.target_passcode_placeholder" = "3-Digit Passcode (e.g. 782)";
+"friend.add.target_user_id_placeholder" = "Friend's Username";
+"friend.add.target_passcode_placeholder" = "Passcode";
 "friend.add.confirm_addition_btn" = "Add Friend";
 "friend.add.success_alert_title" = "Friend Added";
 "friend.add.success_alert_msg" = "%@ has been added to your friends!";
 "friend.add.confirm_sheet_title" = "Confirm Friend Addition";
 "friend.add.confirm_sheet_msg" = "Add \"%@\" (@%@) as a friend?";
+"friend.edit_name.action" = "Change Display Name";
+"friend.edit_name.title" = "Change Display Name";
+"friend.edit_name.message" = "This will not be visible to them. Set a display name only for you.";
+"friend.edit_name.placeholder" = "Enter display name";
+"friend.edit_name.save" = "Save";
+"friend.edit_name.success" = "Display name updated";
 
 // MARK: - Settings
 "settings.title" = "Settings";
@@ -138,7 +175,15 @@
 "settings.security.reset_success_title" = "Security Reset Completed";
 "settings.security.reset_success_msg" = "New public key (PK_u) published and sessions are secured.";
 "settings.recovery.title" = "Recovery Phrase";
-"settings.recovery.desc" = "12 English words required for device migration and backup restoration. Never share these with anyone.";
+"settings.recovery.desc" = "12 words required for device migration and backup restoration. Never share these with anyone.";
+"settings.recovery.regenerate_btn" = "Regenerate";
+"settings.recovery.regenerate_title" = "Regenerate Recovery Phrase";
+"settings.recovery.regenerate_prompt" = "Do you want to regenerate your recovery phrase? Previous phrases will no longer be valid.";
+"settings.recovery.regenerate_action" = "Regenerate";
+"settings.recovery.regenerate_success" = "Recovery phrase regenerated successfully.";
+"settings.recovery.copy_button" = "Copy Phrase";
+"settings.recovery.copied" = "Recovery phrase copied to clipboard.";
+"settings.recovery.not_found" = "Recovery phrase not found.";
 "settings.logout" = "Sign Out";
 "settings.logout.confirm_title" = "Sign out and reset device?";
 "settings.logout.confirm_msg" = "Sign out of your account and permanently clear all encryption keys and local data from this device.";
@@ -152,6 +197,15 @@
 "settings.profile.avatar_preset_title" = "Choose from Presets";
 "settings.profile.avatar_remove" = "Remove Avatar";
 
+// MARK: - Recovery
+"auth.recovery.restore_button" = "Restore Account & Keys";
+"auth.recovery.word_count_error" = "Please enter 12 English words (currently %d words)";
+"auth.recovery.invalid_phrase" = "The recovery phrase is invalid. Please check the spelling and order.";
+"auth.recovery.restored_user_prefix" = "Restored User";
+"settings.recovery.copy_button" = "Copy Phrase";
+"settings.recovery.copied" = "Recovery phrase copied to clipboard.";
+"settings.recovery.not_found" = "Recovery phrase not found.";
+
 // MARK: - Errors
 "error.unknown" = "An unknown error occurred.";
 "error.friend.invalid_format" = "Friend invitation code format is invalid.";
@@ -159,7 +213,12 @@
 "error.friend.passcode_expired" = "Passcode mismatch or expired. Please enter the newest code.";
 "error.friend.tenant_mismatch" = "User belongs to a different organization. Friend addition is only allowed within the same tenant.";
 "error.friend.self_add" = "You cannot add yourself as a friend.";
+"error.recovery.data_not_found" = "Backup recovery data not found.";
+"error.recovery.decryption_failed" = "Failed to decrypt private key. Please check your recovery phrase.";
+"error.recovery.tenant_not_configured" = "Organization (Tenant) not configured. Please scan your tenant QR code first.";
+"error.user.not_found" = "User profile not found.";
 
 // MARK: - Toast Notification
 "toast.new_message" = "New Message";
+
 

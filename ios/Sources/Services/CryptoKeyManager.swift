@@ -76,10 +76,30 @@ final class CryptoKeyManager {
         }
     }
     
-    /// アカウント削除やリセット時に鍵ペアを削除する
+    /// アカウント削除やリセット時に鍵ペアおよびふっかつのじゅもんを削除する
     func deleteKeypair(uid: String) {
         deleteFromKeychain(key: privateKeyTag(for: uid))
         deleteFromKeychain(key: publicKeyTag(for: uid))
+        deleteFromKeychain(key: myDisplayNameTag(for: uid))
+        deleteMnemonicPhrase(uid: uid)
+    }
+    
+    // MARK: - My Display Name Keychain Storage
+    
+    func saveMyDisplayName(uid: String, name: String) {
+        let tag = myDisplayNameTag(for: uid)
+        if let data = name.data(using: .utf8) {
+            _ = saveToKeychain(key: tag, data: data)
+        }
+    }
+    
+    func getMyDisplayName(uid: String) -> String? {
+        let tag = myDisplayNameTag(for: uid)
+        return loadStringFromKeychain(key: tag)
+    }
+    
+    private func myDisplayNameTag(for uid: String) -> String {
+        "friends_my_display_name_\(uid)"
     }
     
     // MARK: - Tenant Master Key (MK_T) Management & Encryption
@@ -176,6 +196,50 @@ final class CryptoKeyManager {
         }
         
         return decryptedString
+    }
+    
+    // MARK: - Personal Key (SK_u based) Encryption
+    
+    /// 自分の秘密鍵 (SK_u) から自分専用の対称暗号鍵 (Personal Master Key: MK_u) を決定論的に導出する
+    func getPersonalKey(uid: String) -> SymmetricKey? {
+        guard let privKey = getPrivateKey(uid: uid) else { return nil }
+        let salt = "friends_personal_encryption_key_v1".data(using: .utf8)!
+        let derived = HKDF<SHA256>.deriveKey(
+            inputKeyMaterial: SymmetricKey(data: privKey.rawRepresentation),
+            salt: salt,
+            outputByteCount: 32
+        )
+        return derived
+    }
+    
+    /// 自分専用の鍵で文字列を AES-256-GCM 暗号化する
+    func encryptWithPersonalKey(plainText: String, uid: String) throws -> (encryptedData: String, nonce: String) {
+        guard let key = getPersonalKey(uid: uid) else {
+            throw NSError(domain: "CryptoKeyManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "Personal key not found for uid \(uid)"])
+        }
+        let plainData = Data(plainText.utf8)
+        let nonce = AES.GCM.Nonce()
+        let sealedBox = try AES.GCM.seal(plainData, using: key, nonce: nonce)
+        guard let combined = sealedBox.combined else {
+            throw NSError(domain: "CryptoKeyManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to seal AES-GCM payload with personal key"])
+        }
+        return (combined.base64EncodedString(), Data(nonce).base64EncodedString())
+    }
+    
+    /// 自分専用の鍵で暗号文を復号する
+    func decryptWithPersonalKey(encryptedData: String, nonce: String, uid: String) throws -> String {
+        guard let key = getPersonalKey(uid: uid) else {
+            throw NSError(domain: "CryptoKeyManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "Personal key not found for uid \(uid)"])
+        }
+        guard let combinedData = Data(base64Encoded: encryptedData), combinedData.count >= 28 else {
+            throw NSError(domain: "CryptoKeyManager", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid base64 payload for personal key decryption"])
+        }
+        let sealedBox = try AES.GCM.SealedBox(combined: combinedData)
+        let decryptedData = try AES.GCM.open(sealedBox, using: key)
+        guard let str = String(data: decryptedData, encoding: .utf8) else {
+            throw NSError(domain: "CryptoKeyManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Decrypted data is not valid UTF-8 string"])
+        }
+        return str
     }
     
     // MARK: - E2EE Direct Message Encryption (1:1 ECDH + HKDF + AES-256-GCM)
@@ -317,6 +381,40 @@ final class CryptoKeyManager {
     
     private func tenantKeyTag(for tenantId: String) -> String {
         "friends_tenant_key_\(tenantId)"
+    }
+    
+    private func mnemonicTag(for uid: String) -> String {
+        "friends_mnemonic_\(uid)"
+    }
+    
+    // MARK: - Mnemonic Phrase (ふっかつのじゅもん) Management
+    
+    /// 端末内 Keychain に「ふっかつのじゅもん」を安全に保存する
+    func saveMnemonicPhrase(uid: String, words: [String]) throws {
+        let joined = words.joined(separator: " ")
+        guard let data = joined.data(using: .utf8) else { return }
+        let keyTag = mnemonicTag(for: uid)
+        let status = saveToKeychain(key: keyTag, data: data)
+        if status != errSecSuccess && status != errSecDuplicateItem {
+            throw NSError(
+                domain: "CryptoKeyManager",
+                code: Int(status),
+                userInfo: [NSLocalizedDescriptionKey: "Failed to save recovery phrase to Keychain with OSStatus \(status)"]
+            )
+        }
+    }
+    
+    /// 端末内 Keychain から「ふっかつのじゅもん」を取得する
+    func getMnemonicPhrase(uid: String) -> [String]? {
+        let keyTag = mnemonicTag(for: uid)
+        guard let phraseStr = loadStringFromKeychain(key: keyTag) else { return nil }
+        let words = phraseStr.components(separatedBy: " ").filter { !$0.isEmpty }
+        return words.isEmpty ? nil : words
+    }
+    
+    /// 端末内 Keychain から「ふっかつのじゅもん」を削除する
+    func deleteMnemonicPhrase(uid: String) {
+        deleteFromKeychain(key: mnemonicTag(for: uid))
     }
     
     // MARK: - Keychain CRUD Helpers

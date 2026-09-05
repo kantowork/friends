@@ -95,10 +95,10 @@
 - **概要**     : アカウント復元時の暗号化秘密鍵取得。
 
 #### UP-04: テナント内プロファイル取得
-- **操作種別**: Read
+- **操作種別**: Read (`get` のみ許可、`list` 禁止)
 - **対象パス**: `/tenants/{tenantId}/users/{userId}`
 - **関数名**: `getUserProfileByUserId(tenantId:userId:completion:)`
-- **概要**: テナント内のユーザープロファイル・公開鍵・アバターメタデータを取得。
+- **概要**: 単一ユーザープロファイル・公開鍵・アバターメタデータ・合言葉保護表示名を取得。名簿スクレイピング防止のため `list` クエリはセキュリティルールで禁止。
 
 #### UP-05: テナント内プロファイル作成/更新
 - **操作種別**: Write (Set/Merge)
@@ -109,31 +109,31 @@
   - 更新時: `createdBy`, `createdAt` は変更不可。`updatedBy: userId`, `updatedAt: serverTimestamp()`
 
 #### UP-06: 表示名更新
-- **操作種別**: Update
-- **対象パス**: `/tenants/{tenantId}/users/{userId}`
-- **関数名**: `updateDisplayNameByUserId(tenantId:userId:name:completion:)`
-- **監査要件**: `updatedBy: userId`, `updatedAt: serverTimestamp()`
-- **概要**: 表示名を $MK_T$ で暗号化して更新。
+- **操作種別**: Local Storage & E2EE Message
+- **対象パス**: iOS Keychain (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`) & 1:1 E2EE メッセージ
+- **関数名**: `updateDisplayName(newName:completion:)`
+- **概要**: 表示名は公開プロファイルには保存せず、ローカル Keychain に安全に保管。最新の表示名はチャット送受信時の 1:1 E2EE ペイロード経由で友達にのみ伝播する。
 
 ---
 
-### 3.3 友達 (Friends) アクセスパターン
-
 #### FP-01: 友達一覧リアルタイム購読
 - **操作種別**: Listen (`onSnapshot`)
-- **対象パス**: `/tenants/{tenantId}/users/{userId}/friends`
+- **対象パス**: `/tenants/{tenantId}/users/{userId}/friends` (where `createdAt` descending)
 - **関数名**: `watchFriendsByUserId(tenantId:userId:onChange:)`
-- **概要**: 友達の追加・削除をリアルタイム検知。
+- **概要**: 友達の追加・削除をリアルタイム検知。`createdAt` 降順で取得。本人のみが読み取り可能。
 
 #### FP-02: 友達関係の双方向追加
 - **操作種別**: Batch Write
 - **対象パス**:
   - `/tenants/{tenantId}/users/{myUserId}/friends/{friendUserId}`
   - `/tenants/{tenantId}/users/{friendUserId}/friends/{myUserId}`
+  - `/tenants/{tenantId}/chats/{dmChatId}` (未作成時のみ初期化)
 - **関数名**: `createFriendBidirectional(tenantId:myUser:friendUser:completion:)`
 - **監査要件**:
   - 作成時: `createdBy: myUserId`, `createdAt: serverTimestamp()`, `updatedBy: myUserId`, `updatedAt: serverTimestamp()`
-- **概要**: 相互のサブコレクションにアトミック同時書き込み（Auth UID は使用せず `userId` で相互認可）。
+- **暗号化要件**:
+  - 表示名は各ユーザーの個人秘密鍵（$MK_u$）導出鍵による AES-256-GCM 暗号化（`encryptedFriendDisplayName`, `friendDisplayNameNonce`）でサブコレクションに保存すること。平文およびテナント共通鍵（$MK_T$）による保存は禁止する。
+- **概要**: 相互のサブコレクションにアトミック同時書き込み（Auth UID は使用せず `userId` で相互認可）。同時に DM 用チャットドキュメントが存在しない場合は作成・初期化する。
 
 #### FP-03: 友達削除
 - **操作種別**: Delete
@@ -158,7 +158,7 @@
   - Firestore: `/tenants/{tenantId}/users/{userId}`
 - **関数名**: `uploadAvatarByUserId(image:tenantId:userId:completion:)`
 - **監査要件**: `updatedBy: userId`, `updatedAt: serverTimestamp()`
-- **概要**: 画像を 256x256 圧縮・$MK_T$ 暗号化して R2 バケットに S3 互換 PUT / 署名付き URL アップロード後、Firestore の `encryptedAvatar`（または R2 パス）, `avatarNonce`, `avatarUpdatedAt` を更新。
+- **概要**: 画像を 256x256 圧縮・$MK_T$ 暗号化して R2 バケットに S3 互換 PUT / 署名付き URL アップロード後、Firestore の `avatarNonce`, `avatarUpdatedAt` を更新。
 
 #### AP-02: アバター画像ダウンロード・復号
 - **操作種別**: Read (2層キャッシュ優先 + R2 CDN HTTP GET)
@@ -202,8 +202,10 @@
 - **操作種別**: Listen (`onSnapshot`) + Dynamic Limit Expansion
 - **対象パス**: `/tenants/{tenantId}/chats/{chatId}/messages` (order `createdAt asc`, `limitToLast(limit)`)
 - **関数名**: `watchMessagesByChatId(tenantId:chatId:limit:onChange:)` / `loadMoreMessages(chatId:pageSize:)`
-- **動的ページネーション仕様**:
+- **動的ページネーション・耐障害性仕様**:
   - **初期表示**: 最新の 30 件（`initialLimit: 30`）をリアルタイム購読し、初期通信量・メモリ使用量を最小化。
+  - **親未作成耐性**: 親チャットドキュメントが存在しない初期状態でも、メッセージサブコレクションのリスナーがパーミッションエラーで中断しないセキュリティルール構成。
+  - **エラー時キャッシュ保護**: リスナーで一時的な通信エラー等が発生した際、`onChange([])` でローカル表示中のメッセージを一括消去せず、既存メッセージを保護。
   - **上スクロール時の遡りロード**: ユーザーが上方向にスクロールして最上部付近に到達した際、`limit` を +30 件ずつ動的に拡張してリスナーを再設定（または追加過去データを取得）。
   - **リアルタイム整合性**: リアルタイムリスナーのウィンドウを拡張する方式により、過去メッセージへのリアクション変更や新着メッセージの受信・既読管理を同一ストリームで一貫して保証。
   - **全件到達判定**: 取得件数が要求 `limit` 未満となった場合、`hasMoreMessages = false` として不要なバックエンドクエリを停止。
@@ -214,6 +216,8 @@
 - **関数名**: `createMessage(tenantId:chatId:message:members:completion:)`
 - **監査要件**:
   - 作成時: `createdBy: senderId`, `createdAt: serverTimestamp()`, `updatedBy: senderId`, `updatedAt: serverTimestamp()`
+- **即時表示仕様**:
+  - 送信処理完了時（`createMessage` 成功時）にローカルの `messages[chatId]` に即座に平文キャッシュを追加し、リスナーの反映遅延に関わらず送信者端末で送信メッセージが即座に表示される（同一IDによる重複防止付き）。
 - **概要**: E2EE 暗号化本文と監査用メタデータを Firestore に追記。親チャット未作成時は親ドキュメントを `members` とともにアトミックに初期化・更新。
 
 ---
@@ -223,16 +227,71 @@
 #### GP-01: グループチャット作成
 - **操作種別**: Write (Create/Set)
 - **対象パス**: `/tenants/{tenantId}/chats/{chatId}`
-- **関数名**: `createGroupChat(tenantId:chatId:title:members:createdBy:completion:)`
+- **関数名**: `createGroupChat(tenantId:chatId:title:members:createdBy:memberRoles:completion:)`
 - **監査要件**: `createdBy: myUserId`, `createdAt: serverTimestamp()`, `updatedBy: myUserId`, `updatedAt: serverTimestamp()`
-- **概要**: グループチャットドキュメント（`chatType: "group"`, `title`, `members`, `createdBy`）を作成。
+- **概要**: グループチャットドキュメント（`chatType: "group"`, `title`, `members`, `memberRoles` [作成者: `owner`, 追加者: `member`], `createdBy`）を作成。
 
 #### GP-02: グループメンバー追加
-- **操作種別**: Update (ArrayUnion)
+- **操作種別**: Update (ArrayUnion & memberRoles更新)
 - **対象パス**: `/tenants/{tenantId}/chats/{chatId}`
 - **関数名**: `addGroupMembers(tenantId:chatId:newMembers:updatedBy:completion:)`
 - **監査要件**: `updatedBy: myUserId`, `updatedAt: serverTimestamp()`
-- **概要**: 既存グループチャットの `members` フィールドに新規 UID を追加。
+- **概要**: 既存グループチャットの `members` フィールドに新規 UID を追加し、`memberRoles` に `member` 属性をマッピング。
+
+#### GP-03: かいぎ削除 (members クリア・論理削除)
+- **操作種別**: Update (members: [], isDeleted: true)
+- **対象パス**: `/tenants/{tenantId}/chats/{chatId}`
+- **関数名**: `deleteGroupChat(tenantId:chatId:deletedBy:completion:)`
+- **監査要件**: `updatedBy: myUserId`, `updatedAt: serverTimestamp()`, `deletedBy: myUserId`, `deletedAt: serverTimestamp()`
+- **権限**: オーナー (`owner`) または 管理者 (`admin`) のみ実行可能。
+- **概要**: 誤操作防止の削除確認ダイアログ（1回表示・重要警告）を経て、`members: []` にクリア。全参加者のリアルタイムチャット一覧から即時除外し、ドキュメントに論理削除メタデータを残す。
+
+#### GP-04: 管理者任命
+- **操作種別**: Update (memberRoles)
+- **対象パス**: `/tenants/{tenantId}/chats/{chatId}`
+- **関数名**: `assignAdmin(tenantId:chatId:targetUserId:updatedBy:completion:)`
+- **監査要件**: `updatedBy: myUserId`, `updatedAt: serverTimestamp()`
+- **権限**: オーナーまたは管理者のみ実行可能。
+- **概要**: 指定された一般メンバーのロールを `admin` に昇格。
+
+#### GP-05: 立候補型オーナー交代
+- **操作種別**: Update (memberRoles アトミック更新)
+- **対象パス**: `/tenants/{tenantId}/chats/{chatId}`
+- **関数名**: `claimOwnership(tenantId:chatId:newOwnerId:oldOwnerId:completion:)`
+- **監査要件**: `updatedBy: newOwnerId`, `updatedAt: serverTimestamp()`
+- **権限**: 管理者 (`admin`) のみ実行可能。
+- **概要**: 管理者が自ら立候補してオーナーに昇格（`newOwnerId: owner`）。前任オーナーは管理者にスライド（`oldOwnerId: admin`）。
+
+#### GP-06: メンバー退出・かいぎから退出させる操作
+- **操作種別**: Update (ArrayRemove & memberRolesキー削除)
+- **対象パス**: `/tenants/{tenantId}/chats/{chatId}`
+- **関数名**: `removeGroupMember(tenantId:chatId:targetUserId:updatedBy:completion:)`
+- **監査要件**: `updatedBy: myUserId`, `updatedAt: serverTimestamp()`
+- **権限**: 
+  - **自発的退出**: 本人のみ（※オーナーは退出不可）
+  - **他メンバーを退出させる**: **グループオーナー または グループ管理者のみ**（一般メンバーは不可。左スワイプ操作）
+- **制約**: オーナーは退出不可（他者からの退出操作・自発的退出ともに不可）。
+- **概要**: `members` 配列から対象ユーザーを除外。
+
+
+#### GP-07: かいぎ名変更 (かいぎタイトル更新)
+- **操作種別**: Update (title)
+- **対象パス**: `/tenants/{tenantId}/chats/{chatId}`
+- **関数名**: `updateGroupTitle(tenantId:chatId:newTitle:updatedBy:completion:)`
+- **監査要件**: `updatedBy: myUserId`, `updatedAt: serverTimestamp()`
+- **権限**: オーナー (`owner`) または 管理者 (`admin`) のみ実行可能。
+- **概要**: かいぎの表示名（`title`）を変更・保存。リアルタイム同期により全参加者の表示名が即座に反映される。
+
+#### GP-08: かいぎ一覧・全メンバープロファイル一括取得 (Pull-to-Refresh)
+- **操作種別**: Query Read / Batch Read
+- **対象パス**: 
+  - `/tenants/{tenantId}/chats` (ユーザー参加グループの取得)
+  - `/tenants/{tenantId}/users/{userId}` (グループ参加メンバー全員のプロファイル一括取得)
+- **関数名**: 
+  - Repository: `listChatsByUserId(tenantId:userId:limit:completion:)`
+  - Service: `listGroupChats(force:completion:)`
+- **権限**: テナント認証ユーザー
+- **概要**: かいぎ一覧の引っ張って更新時に実行。参加中グループの最新情報および各グループに所属する全参加者（友達登録有無を問わず）の公開プロフィール（表示名・アバター）を最新化し、ローカルキャッシュへ展開。
 
 ---
 
@@ -307,10 +366,29 @@
       "collectionGroup": "friends",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "addedAt", "order": "DESCENDING" }
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     }
   ],
   "fieldOverrides": []
 }
 ```
+
+---
+
+## 5. 保守・運用メンテナンススクリプト (Maintenance Scripts)
+
+開発・検証および運用メンテナンスのため、以下の Node.js スクリプトを提供します。
+
+### 5.1 メッセージ & グループ全データ一括クリーンアップ (`scripts/clean_messages.mjs`)
+- **実行コマンド**:
+  ```bash
+  npm run clean:messages
+  ```
+- **対象テナント**: すべてのテナント (`/tenants/*`)
+- **削除対象データ**:
+  1. **グループ会話鍵 (`keys` サブコレクション)**: 全バージョンの `KeyBucket` ドキュメント
+  2. **メッセージ & リアクション (`messages` & `reactions` サブコレクション)**: 全メッセージおよび紐づく全リアクション
+  3. **既読レシート (`receipts` サブコレクション)**: 全ユーザーの既読水位線カーソル
+  4. **チャット/グループ本体 (`chats` コレクション)**: DMおよびグループチャット（かいぎ）の全ドキュメント（再帰的完全削除 `recursiveDelete`）
+- **利用場面**: テスト環境のメッセージ・グループデータ初期化、E2EE暗号化テスト後のリセットなど。

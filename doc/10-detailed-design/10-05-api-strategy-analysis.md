@@ -63,12 +63,12 @@
 ### 4. 復旧関連 (ふっかつのじゅもん)
 
 #### `POST /api/v1/auth/recover-anonymous` (匿名アカウント復旧)
-- **判定**: **❌ サーバーAPI 必須 (Cloud Function)**
+- **判定**: **❌ サーバーAPI 必須 (Cloudflare Workers)**
 - **理由**:
   1. クライアントローカルでふっかつのじゅもん（Mnemonic Phrase）から `recoveryHash = SHA256(K_recovery_id)` を導出
-  2. サーバーに `recoveryHash` を送信し、`/users/{uid}/private/data` から一致するドキュメントを検索
+  2. Cloudflare Workers に `recoveryHash` を送信し、`/recovery_vault/{recoveryHash}` から一致するドキュメントを検索
   3. サーバーは平文フレーズや秘密鍵を一切受け取らず、ハッシュ検証のみ実行
-  4. 一致した場合、Firebase Admin SDK により Custom Token を発行して返却
+  4. 一致した場合、Google サービスアカウントと Web Crypto API (RS256) により Firebase Custom Token を発行して返却
 - **リクエスト**: `{ recoveryHash: "string" }`
 - **レスポンス**: `{ uid: "string", customToken: "string", encryptedPrivateKey: "string", nonce: "string" }`
 
@@ -81,11 +81,11 @@
 ### 5. 監査関連
 
 #### `GET /api/v1/audit/metadata` (テナント管理者向け監査ログ)
-- **判定**: **❌ サーバーAPI 必須**
+- **判定**: **❌ サーバーAPI 必須 (Cloudflare Workers)**
 - **理由**:
   1. テナント管理者権限の厳格チェック
   2. メタデータの集計・フィルタリング・ページネーション
-- **実装**: 専用 Cloud Function / サーバー API エンドポイント
+- **実装**: 専用 Cloudflare Workers エンドポイント
 
 ---
 
@@ -104,18 +104,18 @@
 ### 7. 外部通知連携
 
 #### `POST /api/v1/external/notifications/send` (外部システムからのグループ宛通知)
-- **判定**: **❌ サーバーAPI 必須**
+- **判定**: **❌ サーバーAPI 必須 (Cloudflare Workers)**
 - **理由**: 外部 API Key 認証、複数グループメンバーの抽出、FCM マルチキャスト送信。
 
 ---
 
-## 結論：サーバー API が必須な操作一覧
+## 結論：サーバー API が必須な操作一覧 (Cloudflare Workers 基盤)
 
-| 操作 API | 理由 |
-| :--- | :--- |
-| `POST /api/v1/auth/recover-anonymous` | 匿名アカウントの復旧ハッシュ検証・Custom Token 発行 |
-| `GET /api/v1/audit/metadata` | テナント管理者認可・監査ログ集計 |
-| `POST /api/v1/external/notifications/send` | 外部 API Key 認証・FCM 送信制御 |
+| 操作 API | プラットフォーム | 理由 |
+| :--- | :--- | :--- |
+| `POST /api/v1/auth/recover-anonymous` | Cloudflare Workers | 匿名アカウントの復旧ハッシュ検証・Firebase Custom Token 発行 |
+| `GET /api/v1/audit/metadata` | Cloudflare Workers | テナント管理者認可・監査ログ集計 |
+| `POST /api/v1/external/notifications/send` | Cloudflare Workers | 外部 API Key 認証・FCM 送信制御 |
 
 ---
 

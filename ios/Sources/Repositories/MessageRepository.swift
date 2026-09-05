@@ -20,10 +20,13 @@ final class MessageRepository {
             .order(by: "createdAt", descending: false)
             .limit(toLast: limit)
             .addSnapshotListener { snapshot, error in
-                if error != nil {
+                if let error = error {
+                    AppLogger.error("Failed to watch messages for chat \(chatId): \(error.localizedDescription)", category: .chat)
                     return
                 }
-                guard let documents = snapshot?.documents else { return }
+                guard let documents = snapshot?.documents else {
+                    return
+                }
                 
                 var newMessages: [FriendsMessage] = []
                 for doc in documents {
@@ -100,36 +103,69 @@ final class MessageRepository {
         ]
         
         let chatRef = db.collection("tenants").document(tenantId).collection("chats").document(chatId)
+        let messageRef = chatRef.collection("messages").document(message.messageID)
         
-        // 親チャットドキュメントの存在確認を行い、作成時(Create)と更新時(Update)で監査フィールドを正しく分岐
-        chatRef.getDocument { snapshot, error in
+        chatRef.getDocument { [weak self] snapshot, error in
+            guard let self = self else { return }
             if let error = error {
+                AppLogger.error("Failed to check chat doc existence: \(error.localizedDescription)", category: .chat)
                 completion?(.failure(error))
                 return
             }
             
             let exists = snapshot?.exists ?? false
+            
             if exists {
                 // 既存チャットの更新 (Update): createdBy/createdAt は含めず、updatedBy/updatedAt/lastMessageAt のみを更新
+                let batch = self.db.batch()
                 let chatUpdateData: [String: Any] = [
                     "lastMessageAt": FieldValue.serverTimestamp(),
                     "updatedBy": senderId,
                     "updatedAt": FieldValue.serverTimestamp()
                 ]
-                chatRef.updateData(chatUpdateData) { err in
-                    if let err = err {
-                        completion?(.failure(err))
-                        return
+                batch.updateData(chatUpdateData, forDocument: chatRef)
+                batch.setData(messageData, forDocument: messageRef)
+                
+                batch.commit { batchError in
+                    if let batchError = batchError {
+                        AppLogger.error("Failed to commit message batch: \(batchError.localizedDescription)", category: .chat)
+                        completion?(.failure(batchError))
+                    } else {
+                        AppLogger.info("Successfully created message \(message.messageID) in chat \(chatId)", category: .chat)
+                        completion?(.success(()))
                     }
-                    self.writeMessageDocument(chatRef: chatRef, messageId: message.messageID, messageData: messageData, senderId: senderId, completion: completion)
                 }
             } else {
-                // 新規チャットの作成 (Create): createdBy, createdAt, updatedBy, updatedAt が完全一致する監査メタデータをセット
+                // 新規チャットの作成 (Create):
+                // 親チャットが Firestore に存在しない場合、同一バッチだとメッセージのセキュリティルール (isChatMember) の exists(chatPath) が false になるため、
+                // 親チャットの作成コミット後にメッセージドキュメントを書き込む。
+                let sortedMembers: [String]
+                if let m = members, !m.isEmpty {
+                    var combined = m
+                    if !combined.contains(senderId) {
+                        combined.append(senderId)
+                    }
+                    sortedMembers = Array(Set(combined)).sorted()
+                } else if chatId.hasPrefix("dm_") {
+                    // dm_u_xxx_u_yyy から u_xxx, u_yyy を安全に抽出
+                    let parts = chatId.components(separatedBy: "_")
+                    var rec: [String] = []
+                    for idx in 0..<parts.count - 1 where parts[idx] == "u" {
+                        rec.append("u_" + parts[idx + 1])
+                    }
+                    if !rec.contains(senderId) {
+                        rec.append(senderId)
+                    }
+                    sortedMembers = Array(Set(rec)).sorted()
+                } else {
+                    sortedMembers = [senderId]
+                }
+                
                 var chatCreateData: [String: Any] = [
                     "chatId": chatId,
                     "tenantId": tenantId,
                     "chatType": chatId.hasPrefix("gm_") ? "group" : "direct",
-                    "members": (members ?? [senderId]).sorted(),
+                    "members": sortedMembers,
                     "lastMessage": "",
                     "lastMessageAt": FieldValue.serverTimestamp(),
                     "createdBy": senderId,
@@ -141,29 +177,23 @@ final class MessageRepository {
                     chatCreateData["title"] = "かいぎ"
                 }
                 
-                chatRef.setData(chatCreateData) { err in
-                    if let err = err {
-                        completion?(.failure(err))
+                chatRef.setData(chatCreateData) { createError in
+                    if let createError = createError {
+                        AppLogger.error("Failed to create parent chat \(chatId): \(createError.localizedDescription)", category: .chat)
+                        completion?(.failure(createError))
                         return
                     }
-                    self.writeMessageDocument(chatRef: chatRef, messageId: message.messageID, messageData: messageData, senderId: senderId, completion: completion)
+                    
+                    messageRef.setData(messageData) { msgError in
+                        if let msgError = msgError {
+                            AppLogger.error("Failed to set message document: \(msgError.localizedDescription)", category: .chat)
+                            completion?(.failure(msgError))
+                        } else {
+                            AppLogger.info("Successfully created chat \(chatId) and message \(message.messageID)", category: .chat)
+                            completion?(.success(()))
+                        }
+                    }
                 }
-            }
-        }
-    }
-    
-    private func writeMessageDocument(
-        chatRef: DocumentReference,
-        messageId: String,
-        messageData: [String: Any],
-        senderId: String,
-        completion: ((Result<Void, Error>) -> Void)?
-    ) {
-        chatRef.collection("messages").document(messageId).setData(messageData) { error in
-            if let error = error {
-                completion?(.failure(error))
-            } else {
-                completion?(.success(()))
             }
         }
     }

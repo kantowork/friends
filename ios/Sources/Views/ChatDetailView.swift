@@ -23,6 +23,36 @@ struct ChatDetailView: View {
     @State private var isAtBottom: Bool = true
     @State private var hasUnseenNewMessages: Bool = false
     @State private var isInitialScrollDone: Bool = false
+    @State private var showingEditFriendNameAlert: Bool = false
+    @State private var editingFriendNameText: String = ""
+    
+    private var peerFriend: FriendsPublicUserProfile? {
+        if chat.chatType == .direct {
+            let myUserId = chatService.currentUser?.userID ?? ""
+            let peerId = chat.chat.members.first(where: { $0 != myUserId }) ?? ""
+            if !peerId.isEmpty, let friend = chatService.friends.first(where: { $0.userID == peerId }) {
+                return friend
+            }
+            if chat.chatID.hasPrefix("dm_") {
+                let rawStr = String(chat.chatID.dropFirst(3))
+                let parts = rawStr.components(separatedBy: "_u_")
+                if parts.count == 2 {
+                    let userA = parts[0].hasPrefix("u_") ? parts[0] : "u_" + parts[0]
+                    let userB = "u_" + parts[1]
+                    let foundPeerId = [userA, userB].first(where: { $0 != myUserId }) ?? ""
+                    return chatService.friends.first(where: { $0.userID == foundPeerId })
+                }
+            }
+        }
+        return nil
+    }
+    
+    private var resolvedTitle: String {
+        if chat.chatType == .direct, let friend = peerFriend {
+            return friend.displayName
+        }
+        return chat.displayTitle
+    }
     
     public var body: some View {
         VStack(spacing: 0) {
@@ -32,7 +62,7 @@ struct ChatDetailView: View {
                     ScrollView {
                         LazyVStack(spacing: 14) {
                             // 過去メッセージのオンデマンド遡りロード領域
-                            if chatService.hasMoreMessages[chat.chatID] ?? true {
+                            if (chatService.hasMoreMessages[chat.chatID] ?? false) && !currentMessages.isEmpty {
                                 HStack(spacing: 8) {
                                     ProgressView()
                                         .scaleEffect(0.85)
@@ -43,23 +73,39 @@ struct ChatDetailView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 8)
                                 .onAppear {
-                                    chatService.loadMoreMessages(chatId: chat.chatID)
+                                    if isInitialScrollDone {
+                                        chatService.loadMoreMessages(chatId: chat.chatID)
+                                    }
                                 }
                             }
                             
-                            ForEach(currentMessages) { message in
-                                MessageBubbleView(
-                                    message: message,
-                                    chatId: chat.chatID,
-                                    isFromMe: message.senderID == chatService.currentUser?.userID || message.senderID == chatService.currentUser?.uid,
-                                    isGroup: chat.chatType == .group,
-                                    isAllDetailsRevealed: isAllDetailsRevealed,
-                                    globalDragOffset: globalDragOffset,
-                                    onShowReactionDetails: {
-                                        selectedMessageForReactions = message
-                                    }
-                                )
-                                .id(message.id)
+                            if currentMessages.isEmpty {
+                                VStack(spacing: 12) {
+                                    Image(systemName: "bubble.left.and.bubble.right")
+                                        .font(.system(size: 40))
+                                        .foregroundColor(.secondary.opacity(0.6))
+                                    Text(L10n.Chat.detailEmpty)
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                        .multilineTextAlignment(.center)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.top, 60)
+                            } else {
+                                ForEach(currentMessages) { message in
+                                    MessageBubbleView(
+                                        message: message,
+                                        chatId: chat.chatID,
+                                        isFromMe: message.senderID == chatService.currentUser?.userID || message.senderID == chatService.currentUser?.uid,
+                                        isGroup: chat.chatType == .group,
+                                        isAllDetailsRevealed: isAllDetailsRevealed,
+                                        globalDragOffset: globalDragOffset,
+                                        onShowReactionDetails: {
+                                            selectedMessageForReactions = message
+                                        }
+                                    )
+                                    .id(message.id)
+                                }
                             }
                             
                             // 最下部検知用アンカー
@@ -194,17 +240,42 @@ struct ChatDetailView: View {
             .padding(.vertical, 8)
             .background(Color(uiColor: .systemBackground))
         }
-        .navigationTitle(chat.displayTitle)
+        .navigationTitle(resolvedTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if chat.chatType == .group {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     NavigationLink(destination: GroupDetailView(chat: chat)) {
-                        Image(systemName: "info.circle")
+                        Image(systemName: "pencil")
                             .font(.system(size: 16))
                     }
                 }
+            } else if let friend = peerFriend {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        editingFriendNameText = friend.displayName
+                        showingEditFriendNameAlert = true
+                    } label: {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 16))
+                    }
+                    .accessibilityLabel(L10n.Friend.editNameAction)
+                }
             }
+        }
+        .alert(L10n.Friend.editNameTitle, isPresented: $showingEditFriendNameAlert) {
+            TextField(L10n.Friend.editNamePlaceholder, text: $editingFriendNameText)
+            Button(L10n.Common.cancel, role: .cancel) {}
+            Button(L10n.Friend.editNameSave) {
+                if let friend = peerFriend {
+                    let trimmed = editingFriendNameText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !trimmed.isEmpty {
+                        chatService.updateFriendDisplayName(friendUserId: friend.userID, newDisplayName: trimmed) { _ in }
+                    }
+                }
+            }
+        } message: {
+            Text(L10n.Friend.editNameMessage)
         }
         .sheet(item: $selectedMessageForReactions) { message in
             ReactionDetailSheetView(chatId: chat.chatID, message: message)
@@ -248,8 +319,8 @@ struct ChatDetailView: View {
                 case .success:
                     self.messageText = ""
                     self.hasUnseenNewMessages = false
-                case .failure:
-                    break
+                case .failure(let error):
+                    AppLogger.error("Failed to send message in chat \(self.chat.chatID): \(error.localizedDescription)", category: .chat)
                 }
             }
         }
@@ -284,7 +355,7 @@ struct MessageBubbleView: View {
     var onShowReactionDetails: () -> Void = {}
     
     @ObservedObject private var chatService = ChatService.shared
-    @State private var showReactionPicker: Bool = false
+    @State private var showActionMenu: Bool = false
     
     private var isRead: Bool {
         chatService.isMessageRead(
@@ -331,34 +402,6 @@ struct MessageBubbleView: View {
     
     var body: some View {
         VStack(alignment: isFromMe ? .trailing : .leading, spacing: 4) {
-            // クイックリアクションピッカー (長押し時にふわっと表示)
-            if showReactionPicker {
-                HStack(spacing: 8) {
-                    ForEach(FriendsReactionType.allActiveTypes) { type in
-                        Button {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                showReactionPicker = false
-                            }
-                            chatService.toggleReaction(chatId: chatId, messageId: message.id, reactionType: type)
-                        } label: {
-                            Text(type.emoji)
-                                .font(.system(size: 24))
-                                .padding(6)
-                                .background(currentMyReaction == type ? Color.blue.opacity(0.2) : Color.clear)
-                                .clipShape(Circle())
-                                .scaleEffect(currentMyReaction == type ? 1.2 : 1.0)
-                        }
-                    }
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(Color(uiColor: .systemBackground))
-                .cornerRadius(24)
-                .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 3)
-                .transition(.scale.combined(with: .opacity))
-                .zIndex(10)
-            }
-            
             HStack(alignment: .top, spacing: 8) {
                 if !isFromMe {
                     // 相手のアイコン (アバター)
@@ -432,6 +475,23 @@ struct MessageBubbleView: View {
             .contentShape(Rectangle())
             .offset(x: effectiveOffset)
             
+            // 長押しクイックアクションメニュー (メッセージ直下に表示)
+            if showActionMenu {
+                HStack {
+                    if isFromMe {
+                        Spacer(minLength: 24)
+                        actionMenuCard
+                    } else {
+                        // 相手アバター分のスペースインデント (36 + 8)
+                        Spacer().frame(width: 44)
+                        actionMenuCard
+                        Spacer(minLength: 24)
+                    }
+                }
+                .transition(.scale(scale: 0.95, anchor: isFromMe ? .topTrailing : .topLeading).combined(with: .opacity))
+                .zIndex(10)
+            }
+            
             // リアクション集計バッジ表示 (吹き出し下部)
             if !activeReactionCounts.isEmpty {
                 HStack(spacing: 6) {
@@ -475,9 +535,9 @@ struct MessageBubbleView: View {
             }
         }
         .onTapGesture {
-            if showReactionPicker {
+            if showActionMenu {
                 withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
-                    showReactionPicker = false
+                    showActionMenu = false
                 }
             }
         }
@@ -486,20 +546,75 @@ struct MessageBubbleView: View {
     
     // MARK: - Subviews
     
+    /// メッセージ長押し時に直下に表示するアクションメニューカード（絵文字6種 ＋ コピー）
+    private var actionMenuCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            // 絵文字リアクション行: 👍 ❤️ 🆗 😊 😢 😱
+            HStack(spacing: 6) {
+                ForEach(FriendsReactionType.quickActionTypes) { type in
+                    Button {
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+                            showActionMenu = false
+                        }
+                        chatService.toggleReaction(chatId: chatId, messageId: message.id, reactionType: type)
+                    } label: {
+                        Text(type.emoji)
+                            .font(.system(size: 22))
+                            .padding(4)
+                            .background(currentMyReaction == type ? Color.blue.opacity(0.2) : Color.clear)
+                            .clipShape(Circle())
+                            .scaleEffect(currentMyReaction == type ? 1.15 : 1.0)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+                // ※「…」（その他の絵文字一覧展開）は今後の実装フェーズで提供予定
+            }
+            
+            Divider()
+                .padding(.vertical, 1)
+            
+            // コピー行
+            Button {
+                UIPasteboard.general.string = message.decryptedText
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(.success)
+                withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+                    showActionMenu = false
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "doc.on.doc")
+                        .font(.system(size: 13))
+                    Text(L10n.Common.copy)
+                        .font(.system(size: 13, weight: .medium))
+                    Spacer()
+                }
+                .foregroundColor(.primary)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 3)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        .padding(8)
+        .background(Color(uiColor: .secondarySystemGroupedBackground))
+        .cornerRadius(14)
+        .shadow(color: Color.black.opacity(0.14), radius: 8, x: 0, y: 3)
+    }
+    
     private func avatarView(name: String) -> some View {
         let senderId = message.senderID
-        let senderFriend = chatService.friends.first { $0.uid == senderId || $0.userID == senderId }
+        let profile = chatService.userProfile(for: senderId)
         
         return UserAvatarView(
-            userId: senderFriend?.userID ?? senderId,
+            userId: profile?.userID ?? senderId,
             displayName: name,
-            avatarNonce: senderFriend?.avatarNonce ?? "",
-            avatarUpdatedAt: senderFriend?.avatarUpdatedDate,
+            avatarNonce: profile?.avatarNonce ?? "",
+            avatarUpdatedAt: profile?.avatarUpdatedDate,
             size: 36
         )
     }
 
-    
     private func messageBubble(isMe: Bool) -> some View {
         Text(message.decryptedText)
             .font(.system(size: 15))
@@ -512,33 +627,7 @@ struct MessageBubbleView: View {
                 let generator = UIImpactFeedbackGenerator(style: .medium)
                 generator.impactOccurred()
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                    showReactionPicker.toggle()
-                }
-            }
-            .contextMenu {
-                // コンテキストメニューからもリアクションや詳細閲覧が可能
-                Menu {
-                    ForEach(FriendsReactionType.allActiveTypes) { type in
-                        Button {
-                            chatService.toggleReaction(chatId: chatId, messageId: message.id, reactionType: type)
-                        } label: {
-                            Label("\(type.emoji) \(type.title)", systemImage: currentMyReaction == type ? "checkmark" : "")
-                        }
-                    }
-                } label: {
-                    Label(L10n.Reaction.detailsTitle, systemImage: "face.smiling")
-                }
-                
-                Button {
-                    onShowReactionDetails()
-                } label: {
-                    Label(L10n.Reaction.detailsTitle, systemImage: "person.2")
-                }
-                
-                Button {
-                    UIPasteboard.general.string = message.decryptedText
-                } label: {
-                    Label(L10n.Common.copy, systemImage: "doc.on.doc")
+                    showActionMenu.toggle()
                 }
             }
     }

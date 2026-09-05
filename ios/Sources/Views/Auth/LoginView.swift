@@ -369,7 +369,7 @@ struct RecoveryLoginSheetView: View {
                                 .tint(.white)
                                 .padding(.trailing, 8)
                         }
-                        Text("アカウントと鍵を復元")
+                        Text(L10n.Auth.recoveryRestoreButton)
                             .bold()
                     }
                     .frame(maxWidth: .infinity)
@@ -398,7 +398,7 @@ struct RecoveryLoginSheetView: View {
     private func restoreAccount() {
         let words = phraseInput.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
         guard words.count >= 12 else {
-            errorText = "12個の英単語を入力してください (現在 \(words.count) 単語)"
+            errorText = L10n.Auth.recoveryWordCountError(count: words.count)
             return
         }
         

@@ -58,51 +58,67 @@ if (getApps().length === 0) {
 const db = getFirestore();
 
 async function cleanMessages() {
-  console.log(`🧹 Cleaning messages and chat data in project: ${projectId}...`);
+  console.log(`🧹 Cleaning all messages, groups, and chat data in project: ${projectId}...`);
   
   const tenantsSnap = await db.collection("tenants").get();
   
   for (const tenantDoc of tenantsSnap.docs) {
     const tenantId = tenantDoc.id;
-    console.log(`Processing tenant: ${tenantId}`);
+    console.log(`\n🏢 Processing tenant: ${tenantId}`);
     
     const chatsSnap = await db.collection("tenants").doc(tenantId).collection("chats").get();
+    console.log(`Found ${chatsSnap.docs.length} chat/group documents.`);
+    
     for (const chatDoc of chatsSnap.docs) {
       const chatId = chatDoc.id;
-      console.log(`  Deleting messages in chat: ${chatId}`);
+      const chatData = chatDoc.data() || {};
+      const isGroup = chatData.chatType === "group" || chatId.startsWith("gm_");
+      const typeLabel = isGroup ? "Group (かいぎ)" : "DM";
+      const titleInfo = chatData.title ? ` - "${chatData.title}"` : "";
       
-      const messagesSnap = await db.collection("tenants").doc(tenantId)
-        .collection("chats").doc(chatId)
-        .collection("messages").get();
+      console.log(`  🗑️ Deleting ${typeLabel}: ${chatId}${titleInfo}`);
       
-      for (const msgDoc of messagesSnap.docs) {
-        const msgId = msgDoc.id;
-        // Check for reactions subcollection
-        const reactionsSnap = await db.collection("tenants").doc(tenantId)
-          .collection("chats").doc(chatId)
-          .collection("messages").doc(msgId)
-          .collection("reactions").get();
-        
-        for (const reactionDoc of reactionsSnap.docs) {
-          await reactionDoc.ref.delete();
+      // 1. Delete group key buckets (`keys` subcollection)
+      const keysSnap = await chatDoc.ref.collection("keys").get();
+      if (!keysSnap.empty) {
+        console.log(`    ↳ Deleting ${keysSnap.docs.length} group key buckets...`);
+        for (const keyDoc of keysSnap.docs) {
+          await keyDoc.ref.delete();
         }
-        await msgDoc.ref.delete();
       }
       
-      // Also delete receipts
-      const receiptsSnap = await db.collection("tenants").doc(tenantId)
-        .collection("chats").doc(chatId)
-        .collection("receipts").get();
-      for (const rDoc of receiptsSnap.docs) {
-        await rDoc.ref.delete();
+      // 2. Delete messages and their reaction subcollections
+      const messagesSnap = await chatDoc.ref.collection("messages").get();
+      if (!messagesSnap.empty) {
+        console.log(`    ↳ Deleting ${messagesSnap.docs.length} messages and reactions...`);
+        for (const msgDoc of messagesSnap.docs) {
+          const reactionsSnap = await msgDoc.ref.collection("reactions").get();
+          for (const reactionDoc of reactionsSnap.docs) {
+            await reactionDoc.ref.delete();
+          }
+          await msgDoc.ref.delete();
+        }
       }
       
-      // Delete chat document
-      await chatDoc.ref.delete();
+      // 3. Delete read receipts (`receipts` subcollection)
+      const receiptsSnap = await chatDoc.ref.collection("receipts").get();
+      if (!receiptsSnap.empty) {
+        console.log(`    ↳ Deleting ${receiptsSnap.docs.length} read receipts...`);
+        for (const rDoc of receiptsSnap.docs) {
+          await rDoc.ref.delete();
+        }
+      }
+      
+      // 4. Delete chat/group document itself (using recursiveDelete if available as safeguard)
+      if (typeof db.recursiveDelete === "function") {
+        await db.recursiveDelete(chatDoc.ref);
+      } else {
+        await chatDoc.ref.delete();
+      }
     }
   }
   
-  console.log("✅ All messages, reactions, read receipts, and chats have been cleanly deleted from Firestore.");
+  console.log("\n✅ All messages, reactions, read receipts, group keys, and group/DM chats have been completely deleted from Firestore.");
 }
 
 cleanMessages().catch(err => {

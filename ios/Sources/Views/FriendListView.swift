@@ -8,12 +8,19 @@ import SwiftUI
 public struct FriendListView: View {
     @ObservedObject var chatService = ChatService.shared
     @State private var showingAddFriendSheet = false
+    @State private var editingFriend: FriendsPublicUserProfile? = nil
+    @State private var newFriendDisplayName: String = ""
+    @Binding var navigationPath: NavigationPath
+    
+    public init(navigationPath: Binding<NavigationPath> = .constant(NavigationPath())) {
+        self._navigationPath = navigationPath
+    }
     
     private struct FriendRowItem: Identifiable {
         let friend: FriendsPublicUserProfile
         let chat: FriendsChatUIModel
         var id: String {
-            "\(friend.userID)_\(friend.avatarNonce)_\(friend.avatarUpdatedAt.seconds)_\(chat.lastMessageAt.timeIntervalSince1970)_\(chat.unreadCount)"
+            "\(friend.userID)_\(friend.displayName)_\(friend.avatarNonce)_\(friend.avatarUpdatedAt.seconds)_\(chat.lastMessageAt.timeIntervalSince1970)_\(chat.unreadCount)"
         }
     }
 
@@ -67,7 +74,7 @@ public struct FriendListView: View {
     }
     
     public var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             List {
                 Section {
                     if friendRowItems.isEmpty {
@@ -85,16 +92,35 @@ public struct FriendListView: View {
                         .frame(maxWidth: .infinity)
                     } else {
                         ForEach(friendRowItems) { item in
-                            NavigationLink(destination: ChatDetailView(chat: item.chat)) {
+                            NavigationLink(value: item.chat) {
                                 ChatRowView(chat: item.chat, friend: item.friend)
+                            }
+                            .contextMenu {
+                                Button {
+                                    editingFriend = item.friend
+                                    newFriendDisplayName = item.friend.displayName
+                                } label: {
+                                    Label(L10n.Friend.editNameAction, systemImage: "pencil")
+                                }
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button {
+                                    editingFriend = item.friend
+                                    newFriendDisplayName = item.friend.displayName
+                                } label: {
+                                    Label(L10n.Friend.editNameAction, systemImage: "pencil")
+                                }
+                                .tint(.blue)
                             }
                         }
                     }
                 }
             }
             .listStyle(.insetGrouped)
-
             .navigationTitle(L10n.Friend.listTitle)
+            .navigationDestination(for: FriendsChatUIModel.self) { chat in
+                ChatDetailView(chat: chat)
+            }
             .refreshable {
                 await withCheckedContinuation { continuation in
                     chatService.listFriendsProfiles(force: true) {
@@ -116,6 +142,29 @@ public struct FriendListView: View {
             }
             .sheet(isPresented: $showingAddFriendSheet) {
                 AddFriendView()
+            }
+            .alert(L10n.Friend.editNameTitle, isPresented: Binding(
+                get: { editingFriend != nil },
+                set: { if !$0 { editingFriend = nil } }
+            )) {
+                TextField(L10n.Friend.editNamePlaceholder, text: $newFriendDisplayName)
+                Button(L10n.Common.cancel, role: .cancel) {
+                    editingFriend = nil
+                }
+                Button(L10n.Friend.editNameSave) {
+                    if let target = editingFriend {
+                        let trimmed = newFriendDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !trimmed.isEmpty {
+                            chatService.updateFriendDisplayName(friendUserId: target.userID, newDisplayName: trimmed) { _ in
+                                editingFriend = nil
+                            }
+                        } else {
+                            editingFriend = nil
+                        }
+                    }
+                }
+            } message: {
+                Text(L10n.Friend.editNameMessage)
             }
         }
     }

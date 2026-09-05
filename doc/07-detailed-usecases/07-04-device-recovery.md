@@ -28,7 +28,7 @@ E2EEを採用する本システムにおいて、単にログイン情報（IdP 
 
 ## 2. 「ふっかつのじゅもん」からの鍵導出アーキテクチャ
 
-「ふっかつのじゅもん」は、BIP-39 スタイルの Mnemonic Phrase（12〜24単語）から構成されます。単一のマスターシードから HKDF により、独立した2つのキーを導出します。
+「ふっかつのじゅもん」は、BIP-39 規格の Mnemonic Phrase（デフォルト: 日本語ひらがな 12 単語、多言語・英語入力にも対応）から構成されます。BIP-39 公式ライブラリ（`SwiftMnemonic`）により言語の自動検出、全角/半角スペース正規化（NFKD）、およびチェックサム検証が行われます。単一のマスターシードから HKDF により、独立した2つのキーを確定導出します。
 
 ```mermaid
 flowchart TD
@@ -71,9 +71,9 @@ sequenceDiagram
     actor User
     participant NewApp as "New App (iOS/Web)"
     participant CryptoLib as "Crypto Engine"
-    participant CloudFunc as "Cloud Function (Recovery API)"
+    participant Workers as "Cloudflare Workers (API)"
     participant FirebaseAuth as "Firebase Auth"
-    participant Firestore as "Firestore"
+    participant Firestore as "Firestore (REST API)"
     participant SecureStorage as "Secure Storage"
 
     User->>NewApp: 「ふっかつのじゅもん」を入力
@@ -82,12 +82,13 @@ sequenceDiagram
     CryptoLib->>CryptoLib: 2. recoveryHash = SHA256(K_recovery_id)
     CryptoLib-->>NewApp: recoveryHash, K_priv_enc
 
-    NewApp->>CloudFunc: POST /api/v1/auth/recover-anonymous (recoveryHash)
-    CloudFunc->>Firestore: /users/{uid}/private/data から recoveryHash が一致するドキュメントを検索
-    Firestore-->>CloudFunc: uid, encryptedPrivateKey, nonce
-    CloudFunc->>FirebaseAuth: createCustomToken(uid)
-    FirebaseAuth-->>CloudFunc: customToken
-    CloudFunc-->>NewApp: customToken, encryptedPrivateKey, nonce
+    Note over NewApp: スキャン済みテナント設定から workerApiUrl を取得
+    NewApp->>Workers: POST {workerApiUrl}/api/v1/auth/recover-anonymous (recoveryHash)
+    Note over Workers: Google サービスアカウントで Firestore を検索
+    Workers->>Firestore: recoveryHash が一致するドキュメント (/recovery_vault/{recoveryHash}) を取得
+    Firestore-->>Workers: uid, encryptedPrivateKey, nonce
+    Note over Workers: Web Crypto API (RS256) で Firebase Custom Token を自己署名発行
+    Workers-->>NewApp: customToken, encryptedPrivateKey, nonce
 
     NewApp->>FirebaseAuth: signInWithCustomToken(customToken)
     FirebaseAuth-->>NewApp: Authenticated User (元のアカウント UID でログイン完了)
@@ -96,7 +97,7 @@ sequenceDiagram
     CryptoLib-->>NewApp: Plaintext PrivateKey (SK_u)
 
     NewApp->>SecureStorage: SK_u を Secure Storage に保存
-    NewApp->>User: アカウント・過去メッセージ復元完了画面表示
+    NewApp->>User: アカウント・名前・友達・チャット完全復元完了
 ```
 
 ---
@@ -123,3 +124,20 @@ sequenceDiagram
    - サーバー（Firestore/Cloud Functions）は、平文の「ふっかつのじゅもん」や「$SK_u$」を絶対に受け取りません。
 3. **セキュリティリセット（鍵再生成）時のバックアップ自動更新**:
    - ユーザーがアカウント露呈等により「セキュリティリセット（Key Rotation）」を実行した場合は、新しく生成された秘密鍵 $SK_{u\_new}$ を既存の $K_{priv\_enc}$ で即座に再暗号化し、Firestore `/users/{uid}/private/data` 上の `encryptedPrivateKey` を自動更新します。
+
+---
+
+## 7. ふっかつのじゅもんの再作成（ローテーション）仕様
+
+ユーザーが「ふっかつのじゅもんを誰かに見られた」「定期的に安全性を高めたい」等の理由で再作成を要求した場合の仕様です。
+
+1. **暗号学的安全性・無影響性**:
+   - ふっかつのじゅもんは $SK_u$ の暗号化・復元およびアカウント照合ハッシュのみに使用されるため、**じゅもんを新しく再生成しても現在の秘密鍵 $SK_u$ や過去のメッセージ暗号化・復号には一切影響しません**。
+2. **再作成処理フロー**:
+   - 画面右上の再作成ボタン（`arrow.clockwise`）を押下。
+   - 確認ダイアログ（「これまでのふっかつのじゅもんは使用できなくなります」）の承認を経て実行。
+   - `MnemonicManager` で新しい日本語12単語（BIP-39）を生成。
+   - 現在の秘密鍵 $SK_u$ を新しい $K_{priv\_enc}$ で暗号化し、新しい $recoveryHash$ を算出。
+   - Firestore `/users/{uid}/private/data` を上書き保存し、端末 Keychain のフレーズを更新。
+   - 画面の12単語表示を即座に更新。旧じゅもんは即時無効化される。
+

@@ -86,4 +86,40 @@ final class CryptoKeyManagerTests: XCTestCase {
         let decrypted = try CryptoKeyManager.shared.decryptWithTenantKey(encryptedData: encrypted, nonce: nonce, tenantId: defaultTenantId)
         XCTAssertEqual(decrypted, originalText)
     }
+    
+    // MARK: - Personal Key (SK_u based) Tests
+    
+    func testPersonalKeyDerivationAndEncryption() throws {
+        let uid = "test_crypto_user_1"
+        _ = try CryptoKeyManager.shared.getOrCreateKeypair(uid: uid)
+        
+        let personalKey = CryptoKeyManager.shared.getPersonalKey(uid: uid)
+        XCTAssertNotNil(personalKey, "秘密鍵から個人専用暗号鍵 (MK_u) が導出できる必要があります")
+        
+        let friendCustomName = "親友のボブ（高校同期）"
+        let (encryptedData, nonce) = try CryptoKeyManager.shared.encryptWithPersonalKey(plainText: friendCustomName, uid: uid)
+        
+        XCTAssertFalse(encryptedData.isEmpty)
+        XCTAssertFalse(nonce.isEmpty)
+        XCTAssertNotEqual(friendCustomName, encryptedData, "暗号化データは平文と異なる必要があります")
+        
+        let decrypted = try CryptoKeyManager.shared.decryptWithPersonalKey(encryptedData: encryptedData, nonce: nonce, uid: uid)
+        XCTAssertEqual(decrypted, friendCustomName, "自身の個人鍵で復号された文字列は平文と一致する必要があります")
+    }
+    
+    func testPersonalKeyIsolationAcrossUsers() throws {
+        let uid1 = "test_crypto_user_1"
+        let uid2 = "test_crypto_user_2"
+        _ = try CryptoKeyManager.shared.getOrCreateKeypair(uid: uid1)
+        _ = try CryptoKeyManager.shared.getOrCreateKeypair(uid: uid2)
+        
+        let customName = "秘密のニックネーム"
+        let (encryptedData, nonce) = try CryptoKeyManager.shared.encryptWithPersonalKey(plainText: customName, uid: uid1)
+        
+        // uid2 の個人鍵では uid1 の暗号文を復号できないことを検証 (Zero-Knowledge Isolation)
+        XCTAssertThrowsError(try CryptoKeyManager.shared.decryptWithPersonalKey(encryptedData: encryptedData, nonce: nonce, uid: uid2)) { error in
+            // CryptoKit authentication failure
+            XCTAssertNotNil(error)
+        }
+    }
 }

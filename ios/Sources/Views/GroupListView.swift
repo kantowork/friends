@@ -8,9 +8,11 @@ import SwiftUI
 public struct GroupListView: View {
     @ObservedObject var chatService = ChatService.shared
     @State private var showingCreateGroupSheet = false
-    @State private var navigationPath = NavigationPath()
+    @Binding var navigationPath: NavigationPath
     
-    public init() {}
+    public init(navigationPath: Binding<NavigationPath> = .constant(NavigationPath())) {
+        self._navigationPath = navigationPath
+    }
     
     /// グループチャット一覧（最新メッセージ時刻降順）
     private var groupListItems: [FriendsChatUIModel] {
@@ -64,6 +66,13 @@ public struct GroupListView: View {
             }
             .listStyle(.insetGrouped)
             .navigationTitle(L10n.Group.listTitle)
+            .refreshable {
+                await withCheckedContinuation { continuation in
+                    chatService.listGroupChats {
+                        continuation.resume()
+                    }
+                }
+            }
             .navigationDestination(for: FriendsChatUIModel.self) { chat in
                 ChatDetailView(chat: chat)
             }
@@ -94,19 +103,12 @@ struct GroupChatRowView: View {
     var body: some View {
         HStack(spacing: 12) {
             // グループアバター
-            ZStack {
-                Circle()
-                    .fill(LinearGradient(
-                        colors: [Color.orange.opacity(0.8), Color.pink.opacity(0.8)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ))
-                    .frame(width: 48, height: 48)
-                
-                Image(systemName: "person.3.fill")
-                    .font(.system(size: 20))
-                    .foregroundColor(.white)
-            }
+            GroupAvatarView(
+                chatId: chat.chatID,
+                avatarNonce: chat.avatarNonce,
+                avatarUpdatedAt: chat.avatarUpdatedAt,
+                size: 48
+            )
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
