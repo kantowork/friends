@@ -111,6 +111,12 @@ final class CryptoKeyManager {
         _ = saveToKeychain(key: keyTag, data: data)
     }
     
+    /// テナントマスターキー (MK_T) を Keychain から削除する
+    func deleteTenantMasterKey(tenantId: String) {
+        let keyTag = tenantKeyTag(for: tenantId)
+        deleteFromKeychain(key: keyTag)
+    }
+    
     /// テナントマスターキー (MK_T) を Keychain から取得する
     func getTenantMasterKey(tenantId: String) -> SymmetricKey? {
         let keyTag = tenantKeyTag(for: tenantId)

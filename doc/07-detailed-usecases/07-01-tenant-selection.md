@@ -61,18 +61,42 @@ sequenceDiagram
 ## 2. ローカル管理と Firestore 管理の区分
 
 - ローカル管理 (Keychain / UserDefaults)
-  - 選択済み `tenantId`, `tenantCode` とユーザーが最後に利用したテナント状態
-  - **Cloudflare Workers 接続先 URL (`workerApiUrl`)**: 二次元コードまたは設定 JSON 経由でのみ動的注入
-  - **Cloudflare R2 設定 (`r2Config`)**: 二次元コードまたは設定 JSON 経由でのみ動的注入
-  - **テナントマスターキー ($MK_T$)** (Keychain: `friends_tenant_key_{tenantId}`)
-  - オフライン復帰時のテナント選択リストキャッシュ
+  - **登録済みテナント一覧 (`[StoredTenant]`)**: 端末内で保持する全テナント情報 (`tenantID`, `tenantCode`, `tenantName`, `joinedAt`, `lastActiveAt`, `workerApiUrl`)
+  - **現在のアクティブテナントID (`activeTenantId`)**: ユーザーが現在操作中のテナント
+  - **テナントマスターキー ($MK_T$)** (Keychain: `friends_tenant_key_{tenantId}`): 各テナントごとに個別に暗号化保管
+  - **各テナントの未読集計 (`tenantUnreadCounts: [String: Int]`)**: 各テナントの未読数を保持し、他テナントの未読合計数を算出
 - Firestore 管理
   - テナントの正規構成データ（`/tenants/{tenantId}`）
+  - テナント所属ユーザープロファイル（`/tenants/{tenantId}/users/{userId}`）
   - テナントの有効/無効状態、公開設定
 
 > 端末上のローカル保存は暗号化マスターキーの厳重管理とユーザー体験向上用であり、権威あるテナント構成は Firestore 側に置きます。また、`workerApiUrl` や `r2Config` はソースコードに埋め込まず、配布されたテナント設定（二次元コード/JSON/URL）からのみ注入されます。
 
-## 3. エラーハンドリング
+---
+
+## 3. 複数テナントの切り替え・通知バッジ集計プロトコル
+
+### 3.1 テナント切り替えライフサイクル
+1. ユーザーがホーム画面右上のプロフィールアイコンをタップし、テナント切り替えシート (`TenantSwitcherView`) を開く。
+2. 一覧から別テナントを選択：
+   - 現在のテナントの全リアルタイムリスナー (`chatListener`, `friendListener`, `messageListeners`, `readReceiptListeners`) を安全に解除。
+   - メモリ上のチャット・友達・メッセージデータをクリア。
+   - `activeTenantId` を更新し、ローカル設定 (`UserDefaults`) に保存。
+   - 切り替え先テナントのユーザープロファイルをロード (`loadUserProfile`)。※ 未参加の場合は同一 Auth UID で参加プロファイルを自動生成。
+   - 切り替え先テナントのチャット・友達リスナーを開始 (`watchChats`, `watchFriends`)。
+
+### 3.2 他テナントの通知・未読バッジ集計
+- **バッジ計算式**:
+  $$\text{otherTenantsUnreadCount} = \sum_{t \in \text{registeredTenants}, t \ne \text{activeTenantId}} \text{tenantUnreadCounts}[t]$$
+- **表示仕様**:
+  - ホーム画面右上のプロフィールアイコン上部に、`otherTenantsUnreadCount > 0` の場合のみ赤丸バッジを表示。現在開いているテナントの未読は計上せず、他テナントの新着のみを表示する。
+  - テナント切り替えシート内の各行には、それぞれのテナントごとの未読バッジを表示。
+- **集計タイミング**:
+  - アプリ起動時、フォアグラウンド復帰時、およびテナント切り替え時にバックグラウンドで各非アクティブテナントの未読数をフェッチ・更新し、Firestore 読み取りコストと通信量を最適化。
+
+---
+
+## 4. エラーハンドリング
 
 | エラー                | 対応                                           |
 | :-------------------- | :--------------------------------------------- |
@@ -82,9 +106,11 @@ sequenceDiagram
 | テナント不存在        | 管理者に確認依頼                               |
 | ネットワークエラー    | リトライ or オフライン表示                     |
 
-## 4. 関連ドメインモデル
+## 5. 関連ドメインモデル
 - Tenant
+- StoredTenant (端末ローカル保持モデル)
 - User (tenantId に紐付け)
 
-## 5. 多言語化（ローカライズ）
+## 6. 多言語化（ローカライズ）
 - アプリの UI 文言は `L10n` を通じて多言語化（日本語・英語）管理。
+

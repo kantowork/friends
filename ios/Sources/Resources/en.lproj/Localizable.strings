@@ -31,7 +31,7 @@
 
 // MARK: - Tenant Selection
 "tenant.selection.title" = "Select Tenant";
-"tenant.selection.header" = "Select Organization (Tenant)";
+"tenant.selection.header" = "Select Tenant";
 "tenant.selection.subtitle" = "Scan 2D code or enter tenant configuration directly.";
 "tenant.tab.two_dimensional_code" = "2D Code";
 "tenant.tab.url" = "URL";
@@ -47,6 +47,16 @@
 "error.tenant.invalid_format" = "Invalid tenant configuration format. Please provide valid JSON or a valid URL.";
 "error.tenant.fetch_failed" = "Failed to fetch tenant configuration from URL. Please check the URL and network connection.";
 "error.tenant.verification_failed" = "Tenant verification failed: %@";
+
+// MARK: - Tenant Switcher
+"tenant.switch.title" = "Switch Tenant";
+"tenant.switch.list_header" = "Tenants";
+"tenant.switch.current_badge" = "Active";
+"tenant.switch.add_btn" = "Add Another Tenant";
+"tenant.switch.leave" = "Leave Tenant";
+"tenant.switch.leave_confirm_title" = "Leave Tenant";
+"tenant.switch.leave_confirm_msg" = "Are you sure you want to leave tenant \"%@\"?\nLocal settings and keys will be deleted.";
+"tenant.badge.other_unread" = "Notifications from other tenants";
 
 // MARK: - Tabs
 "tab.home" = "Home";
@@ -213,14 +223,12 @@
 "error.friend.invalid_format" = "Friend invitation code format is invalid.";
 "error.friend.user_not_found" = "The specified user ID could not be found.";
 "error.friend.passcode_expired" = "Passcode mismatch or expired. Please enter the newest code.";
-"error.friend.tenant_mismatch" = "User belongs to a different organization. Friend addition is only allowed within the same tenant.";
+"error.friend.tenant_mismatch" = "User belongs to a different tenant. Friend addition is only allowed within the same tenant.";
 "error.friend.self_add" = "You cannot add yourself as a friend.";
-"error.recovery.data_not_found" = "Backup recovery data not found.";
+"error.recovery.data_not_found" = "Recovery data not found.";
 "error.recovery.decryption_failed" = "Failed to decrypt private key. Please check your recovery phrase.";
-"error.recovery.tenant_not_configured" = "Organization (Tenant) not configured. Please scan your tenant 2D code first.";
+"error.recovery.tenant_not_configured" = "Tenant not configured. Please scan your tenant 2D code first.";
 "error.user.not_found" = "User profile not found.";
 
 // MARK: - Toast Notification
 "toast.new_message" = "New Message";
-
-

@@ -31,7 +31,7 @@
 
 // MARK: - Tenant Selection
 "tenant.selection.title" = "テナント選択";
-"tenant.selection.header" = "組織（テナント）を選択";
+"tenant.selection.header" = "テナントを選択";
 "tenant.selection.subtitle" = "二次元コードをスキャンするか、\nテナント設定情報を直接入力してください。";
 "tenant.tab.two_dimensional_code" = "二次元コード";
 "tenant.tab.url" = "URL";
@@ -47,6 +47,16 @@
 "error.tenant.invalid_format" = "テナント設定の形式が正しくありません。完全なJSONまたは有効なURLを指定してください。";
 "error.tenant.fetch_failed" = "URLからテナント設定を取得できませんでした。URLとネットワーク接続を確認してください。";
 "error.tenant.verification_failed" = "テナント検証に失敗しました: %@";
+
+// MARK: - Tenant Switcher
+"tenant.switch.title" = "テナントの切り替え";
+"tenant.switch.list_header" = "テナント一覧";
+"tenant.switch.current_badge" = "利用中";
+"tenant.switch.add_btn" = "別のテナントを追加";
+"tenant.switch.leave" = "テナントから抜ける";
+"tenant.switch.leave_confirm_title" = "テナントからの離脱";
+"tenant.switch.leave_confirm_msg" = "テナント「%@」から抜けますか？\n端末内の設定とキーが削除されます。";
+"tenant.badge.other_unread" = "他テナントの新着通知";
 
 // MARK: - Tabs
 "tab.home" = "ホーム";
@@ -213,11 +223,11 @@
 "error.friend.invalid_format" = "友達追加コードの形式が正しくありません。";
 "error.friend.user_not_found" = "指定されたユーザーIDが見つかりませんでした。";
 "error.friend.passcode_expired" = "合言葉が一致しないか、有効期限が切れています。最新のコードを再入力してください。";
-"error.friend.tenant_mismatch" = "異なる組織（テナント）のユーザーです。同一組織内でのみ友達追加が可能です。";
+"error.friend.tenant_mismatch" = "異なるテナントのユーザーです。同一テナント内でのみ友達追加が可能です。";
 "error.friend.self_add" = "自分自身を友達に追加することはできません。";
 "error.recovery.data_not_found" = "復元データが見つかりません。";
 "error.recovery.decryption_failed" = "秘密鍵の復号に失敗しました。正しいふっかつのじゅもんを入力してください。";
-"error.recovery.tenant_not_configured" = "組織（テナント）が未設定です。先にテナント二次元コードをスキャンしてください。";
+"error.recovery.tenant_not_configured" = "テナントが未設定です。先にテナント二次元コードをスキャンしてください。";
 "error.user.not_found" = "ユーザープロファイルが見つかりません。";
 
 // MARK: - Toast Notification

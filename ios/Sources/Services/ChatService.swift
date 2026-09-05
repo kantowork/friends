@@ -61,26 +61,123 @@ public class ChatService: ObservableObject {
     // MARK: - Initial Auth & Tenant Checking
     
     public func checkAuthState() {
-        // 1. Fetch Tenant from Firestore
-        fetchDefaultTenant { [weak self] tenantResult in
+        TenantManager.shared.loadTenantsFromStorage()
+        let activeId = TenantManager.shared.activeTenantId
+        
+        let targetId = activeId.isEmpty ? PresetTenantConfig.tenantId : activeId
+        
+        // 1. Fetch Active Tenant from Firestore
+        TenantRepository.shared.getTenantByTenantId(tenantId: targetId) { [weak self] tenantResult in
             guard let self = self else { return }
             
+            let tenantToUse: FriendsTenant
+            switch tenantResult {
+            case .success(let tenant):
+                tenantToUse = tenant
+            case .failure:
+                tenantToUse = PresetTenantConfig.defaultTenant
+            }
+            
+            DispatchQueue.main.async {
+                self.currentTenant = tenantToUse
+                TenantManager.shared.addOrUpdateTenant(tenant: tenantToUse)
+            }
+            
+            // 2. Check Firebase Auth
+            if let firebaseUser = Auth.auth().currentUser {
+                self.loadUserProfile(uid: firebaseUser.uid, tenantId: tenantToUse.tenantID)
+                DispatchQueue.main.async {
+                    TenantManager.shared.refreshUnreadCounts()
+                }
+            } else {
+                DispatchQueue.main.async {
+                    self.authStatus = .unauthenticated
+                }
+            }
+        }
+    }
+    
+    // MARK: - Switch Tenant (複数テナント切り替え)
+    
+    func switchToTenant(tenantId: String, completion: @escaping (Result<FriendsTenant, Error>) -> Void) {
+        guard let authUid = Auth.auth().currentUser?.uid else {
+            let err = NSError(domain: "ChatService", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated."])
+            completion(.failure(err))
+            return
+        }
+        
+        // 1. 既存リスナーの完全破棄
+        chatListener?.remove()
+        chatListener = nil
+        friendListener?.remove()
+        friendListener = nil
+        messageListeners.values.forEach { $0.remove() }
+        messageListeners.removeAll()
+        readReceiptListeners.values.forEach { $0.remove() }
+        readReceiptListeners.removeAll()
+        
+        // 2. メモリ上の一時状態をクリア
+        DispatchQueue.main.async {
+            self.chats.removeAll()
+            self.friends.removeAll()
+            self.messages.removeAll()
+            self.readReceipts.removeAll()
+            self.userReactions.removeAll()
+            self.groupMemberProfiles.removeAll()
+            self.directSessionKeys.removeAll()
+            self.groupSessionKeys.removeAll()
+            self.knownMessageIds.removeAll()
+            self.messageLimits.removeAll()
+            self.hasMoreMessages.removeAll()
+            self.isLoadingMoreMessages.removeAll()
+            self.activeChatId = nil
+            self.currentUser = nil
+        }
+        
+        // 3. テナント情報の取得・適用
+        TenantRepository.shared.getTenantByTenantId(tenantId: tenantId) { [weak self] tenantResult in
+            guard let self = self else { return }
             switch tenantResult {
             case .success(let tenant):
                 DispatchQueue.main.async {
                     self.currentTenant = tenant
+                    TenantManager.shared.setActiveTenantId(tenant.tenantID)
                 }
-                // 2. Check Firebase Auth
-                if let firebaseUser = Auth.auth().currentUser {
-                    self.loadUserProfile(uid: firebaseUser.uid, tenantId: tenant.tenantID)
-                } else {
-                    DispatchQueue.main.async {
-                        self.authStatus = .unauthenticated
+                
+                // 4. 当該テナントのユーザープロファイルを確認・ロード
+                UserRepository.shared.getUserProfileByUid(tenantId: tenant.tenantID, uid: authUid) { [weak self] userResult in
+                    guard let self = self else { return }
+                    switch userResult {
+                    case .success(let profile):
+                        DispatchQueue.main.async {
+                            self.currentUser = profile
+                            self.authStatus = .authenticated
+                            self.watchChats()
+                            self.watchFriends()
+                            TenantManager.shared.refreshUnreadCounts()
+                            completion(.success(tenant))
+                        }
+                    case .failure:
+                        // 未参加テナントの場合: 既存の表示名と公開鍵を引き継いで参加プロファイルを作成
+                        let savedName = CryptoKeyManager.shared.getMyDisplayName(uid: authUid) ?? "ユーザー"
+                        self.createAndSaveUserProfile(uid: authUid, tenantId: tenant.tenantID, displayName: savedName) { createResult in
+                            switch createResult {
+                            case .success:
+                                DispatchQueue.main.async {
+                                    TenantManager.shared.refreshUnreadCounts()
+                                    completion(.success(tenant))
+                                }
+                            case .failure(let err):
+                                DispatchQueue.main.async {
+                                    completion(.failure(err))
+                                }
+                            }
+                        }
                     }
                 }
-            case .failure:
+            case .failure(let error):
                 DispatchQueue.main.async {
-                    self.authStatus = .unauthenticated
+                    completion(.failure(error))
                 }
             }
         }
@@ -94,6 +191,7 @@ public class ChatService: ObservableObject {
             if case .success(let tenant) = result {
                 DispatchQueue.main.async {
                     self.currentTenant = tenant
+                    TenantManager.shared.addOrUpdateTenant(tenant: tenant)
                     if self.authStatus == .authenticated {
                         self.watchChats()
                     }
@@ -1686,7 +1784,11 @@ public class ChatService: ObservableObject {
     
     /// 全チャットの合計未読メッセージ数
     public var totalUnreadCount: Int {
-        totalDmUnreadCount + totalGroupUnreadCount
+        let count = totalDmUnreadCount + totalGroupUnreadCount
+        if let currentId = currentTenant?.tenantID {
+            TenantManager.shared.updateUnreadCount(for: currentId, count: count)
+        }
+        return count
     }
     
     /// 1:1（DM）チャット一覧

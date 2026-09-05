@@ -72,6 +72,18 @@
 - **関数名**: `getTenantByTenantId(tenantId:completion:)`
 - **概要**: テナント表示名の復号とメタデータ取得。
 
+#### TP-03: 登録済みテナント一覧の端末保持・同期
+- **操作種別**: Local Storage (UserDefaults) & Read
+- **対象パス**: ローカル `UserDefaults` (`friends_registered_tenants`)
+- **関数名**: `TenantManager.shared.getRegisteredTenants()`, `addTenant(_:)`, `removeTenant(_:)`
+- **概要**: 端末に複数参加したテナントの一覧を永続化し、起動時・切り替え時に利用。
+
+#### TP-04: 非アクティブテナント未読数フェッチ
+- **操作種別**: Read (Query)
+- **対象パス**: `/tenants/{tenantId}/chats` (where `members array-contains userId`)
+- **関数名**: `TenantManager.shared.refreshUnreadCounts()`
+- **概要**: アプリ起動時・復帰時・切り替え時に非アクティブテナントのチャット更新時刻をフェッチし、他テナントの未読合計バッジを計算。
+
 ---
 
 ### 3.2 ユーザー・プロファイル (User & Profile) アクセスパターン

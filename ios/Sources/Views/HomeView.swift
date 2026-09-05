@@ -5,7 +5,9 @@ import SwiftUI
 
 public struct HomeView: View {
     @ObservedObject var chatService = ChatService.shared
+    @ObservedObject var tenantManager = TenantManager.shared
     @State private var showingAddFriendSheet = false
+    @State private var showingTenantSwitchSheet = false
     
     public init() {}
     
@@ -27,6 +29,7 @@ public struct HomeView: View {
             .navigationTitle(L10n.Tab.home)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
+                    // ⚙️ 設定ボタン
                     NavigationLink {
                         SettingsView()
                     } label: {
@@ -38,6 +41,12 @@ public struct HomeView: View {
             }
             .sheet(isPresented: $showingAddFriendSheet) {
                 AddFriendView()
+            }
+            .sheet(isPresented: $showingTenantSwitchSheet) {
+                TenantSwitcherView()
+            }
+            .onAppear {
+                tenantManager.refreshUnreadCounts()
             }
         }
     }

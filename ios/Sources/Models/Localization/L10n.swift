@@ -56,6 +56,16 @@ public enum L10n {
         public static var urlPlaceholder: String { tr("tenant.input.url_placeholder") }
         public static var verifyBtn: String { tr("tenant.verify.btn") }
         public static var cameraInstruction: String { tr("tenant.camera.instruction") }
+        
+        // MARK: - Switcher
+        public static var switchTitle: String { tr("tenant.switch.title") }
+        public static var switchListHeader: String { tr("tenant.switch.list_header") }
+        public static var switchCurrentBadge: String { tr("tenant.switch.current_badge") }
+        public static var switchAddBtn: String { tr("tenant.switch.add_btn") }
+        public static var switchLeave: String { tr("tenant.switch.leave") }
+        public static var switchLeaveConfirmTitle: String { tr("tenant.switch.leave_confirm_title") }
+        public static func switchLeaveConfirmMsg(name: String) -> String { String(format: tr("tenant.switch.leave_confirm_msg"), name) }
+        public static var badgeOtherUnread: String { tr("tenant.badge.other_unread") }
     }
     
     // MARK: - Tabs

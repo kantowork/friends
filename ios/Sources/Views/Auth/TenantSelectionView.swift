@@ -115,8 +115,12 @@ final class TenantSelectionViewModel: ObservableObject {
     }
 
     func confirmTenant(dismiss: DismissAction) {
-        guard case .success = verificationState else { return }
+        guard case .success(let tenant) = verificationState else { return }
         isConfirmed = true
+        TenantManager.shared.addOrUpdateTenant(tenant: tenant)
+        if chatService.authStatus == .authenticated {
+            chatService.switchToTenant(tenantId: tenant.tenantID) { _ in }
+        }
         dismiss()
     }
 

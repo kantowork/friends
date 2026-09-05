@@ -25,6 +25,7 @@
 		2790B236D73056B512FD5521 /* GoogleService-Info.plist.example in Resources */ = {isa = PBXBuildFile; fileRef = E47EB0AAA0942E9FAD966EAF /* GoogleService-Info.plist.example */; };
 		2860766FCE37605A1AF65C28 /* MnemonicManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34418B284BBA78F6590B6F76 /* MnemonicManager.swift */; };
 		287E1013270E85408A12F57D /* SwiftProtobuf in Frameworks */ = {isa = PBXBuildFile; productRef = F34AF2C8808DC5C87DBA377C /* SwiftProtobuf */; };
+		2E38D78BE44168B25FB59879 /* TenantManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 565584475C317EEC83A29DFD /* TenantManager.swift */; };
 		2E3D44FEDEE83CF5E7E60D0D /* FriendRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C3372477D89C3B7C93682B3 /* FriendRepository.swift */; };
 		30CC652E859111996CF99B3A /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91D3C03BA1244EA258513B9C /* LoginView.swift */; };
 		313B8036D8076C092433EF9C /* ToastNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E870B04CB55396AA196C5EA /* ToastNotificationManager.swift */; };
@@ -46,6 +47,7 @@
 		654EC337D4FB3017B9EF5251 /* R2Config.plist in Resources */ = {isa = PBXBuildFile; fileRef = 24A914712C89236342ED35B3 /* R2Config.plist */; };
 		6568875089F32FD52FBAF027 /* KeyBucketRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D9BC65F5B28B01CDA532088 /* KeyBucketRepository.swift */; };
 		66A1AF58928A09C812A78929 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE77C113E25A5A25D866CBD /* RootView.swift */; };
+		68EB40C1510EC32B4305F22F /* TenantSwitcherView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4688D5B9BB0150EC27D25C7D /* TenantSwitcherView.swift */; };
 		6D1FAFC0C2A48805D938742D /* message.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = C865A7F08BE5EE75FA404A86 /* message.pb.swift */; };
 		6E56001E6D461263F26716D4 /* InAppToast.swift in Sources */ = {isa = PBXBuildFile; fileRef = E398E98BC6D08ED8318A22C7 /* InAppToast.swift */; };
 		763AD6C13FBC1F6457066D47 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = F118FFCB9DD858C7A0A80E52 /* FirebaseAuth */; };
@@ -61,6 +63,7 @@
 		AEA4132FF9C61035DAF1DECF /* R2Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC99C355772086F8C25B473E /* R2Config.swift */; };
 		B053E73BD86493140B7E098C /* AvatarRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0E4F421D19681024F04AB /* AvatarRepository.swift */; };
 		B8F8A42F949CE721CE93CAFF /* ChatRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC16F3F99E96F06398EEA0DE /* ChatRepository.swift */; };
+		BC567221FAA48C3E70534049 /* StoredTenant.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFDB95891B042D43FAE6A8E2 /* StoredTenant.swift */; };
 		CE0CACFE6FD36062538BF26C /* CryptoKeyManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D565C3091DA5BECD9CC25D05 /* CryptoKeyManagerTests.swift */; };
 		D2205A3B3B8BCBBFFF4867FE /* FriendListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EA5643E77B341F122508AC1 /* FriendListView.swift */; };
 		D3CC3E86D075BC2B9BD1E310 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E98D73A923F12CB9E9048015 /* MainTabView.swift */; };
@@ -73,6 +76,7 @@
 		ED2EF6650654E1EFC07EBE74 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 735B7A1DC4D7010E59719EFF /* SplashView.swift */; };
 		EF92B67BDEF41128689C8D39 /* R2Config.plist.example in Resources */ = {isa = PBXBuildFile; fileRef = 4C6C05015932A0DAB3ED3B51 /* R2Config.plist.example */; };
 		F1DDFBD4665010D70C37F766 /* ReadReceiptRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCEECE7C03F984E10D3B0580 /* ReadReceiptRepository.swift */; };
+		FC73720015E3B722EB8F8558 /* TenantManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81E86AB8524D4EA5053C536B /* TenantManagerTests.swift */; };
 		FE53CA89A49848EE6D05ECA3 /* FriendInvitationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFD78F78EE81CC78390C270B /* FriendInvitationService.swift */; };
 /* End PBXBuildFile section */
 
@@ -104,10 +108,12 @@
 		34418B284BBA78F6590B6F76 /* MnemonicManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MnemonicManager.swift; sourceTree = "<group>"; };
 		37D9B246340375349DB680A2 /* UserRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserRepository.swift; sourceTree = "<group>"; };
 		3B0446CB35BD1DED70441109 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		4688D5B9BB0150EC27D25C7D /* TenantSwitcherView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TenantSwitcherView.swift; sourceTree = "<group>"; };
 		473C7EC7238FB504E3E71A7B /* Friends.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Friends.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4C6C05015932A0DAB3ED3B51 /* R2Config.plist.example */ = {isa = PBXFileReference; path = R2Config.plist.example; sourceTree = "<group>"; };
 		4D9BC65F5B28B01CDA532088 /* KeyBucketRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyBucketRepository.swift; sourceTree = "<group>"; };
 		50C94084CD89A705B5BAF54F /* GroupListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupListView.swift; sourceTree = "<group>"; };
+		565584475C317EEC83A29DFD /* TenantManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TenantManager.swift; sourceTree = "<group>"; };
 		571756FF5FB335DACAEE8222 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		5DE80AD746183BADA346EAC5 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		61D0F0DDEF6511C713FE2F6C /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -121,6 +127,7 @@
 		7B602697905FD0D50788D4AA /* ChatDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatDetailView.swift; sourceTree = "<group>"; };
 		7DC45DCE17FFA7BE9C344104 /* user.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = user.pb.swift; sourceTree = "<group>"; };
 		7E870B04CB55396AA196C5EA /* ToastNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastNotificationManager.swift; sourceTree = "<group>"; };
+		81E86AB8524D4EA5053C536B /* TenantManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TenantManagerTests.swift; sourceTree = "<group>"; };
 		8BD06C16F1E17F8C9BE1E48F /* PresetTenantConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetTenantConfig.swift; sourceTree = "<group>"; };
 		8C3372477D89C3B7C93682B3 /* FriendRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendRepository.swift; sourceTree = "<group>"; };
 		8CF1E654734996084DE28F2D /* PresetTenant.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = PresetTenant.plist; sourceTree = "<group>"; };
@@ -137,6 +144,7 @@
 		CFD78F78EE81CC78390C270B /* FriendInvitationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendInvitationService.swift; sourceTree = "<group>"; };
 		D2E3C3E86AD519CD32721AC3 /* ToastBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastBannerView.swift; sourceTree = "<group>"; };
 		D565C3091DA5BECD9CC25D05 /* CryptoKeyManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CryptoKeyManagerTests.swift; sourceTree = "<group>"; };
+		DFDB95891B042D43FAE6A8E2 /* StoredTenant.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoredTenant.swift; sourceTree = "<group>"; };
 		E35773E9E58A89073DA590EC /* RecoveryConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryConfig.swift; sourceTree = "<group>"; };
 		E398E98BC6D08ED8318A22C7 /* InAppToast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InAppToast.swift; sourceTree = "<group>"; };
 		E47EB0AAA0942E9FAD966EAF /* GoogleService-Info.plist.example */ = {isa = PBXFileReference; path = "GoogleService-Info.plist.example"; sourceTree = "<group>"; };
@@ -239,6 +247,7 @@
 				191294B086311E44BAB0875A /* GroupChatServiceTests.swift */,
 				740BFAEC84E77B0229BF5FDD /* ReadReceiptServiceTests.swift */,
 				94AE9645F86F97088044D698 /* RecoveryPhraseTests.swift */,
+				81E86AB8524D4EA5053C536B /* TenantManagerTests.swift */,
 				F1210A3AB46980769A184FB5 /* ToastNotificationManagerTests.swift */,
 			);
 			path = Tests;
@@ -261,6 +270,7 @@
 				2DE77C113E25A5A25D866CBD /* RootView.swift */,
 				61D0F0DDEF6511C713FE2F6C /* SettingsView.swift */,
 				735B7A1DC4D7010E59719EFF /* SplashView.swift */,
+				4688D5B9BB0150EC27D25C7D /* TenantSwitcherView.swift */,
 				D2E3C3E86AD519CD32721AC3 /* ToastBannerView.swift */,
 				742F0659533CB0CAD1247BCE /* UserAvatarView.swift */,
 				E3436AED76D92C18944CDE6A /* Auth */,
@@ -276,6 +286,7 @@
 				CB174DA53133AD4E358D0543 /* CryptoKeyManager.swift */,
 				CFD78F78EE81CC78390C270B /* FriendInvitationService.swift */,
 				34418B284BBA78F6590B6F76 /* MnemonicManager.swift */,
+				565584475C317EEC83A29DFD /* TenantManager.swift */,
 				7E870B04CB55396AA196C5EA /* ToastNotificationManager.swift */,
 			);
 			path = Services;
@@ -287,6 +298,7 @@
 				8BD06C16F1E17F8C9BE1E48F /* PresetTenantConfig.swift */,
 				73EFF9BEBF88BD245D30582A /* ProtobufModelExtensions.swift */,
 				EC99C355772086F8C25B473E /* R2Config.swift */,
+				DFDB95891B042D43FAE6A8E2 /* StoredTenant.swift */,
 				55C735BC18C9AA013C98A3E8 /* Generated */,
 				EFEE1CD5E84989AB629DDABE /* Localization */,
 				19F587344C230F875CFEBFE6 /* Toast */,
@@ -462,6 +474,7 @@
 				34A77CA3C504F568E54CAD70 /* GroupChatServiceTests.swift in Sources */,
 				4A49D1C8F50F6A2045C2D8B6 /* ReadReceiptServiceTests.swift in Sources */,
 				53B07D6A9EB801FF0EE68EDD /* RecoveryPhraseTests.swift in Sources */,
+				FC73720015E3B722EB8F8558 /* TenantManagerTests.swift in Sources */,
 				4BDA6B8814AF5417E8C7888B /* ToastNotificationManagerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -504,8 +517,11 @@
 				66A1AF58928A09C812A78929 /* RootView.swift in Sources */,
 				36D7EA7F1F3A393026C80DA0 /* SettingsView.swift in Sources */,
 				ED2EF6650654E1EFC07EBE74 /* SplashView.swift in Sources */,
+				BC567221FAA48C3E70534049 /* StoredTenant.swift in Sources */,
+				2E38D78BE44168B25FB59879 /* TenantManager.swift in Sources */,
 				3A2333C6B5AF282771E286C6 /* TenantRepository.swift in Sources */,
 				8A68F86C2F1CB50E9AFA13A9 /* TenantSelectionView.swift in Sources */,
+				68EB40C1510EC32B4305F22F /* TenantSwitcherView.swift in Sources */,
 				0BC92E61AFB2750FAD7196CE /* ToastBannerView.swift in Sources */,
 				313B8036D8076C092433EF9C /* ToastNotificationManager.swift in Sources */,
 				9367769AEFFC21E5FFE69599 /* UserAvatarView.swift in Sources */,
