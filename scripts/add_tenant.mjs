@@ -102,79 +102,6 @@ function resolveProjectId() {
 
 const projectId = resolveProjectId();
 // ---------------------------------------------------------------------------
-// firebase-admin 初期化 & Firestore 保存
-// ---------------------------------------------------------------------------
-if (getApps().length === 0) {
-  initializeApp({ projectId });
-}
-
-const db = getFirestore();
-
-// テナント名 (tenantName) を MK_T で AES-256-GCM 暗号化
-const nonce = randomBytes(12);
-const cipher = createCipheriv("aes-256-gcm", masterKeyBuffer, nonce);
-const encrypted = Buffer.concat([cipher.update(tenantName, "utf8"), cipher.final()]);
-const authTag = cipher.getAuthTag();
-const combined = Buffer.concat([encrypted, authTag]);
-
-const encryptedTenantName = combined.toString("base64");
-const tenantNameNonce = nonce.toString("base64");
-
-try {
-  await db.collection("tenants").doc(tenantId).set({
-    tenantCode: tenantCode,
-    encryptedTenantName: encryptedTenantName,
-    tenantNameNonce: tenantNameNonce,
-    isDefaultTenant: isDefaultTenant,
-    createdAt: FieldValue.serverTimestamp()
-  });
-} catch (error) {
-  console.error("❌ Firestore Error:", error.message);
-  process.exit(1);
-}
-
-// ---------------------------------------------------------------------------
-// 招待ペイロード & QRコードの出力
-// ---------------------------------------------------------------------------
-const invitePayload = {
-  type: "tenant_invite",
-  version: 1,
-  tenantId: tenantId,
-  tenantCode: tenantCode,
-  tenantName: tenantName,
-  tenantMasterKey: tenantMasterKey,
-  isDefaultTenant: isDefaultTenant,
-  ...(workerApiUrl ? { workerApiUrl } : {}),
-  ...(r2Config ? { r2Config } : {})
-};
-
-const tenantJson = JSON.stringify(invitePayload, null, 2);
-const qrDataString = `FRIENDS_TENANT:${Buffer.from(JSON.stringify(invitePayload)).toString("base64")}`;
-
-console.log("");
-console.log("🚀 [Friends] 新規テナント作成および秘密鍵生成が完了しました！");
-console.log(`✅ Cloud Firestore (/tenants/${tenantId}) [Project: ${projectId}]`);
-console.log("");
-console.log(`📌 内部システムID (不変): ${tenantId}`);
-console.log(`🏷  表示用テナントコード: ${tenantCode}`);
-console.log(`🏢 テナント表示名:       ${tenantName}`);
-console.log(`⭐ デフォルトテナント:   ${isDefaultTenant}`);
-if (workerApiUrl) console.log(`⚡️ Workers API URL:    ${workerApiUrl}`);
-if (r2Config)     console.log(`📦 R2 Bucket Name:     ${r2Config.bucketName || "設定あり"}`);
-console.log("");
-console.log("------------------------------------------------------------");
-console.log("🔑 テナントマスターキー (MK_T):");
-console.log(tenantMasterKey);
-console.log("------------------------------------------------------------");
-console.log("");
-console.log("📱 ログイン画面 モーダル入力用 テナントJSON:");
-console.log(tenantJson);
-console.log("");
-console.log("------------------------------------------------------------");
-console.log("📷 [コンソール用 QRコード (iOSアプリでスキャン可能)]:");
-qrcode.generate(qrDataString, { small: true });
-
-// ---------------------------------------------------------------------------
 // プリセット設定 (PresetTenant.plist / R2Config.plist) のローカル自動生成・同期
 // ---------------------------------------------------------------------------
 const resourcesDir = join(rootDir, "ios/Sources/Resources");
@@ -237,6 +164,84 @@ if (r2Config) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// 招待ペイロード & QRコードの出力
+// ---------------------------------------------------------------------------
+const invitePayload = {
+  type: "tenant_invite",
+  version: 1,
+  tenantId: tenantId,
+  tenantCode: tenantCode,
+  tenantName: tenantName,
+  tenantMasterKey: tenantMasterKey,
+  isDefaultTenant: isDefaultTenant,
+  ...(workerApiUrl ? { workerApiUrl } : {}),
+  ...(r2Config ? { r2Config } : {})
+};
+
+const tenantJson = JSON.stringify(invitePayload, null, 2);
+const qrDataString = `FRIENDS_TENANT:${Buffer.from(JSON.stringify(invitePayload)).toString("base64")}`;
+
+console.log("");
+console.log("🚀 [Friends] テナント設定および秘密鍵生成が完了しました！");
+console.log(`📌 内部システムID (不変): ${tenantId}`);
+console.log(`🏷  表示用テナントコード: ${tenantCode}`);
+console.log(`🏢 テナント表示名:       ${tenantName}`);
+console.log(`⭐ デフォルトテナント:   ${isDefaultTenant}`);
+if (workerApiUrl) console.log(`⚡️ Workers API URL:    ${workerApiUrl}`);
+if (r2Config)     console.log(`📦 R2 Bucket Name:     ${r2Config.bucketName || "設定あり"}`);
+console.log("");
+console.log("------------------------------------------------------------");
+console.log("🔑 テナントマスターキー (MK_T):");
+console.log(tenantMasterKey);
+console.log("------------------------------------------------------------");
+console.log("");
+console.log("📱 ログイン画面 モーダル入力用 テナントJSON:");
+console.log(tenantJson);
+console.log("");
+console.log("------------------------------------------------------------");
+console.log("📷 [コンソール用 QRコード (iOSアプリでスキャン可能)]:");
+qrcode.generate(qrDataString, { small: true });
 console.log("");
 console.log(`🔗 QRデータ文字列: ${qrDataString}`);
 console.log("");
+
+// ---------------------------------------------------------------------------
+// Firestore への保存 (接続可能な場合のみ非ブロッキングで実行)
+// ---------------------------------------------------------------------------
+if (!args.includes("--local-only")) {
+  try {
+    if (getApps().length === 0) {
+      initializeApp({ projectId });
+    }
+    const db = getFirestore();
+
+    const nonce = randomBytes(12);
+    const cipher = createCipheriv("aes-256-gcm", masterKeyBuffer, nonce);
+    const encrypted = Buffer.concat([cipher.update(tenantName, "utf8"), cipher.final()]);
+    const authTag = cipher.getAuthTag();
+    const combined = Buffer.concat([encrypted, authTag]);
+
+    const encryptedTenantName = combined.toString("base64");
+    const tenantNameNonce = nonce.toString("base64");
+
+    const writePromise = db.collection("tenants").doc(tenantId).set({
+      tenantCode: tenantCode,
+      encryptedTenantName: encryptedTenantName,
+      tenantNameNonce: tenantNameNonce,
+      isDefaultTenant: isDefaultTenant,
+      createdAt: FieldValue.serverTimestamp()
+    });
+
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3000));
+    await Promise.race([writePromise, timeoutPromise]);
+    console.log(`✅ Cloud Firestore (/tenants/${tenantId}) に同期完了しました [Project: ${projectId}]`);
+  } catch (error) {
+    if (error.message === "Timeout") {
+      console.log(`ℹ️ [Firestore] クラウドへの同期はスキップされました（ローカル設定のみ同期完了）`);
+    } else {
+      console.log(`ℹ️ [Firestore] クラウド書き込みスキップ: ${error.message}`);
+    }
+  }
+}
+process.exit(0);

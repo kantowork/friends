@@ -100,12 +100,7 @@ final class TenantSelectionViewModel: ObservableObject {
             if let data = Data(base64Encoded: b64),
                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let tid = json["tenantId"] as? String {
-                if let masterKey = json["tenantMasterKey"] as? String ?? json["masterKey"] as? String {
-                    CryptoKeyManager.shared.saveTenantMasterKey(tenantId: tid, masterKeyBase64: masterKey)
-                }
-                if let workerUrl = json["workerApiUrl"] as? String {
-                    RecoveryConfig.saveWorkersBaseURL(workerUrl)
-                }
+                parseAndSaveTenantPayload(json)
                 return tid
             }
             return nil
@@ -114,12 +109,7 @@ final class TenantSelectionViewModel: ObservableObject {
         if let data = input.data(using: .utf8),
            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let tid = json["tenantId"] as? String {
-            if let masterKey = json["tenantMasterKey"] as? String ?? json["masterKey"] as? String {
-                CryptoKeyManager.shared.saveTenantMasterKey(tenantId: tid, masterKeyBase64: masterKey)
-            }
-            if let workerUrl = json["workerApiUrl"] as? String {
-                RecoveryConfig.saveWorkersBaseURL(workerUrl)
-            }
+            parseAndSaveTenantPayload(json)
             return tid
         }
         // 3. Raw tenantId (t_ prefix)
@@ -127,6 +117,25 @@ final class TenantSelectionViewModel: ObservableObject {
             return input
         }
         return nil
+    }
+
+    private func parseAndSaveTenantPayload(_ json: [String: Any]) {
+        guard let tid = json["tenantId"] as? String else { return }
+        if let masterKey = json["tenantMasterKey"] as? String ?? json["masterKey"] as? String {
+            CryptoKeyManager.shared.saveTenantMasterKey(tenantId: tid, masterKeyBase64: masterKey)
+        }
+        if let workerUrl = json["workerApiUrl"] as? String {
+            RecoveryConfig.saveWorkersBaseURL(workerUrl)
+        }
+        if let r2 = json["r2Config"] as? [String: Any] {
+            R2Config.saveConfig(
+                publicBaseURL: r2["publicBaseUrl"] as? String,
+                bucketName: r2["bucketName"] as? String,
+                endpointURL: r2["endpointUrl"] as? String,
+                accessKeyId: r2["accessKeyId"] as? String,
+                secretAccessKey: r2["secretAccessKey"] as? String
+            )
+        }
     }
 
     private func verify(tenantId: String) {
