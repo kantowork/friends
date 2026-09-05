@@ -94,7 +94,7 @@ struct FriendInvitationHelper {
         return "\(prefix)\(b64)"
     }
     
-    /// QR文字列 / URL / 生JSON から招待ペイロードをパース
+    /// 二次元コード文字列 / URL / 生JSON から招待ペイロードをパース
     static func decode(rawInput: String) -> FriendsFriendInvitationPayload? {
         let input = rawInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !input.isEmpty else { return nil }
@@ -117,27 +117,27 @@ struct FriendInvitationHelper {
                 let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             jsonDict = obj
         }
-        // 3. Raw JSON
+        // 3. Raw JSON String
         else if let data = input.data(using: .utf8),
                 let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             jsonDict = obj
         }
         
-        guard let dict = jsonDict,
-              let tenantId = dict["tenantId"] as? String,
+        guard let dict = jsonDict else { return nil }
+        
+        guard let tenantId = dict["tenantId"] as? String,
               let userId = dict["userId"] as? String,
-              let uid = dict["uid"] as? String else {
+              let uid = dict["uid"] as? String,
+              let displayName = dict["displayName"] as? String,
+              let publicKey = dict["publicKey"] as? String,
+              let passcode = dict["passcode"] as? String,
+              let timestamp = dict["timestamp"] as? Int64 else {
             return nil
         }
         
-        let displayName = dict["displayName"] as? String ?? "ユーザー"
-        let publicKey = dict["publicKey"] as? String ?? ""
-        let passcode = dict["passcode"] as? String ?? ""
-        let timestamp = dict["timestamp"] as? Int64 ?? Int64(Date().timeIntervalSince1970)
-        
         var payload = FriendsFriendInvitationPayload()
-        payload.type = "friend_invite"
-        payload.version = 1
+        payload.type = dict["type"] as? String ?? "friend_invite"
+        payload.version = Int32(dict["version"] as? Int ?? 1)
         payload.tenantID = tenantId
         payload.userID = userId
         payload.uid = uid
@@ -149,12 +149,12 @@ struct FriendInvitationHelper {
     }
 }
 
-// MARK: - Crisp QR Code Generator
+// MARK: - Crisp Two-Dimensional Code Generator
 
-struct QRCodeGeneratorHelper {
+struct TwoDimensionalCodeGeneratorHelper {
     private static let context = CIContext()
     
-    static func generateQRCode(from string: String) -> UIImage? {
+    static func generate2DCode(from string: String) -> UIImage? {
         guard let filter = CIFilter(name: "CIQRCodeGenerator") else { return nil }
         filter.setValue(Data(string.utf8), forKey: "inputMessage")
         filter.setValue("M", forKey: "inputCorrectionLevel")

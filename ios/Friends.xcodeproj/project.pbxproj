@@ -623,7 +623,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Friends;
-				INFOPLIST_KEY_NSCameraUsageDescription = "テナントや友達のQRコードをスキャンするためにカメラを使用します。";
+				INFOPLIST_KEY_NSCameraUsageDescription = "テナントや友達の二次元コードをスキャンするためにカメラを使用します。";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -648,7 +648,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Friends;
-				INFOPLIST_KEY_NSCameraUsageDescription = "テナントや友達のQRコードをスキャンするためにカメラを使用します。";
+				INFOPLIST_KEY_NSCameraUsageDescription = "テナントや友達の二次元コードをスキャンするためにカメラを使用します。";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (

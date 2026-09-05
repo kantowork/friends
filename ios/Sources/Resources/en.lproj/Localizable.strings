@@ -32,20 +32,18 @@
 // MARK: - Tenant Selection
 "tenant.selection.title" = "Select Tenant";
 "tenant.selection.header" = "Select Organization (Tenant)";
-"tenant.selection.subtitle" = "Scan QR code or enter tenant configuration directly.";
-"tenant.tab.qr" = "QR";
+"tenant.selection.subtitle" = "Scan 2D code or enter tenant configuration directly.";
+"tenant.tab.two_dimensional_code" = "2D Code";
 "tenant.tab.url" = "URL";
-"tenant.tab.custom" = "Custom";
+"tenant.tab.text" = "Text";
 "tenant.verify.verifying" = "Verifying tenant…";
 "tenant.verify.confirm_btn" = "Select This Tenant";
 "tenant.default_badge" = "Default";
-"tenant.input.label" = "Tenant Configuration (JSON)";
-"tenant.input.template" = "Insert Template";
-"tenant.input.url_label" = "Configuration JSON URL (https://...)";
+"tenant.input.label" = "Tenant Configuration JSON";
+"tenant.input.url_label" = "Tenant Configuration URL";
+"tenant.input.url_placeholder" = "https://...";
 "tenant.verify.btn" = "Verify";
-"tenant.camera.instruction" = "Align the QR code within the frame";
-"tenant.camera.simulator_note" = "Camera unavailable in Simulator";
-"tenant.camera.simulator_btn" = "Simulate Scanning Test Tenant QR";
+"tenant.camera.instruction" = "Align the 2D code within the frame";
 "error.tenant.invalid_format" = "Invalid tenant configuration format. Please provide valid JSON or a valid URL.";
 "error.tenant.fetch_failed" = "Failed to fetch tenant configuration from URL. Please check the URL and network connection.";
 "error.tenant.verification_failed" = "Tenant verification failed: %@";
@@ -101,7 +99,7 @@
 
 // MARK: - Chats
 "chat.list.title" = "Chats";
-"chat.list.empty" = "No chat history yet.\nExchange QR codes with friends to start chatting.";
+"chat.list.empty" = "No chat history yet.\nExchange 2D codes with friends to start chatting.";
 "chat.detail.input_placeholder" = "Message…";
 "chat.detail.send" = "Send";
 "chat.detail.new_messages_badge" = "New messages below ↓";
@@ -127,14 +125,14 @@
 // MARK: - Friends
 "friend.list.title" = "Friends";
 "friend.list.add_btn" = "Add Friend";
-"friend.list.empty" = "No registered friends yet.\nScan a QR code to add friends.";
+"friend.list.empty" = "No registered friends yet.\nScan a 2D code to add friends.";
 "friend.list.user_id_prefix" = "ID: %@";
 
 // MARK: - Friend Add (C03)
 "friend.add.title" = "Add Friend";
-"friend.add.tab_qr" = "QR Code";
+"friend.add.tab_two_dimensional_code" = "2D Code";
 "friend.add.tab_text" = "Text Code";
-"friend.add.camera_simulator_btn" = "Simulate Scanning Friend QR";
+"friend.add.camera_simulator_btn" = "Simulate Scanning Friend 2D Code";
 "friend.add.passcode_title" = "Passcode";
 "friend.add.my_info_section" = "My Information";
 "friend.add.user_id_label" = "Username";
@@ -219,7 +217,7 @@
 "error.friend.self_add" = "You cannot add yourself as a friend.";
 "error.recovery.data_not_found" = "Backup recovery data not found.";
 "error.recovery.decryption_failed" = "Failed to decrypt private key. Please check your recovery phrase.";
-"error.recovery.tenant_not_configured" = "Organization (Tenant) not configured. Please scan your tenant QR code first.";
+"error.recovery.tenant_not_configured" = "Organization (Tenant) not configured. Please scan your tenant 2D code first.";
 "error.user.not_found" = "User profile not found.";
 
 // MARK: - Toast Notification

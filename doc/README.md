@@ -24,12 +24,12 @@
 ## 4. 詳細ユースケース
 
 - [`07-detailed-usecases/`](07-detailed-usecases/README.md) - 詳細ユースケース一覧＆ユースケース対応表
-  - [`07-01-tenant-selection.md`](07-detailed-usecases/07-01-tenant-selection.md) - テナント選択フロー（QRコードスキャン）
+  - [`07-01-tenant-selection.md`](07-detailed-usecases/07-01-tenant-selection.md) - テナント選択フロー（二次元コードスキャン）
   - [`07-02-user-registration-login.md`](07-detailed-usecases/07-02-user-registration-login.md) - ユーザー登録・ログイン
   - [`07-03-message-encryption.md`](07-detailed-usecases/07-03-message-encryption.md) - テキストメッセージ送信・暗号化仕様（E2EE）
   - [`07-04-device-recovery.md`](07-detailed-usecases/07-04-device-recovery.md) - 端末移行および「ふっかつのじゅもん」による復旧仕様
   - [`07-05-metadata-audit.md`](07-detailed-usecases/07-05-metadata-audit.md) - メタデータ監査（テナント管理者）
-  - [`07-06-friend-addition.md`](07-detailed-usecases/07-06-friend-addition.md) - 友達追加（QRコード / テキスト / 3桁合言葉）
+  - [`07-06-friend-addition.md`](07-detailed-usecases/07-06-friend-addition.md) - 友達追加（二次元コード / テキスト / 3桁合言葉）
   - [`07-07-push-notification.md`](07-detailed-usecases/07-07-push-notification.md) - メッセージ通知仕様（アプリ内トースト & プッシュ通知）
   - [`07-08-external-group-notification.md`](07-detailed-usecases/07-08-external-group-notification.md) - 外部REST API経由のグループ通知送信
   - [`07-09-user-profile-update.md`](07-detailed-usecases/07-09-user-profile-update.md) - プロフィール表示名更新および友達間同期仕様書

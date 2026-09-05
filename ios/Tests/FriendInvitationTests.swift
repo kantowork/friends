@@ -83,7 +83,8 @@ final class FriendInvitationTests: XCTestCase {
     
     func testLocalizationKeys() {
         XCTAssertFalse(L10n.Friend.addTitle.isEmpty)
-        XCTAssertFalse(L10n.Friend.tabQR.isEmpty)
+        XCTAssertFalse(L10n.Friend.tab2DCode.isEmpty)
+        XCTAssertFalse(L10n.Tenant.tab2DCode.isEmpty)
         XCTAssertFalse(L10n.Friend.tabText.isEmpty)
         XCTAssertFalse(L10n.Friend.passcodeTitle.isEmpty)
         XCTAssertFalse(L10n.Common.ok.isEmpty)

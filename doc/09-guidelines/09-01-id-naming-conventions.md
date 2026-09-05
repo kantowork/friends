@@ -20,8 +20,8 @@
 | **テナント・組織** | テナント (組織) | `t_` | `t_kanto_corp` | `/tenants/{tenantId}` | 不可 |
 | | 組織グループ | `g_` | `g_dev_dept` | テナント内の所属グループ ID | 不可 |
 | **デバイス・インフラ** | デバイス | `d_` | `d_ios_iphone15` | `/users/{uid}/devices/{deviceId}` | 不可 |
-| **友達・招待ペイロード** | 友達追加QR/文字列ペイロード | `FRIENDS_USER:` | `FRIENDS_USER:eyJ0eX...` | QRコード / クリップボード共有 | - |
-| | テナント招待QRペイロード | `FRIENDS_TENANT:` | `FRIENDS_TENANT:eyJ0...` | テナントQRコード | - |
+| **友達・招待ペイロード** | 友達追加二次元コード/文字列ペイロード | `FRIENDS_USER:` | `FRIENDS_USER:eyJ0eX...` | 二次元コード / クリップボード共有 | - |
+| | テナント招待二次元コードペイロード | `FRIENDS_TENANT:` | `FRIENDS_TENANT:eyJ0...` | テナント二次元コード | - |
 
 ---
 
@@ -32,7 +32,7 @@
    - **ユーザー識別子 (`u_`) の Base58(UUID) 採用仕様**:
      - ユーザー識別子には UUID (16バイト) を Base58 エンコードした文字列（最大 22 文字）を採用し、`u_<Base58>` とします。
      - **メリット**:
-       1. Base64 のような `+`, `/`, `=` などの URL / QRコード / DB で特殊扱いされる記号を含まず、英数字のみで安全に表現。
+       1. Base64 のような `+`, `/`, `=` などの URL / 二次元コード / DB で特殊扱いされる記号を含まず、英数字のみで安全に表現。
        2. UUID の 128bit の一意性を保ちながら、16進数表記 (36文字) より短い最大22文字に圧縮。
      - **依存ライブラリ**:
        - Swift: `https://github.com/keefertaylor/Base58Swift.git` (`import Base58Swift`)

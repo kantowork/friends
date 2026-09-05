@@ -64,7 +64,7 @@ public enum R2Config {
         return !publicBaseURL.isEmpty || !endpointURL.isEmpty
     }
     
-    /// テナント QR スキャン等で取得した R2 設定を動的に保存
+    /// テナント 二次元コードスキャン等で取得した R2 設定を動的に保存
     public static func saveConfig(
         publicBaseURL: String?,
         bucketName: String?,

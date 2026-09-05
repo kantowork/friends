@@ -2,7 +2,7 @@ import SwiftUI
 import AVFoundation
 
 // MARK: - A03m TenantSelectionView
-// テナント選択モーダル画面。QRコードスキャン / JSON貼り付け / URL入力 の3方式に対応。
+// テナント選択モーダル画面。二次元コードスキャン / JSON貼り付け / URL入力 の3方式に対応。
 
 // MARK: - ViewModel
 
@@ -10,21 +10,13 @@ import AVFoundation
 final class TenantSelectionViewModel: ObservableObject {
 
     enum InputTab: Int, CaseIterable {
-        case qr = 0, url = 1, json = 2
+        case twoDimensionalCode = 0, url = 1, text = 2
 
         var label: String {
             switch self {
-            case .qr:   return L10n.Tenant.tabQR
-            case .url:  return L10n.Tenant.tabURL
-            case .json: return L10n.Tenant.tabCustom
-            }
-        }
-
-        var icon: String {
-            switch self {
-            case .qr:   return "qrcode.viewfinder"
-            case .url:  return "link"
-            case .json: return "doc.text"
+            case .twoDimensionalCode: return L10n.Tenant.tab2DCode
+            case .url:                return L10n.Tenant.tabURL
+            case .text:               return L10n.Tenant.tabText
             }
         }
     }
@@ -45,7 +37,7 @@ final class TenantSelectionViewModel: ObservableObject {
         }
     }
 
-    @Published var selectedTab: InputTab = .qr
+    @Published var selectedTab: InputTab = .twoDimensionalCode
     @Published var jsonInput: String = ""
     @Published var urlInput: String = ""
     @Published var verificationState: VerificationState = .idle
@@ -59,7 +51,7 @@ final class TenantSelectionViewModel: ObservableObject {
         let input = rawInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !input.isEmpty else { return }
 
-        // QRコード等に URL が直接含まれている場合
+        // 二次元コード等に URL が直接含まれている場合
         if input.hasPrefix("http://") || input.hasPrefix("https://") {
             if let url = URL(string: input) {
                 fetchAndVerify(from: url)
@@ -199,23 +191,25 @@ struct TenantSelectionView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Header
-                headerSection
-
-                // Tab Selector
-                tabSelector
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
+                // Segmented Control
+                Picker("", selection: $viewModel.selectedTab) {
+                    ForEach(TenantSelectionViewModel.InputTab.allCases, id: \.self) { tab in
+                        Text(tab.label).tag(tab)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
 
                 // Tab Content
                 Group {
                     switch viewModel.selectedTab {
-                    case .qr:
-                        QRScanTab(viewModel: viewModel)
-                    case .json:
-                        JSONInputTab(viewModel: viewModel)
+                    case .twoDimensionalCode:
+                        TwoDimensionalCodeScanTab(viewModel: viewModel)
                     case .url:
                         URLInputTab(viewModel: viewModel)
+                    case .text:
+                        TextInputTab(viewModel: viewModel)
                     }
                 }
                 .animation(.easeInOut(duration: 0.2), value: viewModel.selectedTab)
@@ -238,71 +232,6 @@ struct TenantSelectionView: View {
                 viewModel.reset()
             }
         }
-    }
-
-    // MARK: - Subviews
-
-    private var headerSection: some View {
-        VStack(spacing: 10) {
-            ZStack {
-                Circle()
-                    .fill(Color.blue.opacity(0.12))
-                    .frame(width: 68, height: 68)
-                Image(systemName: "building.2.crop.circle.fill")
-                    .font(.system(size: 32, weight: .semibold))
-                    .foregroundColor(.blue)
-            }
-            .padding(.top, 20)
-
-            Text(L10n.Tenant.header)
-                .font(.title3)
-                .bold()
-
-            Text(L10n.Tenant.subtitle)
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
-                .padding(.bottom, 8)
-        }
-    }
-
-    private var tabSelector: some View {
-        HStack(spacing: 0) {
-            ForEach(TenantSelectionViewModel.InputTab.allCases, id: \.rawValue) { tab in
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        viewModel.selectedTab = tab
-                    }
-                } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: tab.icon)
-                            .font(.system(size: 12, weight: .semibold))
-                        Text(tab.label)
-                            .font(.system(size: 13, weight: .semibold))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(
-                        viewModel.selectedTab == tab
-                            ? Color.blue
-                            : Color.clear
-                    )
-                    .foregroundColor(
-                        viewModel.selectedTab == tab ? .white : .secondary
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(4)
-        .background(Color(uiColor: .secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 13))
-        .overlay(
-            RoundedRectangle(cornerRadius: 13)
-                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-        )
     }
 
     private var verificationResultSection: some View {
@@ -430,18 +359,18 @@ private struct TenantConfirmationCard: View {
     }
 }
 
-// MARK: - Tab: QR Scan
+// MARK: - Tab: Two-Dimensional Code Scan
 
-private struct QRScanTab: View {
+private struct TwoDimensionalCodeScanTab: View {
     @ObservedObject var viewModel: TenantSelectionViewModel
 
     var body: some View {
         VStack(spacing: 16) {
             // Camera Preview or Simulator Fallback
             #if targetEnvironment(simulator)
-            SimulatorQRFallback(viewModel: viewModel)
+            SimulatorTwoDimensionalCodeFallback(viewModel: viewModel)
             #else
-            QRCameraPreview(viewModel: viewModel)
+            TwoDimensionalCodeCameraPreview(viewModel: viewModel)
             #endif
         }
         .padding(.horizontal, 20)
@@ -449,17 +378,17 @@ private struct QRScanTab: View {
     }
 }
 
-// MARK: - QR Camera Preview (Real Device)
+// MARK: - Two-Dimensional Code Camera Preview (Real Device)
 
-private struct QRCameraPreview: View {
+private struct TwoDimensionalCodeCameraPreview: View {
     @ObservedObject var viewModel: TenantSelectionViewModel
-    @StateObject private var scanner = QRCodeScanner()
+    @StateObject private var scanner = TwoDimensionalCodeScanner()
 
     var body: some View {
         VStack(spacing: 12) {
             ZStack {
                 // Camera feed
-                QRCameraRepresentable(scanner: scanner)
+                TwoDimensionalCodeCameraRepresentable(scanner: scanner)
                     .frame(height: 260)
                     .clipShape(RoundedRectangle(cornerRadius: 18))
                     .overlay(
@@ -545,8 +474,8 @@ private struct ScanFrameOverlay: View {
 
 // MARK: - AVFoundation Camera Representable
 
-private struct QRCameraRepresentable: UIViewRepresentable {
-    let scanner: QRCodeScanner
+private struct TwoDimensionalCodeCameraRepresentable: UIViewRepresentable {
+    let scanner: TwoDimensionalCodeScanner
 
     func makeUIView(context: Context) -> UIView {
         scanner.makePreviewView()
@@ -555,10 +484,10 @@ private struct QRCameraRepresentable: UIViewRepresentable {
     func updateUIView(_ uiView: UIView, context: Context) {}
 }
 
-// MARK: - QRCodeScanner (AVFoundation)
+// MARK: - TwoDimensionalCodeScanner (AVFoundation)
 
 @MainActor
-final class QRCodeScanner: NSObject, ObservableObject, AVCaptureMetadataOutputObjectsDelegate {
+final class TwoDimensionalCodeScanner: NSObject, ObservableObject, AVCaptureMetadataOutputObjectsDelegate {
     @Published var scannedCode: String?
 
     private let session = AVCaptureSession()
@@ -619,82 +548,42 @@ final class QRCodeScanner: NSObject, ObservableObject, AVCaptureMetadataOutputOb
 
 // MARK: - Simulator Fallback
 
-private struct SimulatorQRFallback: View {
+private struct SimulatorTwoDimensionalCodeFallback: View {
     @ObservedObject var viewModel: TenantSelectionViewModel
 
-    private let samplePayload = """
-    FRIENDS_TENANT:eyJ0eXBlIjoidGVuYW50X2ludml0ZSIsInZlcnNpb24iOjEsInRlbmFudElkIjoidF9kZWZhdWx0IiwidGVuYW50Q29kZSI6ImZyaWVuZHMua2FudG8ud29yayIsInRlbmFudE5hbWUiOiLjg4fjg5Xjgqnjg6vjg4giLCJ0ZW5hbnRNYXN0ZXJLZXkiOiJjTEUwZlR5ZXkxZzhDemlNQUlpN3UxM2MyMmRRZGkvVXpndFpYejcrVXBvPSIsImlzRGVmYXVsdFRlbmFudCI6dHJ1ZSwid29ya2VyQXBpVXJsIjoiaHR0cHM6Ly9mcmllbmRzLWFwaS5jZW8tZGM1LndvcmtlcnMuZGV2IiwicjJDb25maWciOnsicHVibGljQmFzZVVybCI6Imh0dHBzOi8vYnVja2V0LmZyaWVuZHMua2FudG8ud29yayIsImJ1Y2tldE5hbWUiOiJmcmllbmRzLWthbnRvd29yayIsImVuZHBvaW50VXJsIjoiaHR0cHM6Ly9kYzViM2JlYzBhNjg5MWU0MzUwZGE5NTEzYzNmYzVkYi5yMi5jbG91ZGZsYXJlc3RvcmFnZS5jb20iLCJhY2Nlc3NLZXlJZCI6ImEwNWVmMTlmMWRiNTI3NjMxZWE3OTllMGM5NjQ1MjAzIiwic2VjcmV0QWNjZXNzS2V5IjoiNDczOThjYjUwMmVlYWVlYzRmYzc3ZWFkNzNiZmU0MGY1YzdlZDBjNmNhOTVmYzcwZjYzYTMxZTQ4MTUyZDdmZCJ9fQ==
-    """
-
     var body: some View {
-        VStack(spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(Color(uiColor: .secondarySystemGroupedBackground))
-                    .frame(height: 220)
+        ZStack {
+            RoundedRectangle(cornerRadius: 18)
+                .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                .frame(height: 260)
 
-                VStack(spacing: 14) {
-                    Image(systemName: "camera.slash.fill")
-                        .font(.system(size: 44))
-                        .foregroundColor(.secondary.opacity(0.6))
-                }
-                .padding(.horizontal, 24)
+            VStack(spacing: 12) {
+                Image(systemName: "camera.slash.fill")
+                    .font(.system(size: 40))
+                    .foregroundColor(.secondary.opacity(0.6))
             }
-
-            Button {
-                viewModel.verifyFromText(samplePayload)
-            } label: {
-                Image(systemName: "qrcode")
-                    .font(.system(size: 20, weight: .semibold))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 46)
-                    .background(Color.blue.opacity(0.1))
-                    .foregroundColor(.blue)
-                    .cornerRadius(12)
-            }
-            .buttonStyle(.plain)
         }
     }
 }
 
-// MARK: - Tab: JSON / Text Input
+// MARK: - Tab: Text (JSON) Input
 
-private struct JSONInputTab: View {
+private struct TextInputTab: View {
     @ObservedObject var viewModel: TenantSelectionViewModel
     @FocusState private var isFocused: Bool
 
-    private let templateJSON = """
-    {
-      "tenantId": "t_default",
-      "tenantCode": "friends.kanto.work",
-      "tenantName": "デフォルト",
-      "tenantMasterKey": "<BASE64_MASTER_KEY>",
-      "workerApiUrl": "https://friends-api.<subdomain>.workers.dev"
-    }
-    """
-
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Input field label
-            HStack {
-                Text(L10n.Tenant.inputLabel)
-                    .font(.caption)
-                    .bold()
-                    .foregroundColor(.secondary)
-                Spacer()
-                Button(L10n.Tenant.inputTemplate) {
-                    viewModel.jsonInput = templateJSON
-                    isFocused = true
-                }
+            Text(L10n.Tenant.inputLabel)
                 .font(.caption)
-                .foregroundColor(.blue)
-            }
+                .bold()
+                .foregroundColor(.secondary)
 
             TextEditor(text: $viewModel.jsonInput)
                 .font(.system(.caption, design: .monospaced))
                 .focused($isFocused)
                 .padding(10)
-                .frame(height: 150)
+                .frame(height: 160)
                 .scrollContentBackground(.hidden)
                 .background(Color(uiColor: .secondarySystemGroupedBackground))
                 .cornerRadius(12)
@@ -702,12 +591,6 @@ private struct JSONInputTab: View {
                     RoundedRectangle(cornerRadius: 12)
                         .stroke(isFocused ? Color.blue.opacity(0.4) : Color.primary.opacity(0.08), lineWidth: 1.5)
                 )
-
-            // Accepted format hints
-            VStack(alignment: .leading, spacing: 4) {
-                FormatHint(icon: "qrcode", text: "FRIENDS_TENANT:<base64>")
-                FormatHint(icon: "doc.text", text: "{ \"tenantId\": ..., \"tenantMasterKey\": ... }")
-            }
 
             Button {
                 isFocused = false
@@ -740,22 +623,6 @@ private struct JSONInputTab: View {
     }
 }
 
-private struct FormatHint: View {
-    let icon: String
-    let text: String
-    var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.caption2)
-                .foregroundColor(.secondary)
-                .frame(width: 14)
-            Text(text)
-                .font(.system(.caption2, design: .monospaced))
-                .foregroundColor(.secondary)
-        }
-    }
-}
-
 // MARK: - Tab: URL Input
 
 private struct URLInputTab: View {
@@ -769,7 +636,7 @@ private struct URLInputTab: View {
                 .bold()
                 .foregroundColor(.secondary)
 
-            TextField("https://example.com/preset-tenant.json", text: $viewModel.urlInput)
+            TextField(L10n.Tenant.urlPlaceholder, text: $viewModel.urlInput)
                 .font(.system(.subheadline, design: .monospaced))
                 .focused($isFocused)
                 .keyboardType(.URL)
@@ -783,12 +650,6 @@ private struct URLInputTab: View {
                     RoundedRectangle(cornerRadius: 12)
                         .stroke(isFocused ? Color.blue.opacity(0.4) : Color.primary.opacity(0.08), lineWidth: 1.5)
                 )
-
-            // URL format hints
-            VStack(alignment: .leading, spacing: 4) {
-                FormatHint(icon: "globe", text: "https://example.com/preset-tenant.json")
-                FormatHint(icon: "link", text: "http://192.168.1.10:8080/tenant.json (ローカル開発)")
-            }
 
             Button {
                 isFocused = false

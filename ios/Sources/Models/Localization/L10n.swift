@@ -45,19 +45,17 @@ public enum L10n {
         public static var selectionTitle: String { tr("tenant.selection.title") }
         public static var header: String { tr("tenant.selection.header") }
         public static var subtitle: String { tr("tenant.selection.subtitle") }
-        public static var tabQR: String { tr("tenant.tab.qr") }
+        public static var tab2DCode: String { tr("tenant.tab.two_dimensional_code") }
         public static var tabURL: String { tr("tenant.tab.url") }
-        public static var tabCustom: String { tr("tenant.tab.custom") }
+        public static var tabText: String { tr("tenant.tab.text") }
         public static var verifying: String { tr("tenant.verify.verifying") }
         public static var confirmBtn: String { tr("tenant.verify.confirm_btn") }
         public static var defaultBadge: String { tr("tenant.default_badge") }
         public static var inputLabel: String { tr("tenant.input.label") }
-        public static var inputTemplate: String { tr("tenant.input.template") }
         public static var urlLabel: String { tr("tenant.input.url_label") }
+        public static var urlPlaceholder: String { tr("tenant.input.url_placeholder") }
         public static var verifyBtn: String { tr("tenant.verify.btn") }
         public static var cameraInstruction: String { tr("tenant.camera.instruction") }
-        public static var cameraSimulatorNote: String { tr("tenant.camera.simulator_note") }
-        public static var cameraSimulatorBtn: String { tr("tenant.camera.simulator_btn") }
     }
     
     // MARK: - Tabs
@@ -170,7 +168,7 @@ public enum L10n {
         
         // Add Screen (C03)
         public static var addTitle: String { tr("friend.add.title") }
-        public static var tabQR: String { tr("friend.add.tab_qr") }
+        public static var tab2DCode: String { tr("friend.add.tab_two_dimensional_code") }
         public static var tabText: String { tr("friend.add.tab_text") }
         public static var cameraSimulatorBtn: String { tr("friend.add.camera_simulator_btn") }
         public static var passcodeTitle: String { tr("friend.add.passcode_title") }

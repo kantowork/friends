@@ -340,7 +340,7 @@ public class ChatService: ObservableObject {
         
         // 2. 未ログイン状態からの完全復旧（Cloudflare Workers による Custom Token 発行 + 元のアカウントでログイン）
         guard let baseURL = RecoveryConfig.workersBaseURL else {
-            AppLogger.error("Workers API URL not configured. Tenant QR must be scanned first.", category: .repo)
+            AppLogger.error("Workers API URL not configured. Tenant 2D code must be scanned first.", category: .repo)
             completion(.failure(NSError(domain: "ChatService", code: 400, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Recovery.tenantNotConfigured])))
             return
         }

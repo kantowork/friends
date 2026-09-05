@@ -14,7 +14,7 @@
 1. テナントを事前に登録・構成する
 2. テナントマスターキーを発行・管理する
 3. テナントマスターキーのローテーションポリシーを設定する
-4. テナント作成後にテナント情報を含む QR コードを生成・出力する（管理者がダウンロード／配布可能）
+4. テナント作成後にテナント情報を含む二次元コードを生成・出力する（管理者がダウンロード／配布可能）
 5. テナント設定をユーザー利用前に確定する
 6. テナント管理者のアクセス権限を設定する
 
@@ -27,23 +27,23 @@
 ## 2. テナント選択
 
 - Actor: User
-- Boundary: Tenant Selection Screen, QR Scanner, Firestore
+- Boundary: Tenant Selection Screen, 2D Code Scanner, Firestore
 - Entity: Tenant
 - Control: TenantSelectionController
-- Note: Tenant Selection UI also supports manual JSON input as an alternative to QR scanning. テナント検証は可能な限り Firestore 直接読み取りで完結し、専用サーバー機能は必要最小限にとどめます。
+- Note: Tenant Selection UI also supports manual JSON input as an alternative to 2D code scanning. テナント検証は可能な限り Firestore 直接読み取りで完結し、専用サーバー機能は必要最小限にとどめます。
 
 ### 主なシナリオ
 
 1. アプリ起動時、デフォルトテナント確認
 2. デフォルトテナント指定がない場合、テナント選択画面を表示
-3. ユーザーがテナント用 QR コードをスキャン、または手動でテナント設定(JSON)を入力
+3. ユーザーがテナント用二次元コードをスキャン、または手動でテナント設定(JSON)を入力
 4. スキャン結果または JSON から `tenantId` を解決
 5. アプリが Firestore `/tenants/{tenantId}` を直接読み取り、テナント有効性を確認
 6. テナント情報をアプリに保存して次ステップへ
 
 ### 例外パス
 
-- QR コード無効
+- 二次元コード無効
 - テナント不存在
 - ネットワークエラー
 - デフォルトテナント指定時は選択画面をスキップ
@@ -149,23 +149,23 @@
 - 同一絵文字の再タップ（リアクション解除・デクリメント）
 - ネットワーク遅延
 
-## 8. 友達追加（QR コード & 30秒更新3桁合言葉 TOTP）
+## 8. 友達追加（二次元コード & 30秒更新3桁合言葉 TOTP）
 
 - Actor: User
-- Boundary: Friend Add Screen, Camera/QR Scanner, Firestore
+- Boundary: Friend Add Screen, Camera/2D Code Scanner, Firestore
 - Entity: Friend, FriendInvitation, User
 - Control: FriendController
 
 ### 主なシナリオ
 
-1. 提示側が QR コード（または 30 秒更新の 3 桁合言葉）を表示
-2. 読取側が QR コードをスキャン（または合言葉を入力照合）
+1. 提示側が二次元コード（または 30 秒更新の 3 桁合言葉）を表示
+2. 読取側が二次元コードをスキャン（または合言葉を入力照合）
 3. 相手の `userId`・公開鍵・暗号化表示名を取得
 4. Firestore 上で相互の `/friends` サブコレクションおよび DM 用チャットドキュメントをアトミックに初期化・登録
 
 ### 例外パス
 
-- QR コード無効・期限切れ
+- 二次元コード無効・期限切れ
 - 3桁合言葉の不一致または有効期限（30秒）超過
 - 相手が既に友達
 

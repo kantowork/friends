@@ -31,7 +31,7 @@
 | `common` | 全画面共通ボタン・汎用ラベル | `common.ok`, `common.cancel`, `common.close`, `common.copy` |
 | `auth` | ログイン・認証・テナント選択 | `auth.login.title`, `auth.tenant.select_title` |
 | `chat` | チャット一覧・詳細・メッセージング | `chat.list.title`, `chat.detail.send_placeholder` |
-| `friend` | 友達一覧・友達追加・QR・合言葉 | `friend.list.title`, `friend.add.title`, `friend.passcode.label` |
+| `friend` | 友達一覧・友達追加・二次元コード・合言葉 | `friend.list.title`, `friend.add.title`, `friend.passcode.label` |
 | `group` | グループ一覧・グループ作成・管理 | `group.list.title`, `group.create.title` |
 | `settings` | 設定・プロフィール・復元 | `settings.title`, `settings.profile.edit` |
 | `error` | エラーメッセージ | `error.friend.invalid_format`, `error.tenant_not_found` |
@@ -59,11 +59,11 @@ let errorMsg = L10n.Error.Friend.invalidFormat
 
 - [x] **A01 スプラッシュ**: 初期化テキスト・ローディングメッセージ
 - [x] **A02 ログイン / A05m メール認証**: タイトル、ログインボタン、プレースホルダー、ゲスト案内
-- [x] **A03m テナント選択**: QR/URL/JSONタブ名、検証中/成功/失敗メッセージ
+- [x] **A03m テナント選択**: 二次元コード/URL/JSONタブ名、検証中/成功/失敗メッセージ
 - [x] **A04/E04 復活の呪文**: 復元案内、単語入力、警告文
 - [x] **B01/C01 チャット一覧**: タブ名、空状態メッセージ、未読バッジ
 - [x] **C02 チャット詳細**: メッセージ送信欄、暗号化表示
-- [x] **C03 友達追加 (QR / テキスト / 3桁合言葉)**: カメラスキャン案内、自QR案内、3桁合言葉、残り時間、テキスト連携、エラー表示
+- [x] **C03 友達追加 (二次元コード / テキスト / 3桁合言葉)**: カメラスキャン案内、自二次元コード案内、3桁合言葉、残り時間、テキスト連携、エラー表示
 - [x] **C04/FriendList 友達一覧**: 友達追加ボタン、登録済み一覧
 - [x] **D01/D03/D04 かいぎ（グループチャット）・管理**:
   - かいぎ一覧、かいぎ作成（タイトル、友達選択）

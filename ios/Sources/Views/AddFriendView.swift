@@ -2,7 +2,7 @@ import SwiftUI
 import AVFoundation
 
 // MARK: - AddFriendView (C03 友達追加画面)
-// 1. QRコードタブ: 上部にカメラ、下部に自分のQRコードのみを表示 (30秒毎に更新、パスコード内包)
+// 1. 二次元コードタブ: 上部にカメラ、下部に自分の二次元コードのみを表示 (30秒毎に更新、パスコード内包)
 // 2. テキストタブ: ユーザー名/ID と 3桁パスコードを表示。数字の横に円グラフとカウントダウン表示。コピーはユーザー名のみ。
 
 struct AddFriendView: View {
@@ -10,16 +10,16 @@ struct AddFriendView: View {
     @ObservedObject var chatService = ChatService.shared
     
     enum TabSelection: Int, CaseIterable {
-        case qr = 0
+        case twoDimensionalCode = 0
         case text = 1
     }
     
-    @State private var selectedTab: TabSelection = .qr
+    @State private var selectedTab: TabSelection = .twoDimensionalCode
     @State private var timerNow = Date()
     @State private var timer = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
     
-    // Cached 30s QR image
-    @State private var cachedQRImage: UIImage? = nil
+    // Cached 30s 2D code image
+    @State private var cached2DCodeImage: UIImage? = nil
     @State private var lastGeneratedStep: Int64 = -1
     
     // Text Code Tab Inputs
@@ -39,7 +39,7 @@ struct AddFriendView: View {
             VStack(spacing: 0) {
                 // Tab Segmented Control
                 Picker("", selection: $selectedTab) {
-                    Text(L10n.Friend.tabQR).tag(TabSelection.qr)
+                    Text(L10n.Friend.tab2DCode).tag(TabSelection.twoDimensionalCode)
                     Text(L10n.Friend.tabText).tag(TabSelection.text)
                 }
                 .pickerStyle(.segmented)
@@ -48,8 +48,8 @@ struct AddFriendView: View {
                 .padding(.bottom, 12)
                 
                 // Content Tab Views
-                if selectedTab == .qr {
-                    qrOnlyView
+                if selectedTab == .twoDimensionalCode {
+                    twoDimensionalCodeOnlyView
                 } else {
                     textCodeView
                 }
@@ -64,11 +64,11 @@ struct AddFriendView: View {
                 }
             }
             .onAppear {
-                updateQRCodeIfNeeded(date: timerNow)
+                update2DCodeIfNeeded(date: timerNow)
             }
             .onReceive(timer) { input in
                 timerNow = input
-                updateQRCodeIfNeeded(date: input)
+                update2DCodeIfNeeded(date: input)
             }
             .alert(L10n.Friend.successAlertTitle, isPresented: $showSuccessAlert) {
                 Button(L10n.Common.ok) {
@@ -80,9 +80,9 @@ struct AddFriendView: View {
         }
     }
     
-    // MARK: - 1. QR Code Tab View (カメラとQRコードのみのミニマル表示・30秒毎更新)
+    // MARK: - 1. Two-Dimensional Code Tab View (カメラと二次元コードのみのミニマル表示・30秒毎更新)
     
-    private var qrOnlyView: some View {
+    private var twoDimensionalCodeOnlyView: some View {
         GeometryReader { geometry in
             VStack(spacing: 0) {
                 // Top Half: Camera Scanner
@@ -118,12 +118,12 @@ struct AddFriendView: View {
                 .frame(height: geometry.size.height * 0.5)
                 .clipped()
                 
-                // Bottom Half: My QR Code Only (30秒毎に更新、余計なボタン・文字なし)
+                // Bottom Half: My 2D Code Only (30秒毎に更新、余計なボタン・文字なし)
                 VStack(spacing: 0) {
                     Spacer()
                     
-                    if let qrImage = cachedQRImage {
-                        Image(uiImage: qrImage)
+                    if let codeImage = cached2DCodeImage {
+                        Image(uiImage: codeImage)
                             .interpolation(.none)
                             .resizable()
                             .scaledToFit()
@@ -315,10 +315,10 @@ struct AddFriendView: View {
         FriendPasscodeGenerator.remainingSeconds(date: timerNow)
     }
     
-    /// 30秒毎（ステップ更新時）にのみQRコードを再生成する
-    private func updateQRCodeIfNeeded(date: Date) {
+    /// 30秒毎（ステップ更新時）にのみ二次元コードを再生成する
+    private func update2DCodeIfNeeded(date: Date) {
         let step = FriendPasscodeGenerator.currentStep(date: date)
-        guard step != lastGeneratedStep || cachedQRImage == nil else { return }
+        guard step != lastGeneratedStep || cached2DCodeImage == nil else { return }
         guard let user = chatService.currentUser, let tenant = chatService.currentTenant else { return }
         
         let passcodeForStep = FriendPasscodeGenerator.code(forStep: step, uid: user.uid, tenantId: tenant.tenantID)
@@ -335,8 +335,8 @@ struct AddFriendView: View {
         payload.passcode = passcodeForStep
         payload.timestamp = stepTimestamp
         
-        let qrString = FriendInvitationHelper.encode(payload: payload)
-        self.cachedQRImage = QRCodeGeneratorHelper.generateQRCode(from: qrString)
+        let inviteString = FriendInvitationHelper.encode(payload: payload)
+        self.cached2DCodeImage = TwoDimensionalCodeGeneratorHelper.generate2DCode(from: inviteString)
         self.lastGeneratedStep = step
     }
     

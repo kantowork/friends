@@ -46,7 +46,7 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_CFBundleDisplayName: "Friends"
-        INFOPLIST_KEY_NSCameraUsageDescription: "テナントや友達のQRコードをスキャンするためにカメラを使用します。"
+        INFOPLIST_KEY_NSCameraUsageDescription: "テナントや友達の二次元コードをスキャンするためにカメラを使用します。"
         SWIFT_VERSION: "5.0"
         OTHER_LDFLAGS: ["$(inherited)", "-ObjC"]
 

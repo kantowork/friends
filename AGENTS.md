@@ -70,7 +70,7 @@
 | **認証・鍵生成** | [doc/07-detailed-usecases/07-02-user-registration-login.md](./doc/07-detailed-usecases/07-02-user-registration-login.md) | ログイン/登録、Curve25519 鍵生成と Keychain/DB 格納 |
 | **暗号化通信** | [doc/07-detailed-usecases/07-03-message-encryption.md](./doc/07-detailed-usecases/07-03-message-encryption.md) | E2EE メッセージ暗号化、セッション鍵導出 |
 | **端末復旧** | [doc/07-detailed-usecases/07-04-device-recovery.md](./doc/07-detailed-usecases/07-04-device-recovery.md) | 復活の呪文（Mnemonic Phrase）によるアカウント・鍵復元 |
-| **友達追加** | [doc/07-detailed-usecases/07-06-friend-addition.md](./doc/07-detailed-usecases/07-06-friend-addition.md) | QRコード/テキスト連携、30秒更新3桁合言葉 TOTP 仕様 |
+| **友達追加** | [doc/07-detailed-usecases/07-06-friend-addition.md](./doc/07-detailed-usecases/07-06-friend-addition.md) | 二次元コード/テキスト連携、30秒更新3桁合言葉 TOTP 仕様 |
 | **通知・プッシュ** | [doc/07-detailed-usecases/07-07-push-notification.md](./doc/07-detailed-usecases/07-07-push-notification.md)<br>[doc/10-detailed-design/10-04-background-notification-setup.md](./doc/10-detailed-design/10-04-background-notification-setup.md) | アプリ内トースト通知、FCM/APNs バックグラウンドプッシュ通知導入準備仕様 |
 | **プロフィール更新** | [doc/07-detailed-usecases/07-09-user-profile-update.md](./doc/07-detailed-usecases/07-09-user-profile-update.md) | 表示名変更の暗号化保存プロトコル・低コストハイブリッド友達同期 |
 | **既読管理** | [doc/07-detailed-usecases/07-10-read-receipt-management.md](./doc/07-detailed-usecases/07-10-read-receipt-management.md) | 水位線カーソル方式によるE2EEチャット既読管理・リアルタイム同期仕様 |
