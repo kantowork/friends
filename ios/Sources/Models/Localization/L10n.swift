@@ -55,6 +55,7 @@ public enum L10n {
         public static var inputTemplate: String { tr("tenant.input.template") }
         public static var urlLabel: String { tr("tenant.input.url_label") }
         public static var verifyBtn: String { tr("tenant.verify.btn") }
+        public static var cameraInstruction: String { tr("tenant.camera.instruction") }
         public static var cameraSimulatorNote: String { tr("tenant.camera.simulator_note") }
         public static var cameraSimulatorBtn: String { tr("tenant.camera.simulator_btn") }
     }
@@ -265,6 +266,14 @@ public enum L10n {
             public static var dataNotFound: String { tr("error.recovery.data_not_found") }
             public static var decryptionFailed: String { tr("error.recovery.decryption_failed") }
             public static var tenantNotConfigured: String { tr("error.recovery.tenant_not_configured") }
+        }
+        
+        public enum Tenant {
+            public static var invalidFormat: String { tr("error.tenant.invalid_format") }
+            public static var fetchFailed: String { tr("error.tenant.fetch_failed") }
+            public static func verificationFailed(_ reason: String) -> String {
+                String(format: tr("error.tenant.verification_failed"), reason)
+            }
         }
         
         public enum User {

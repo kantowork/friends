@@ -39,12 +39,16 @@
 "tenant.verify.verifying" = "Verifying tenant…";
 "tenant.verify.confirm_btn" = "Select This Tenant";
 "tenant.default_badge" = "Default";
-"tenant.input.label" = "Tenant Info (JSON or t_xxxx)";
+"tenant.input.label" = "Tenant Configuration (JSON)";
 "tenant.input.template" = "Insert Template";
-"tenant.input.url_label" = "Invite URL or Custom Scheme";
+"tenant.input.url_label" = "Configuration JSON URL (https://...)";
 "tenant.verify.btn" = "Verify";
+"tenant.camera.instruction" = "Align the QR code within the frame";
 "tenant.camera.simulator_note" = "Camera unavailable in Simulator";
 "tenant.camera.simulator_btn" = "Simulate Scanning Test Tenant QR";
+"error.tenant.invalid_format" = "Invalid tenant configuration format. Please provide valid JSON or a valid URL.";
+"error.tenant.fetch_failed" = "Failed to fetch tenant configuration from URL. Please check the URL and network connection.";
+"error.tenant.verification_failed" = "Tenant verification failed: %@";
 
 // MARK: - Tabs
 "tab.home" = "Home";

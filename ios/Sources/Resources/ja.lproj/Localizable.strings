@@ -39,12 +39,16 @@
 "tenant.verify.verifying" = "テナントを検証中…";
 "tenant.verify.confirm_btn" = "このテナントを選択";
 "tenant.default_badge" = "デフォルト";
-"tenant.input.label" = "テナント情報（JSONまたはt_xxxx）";
+"tenant.input.label" = "テナント設定情報（JSON）";
 "tenant.input.template" = "テンプレートを挿入";
-"tenant.input.url_label" = "招待URLまたはカスタムURLスキーム";
+"tenant.input.url_label" = "設定JSON配信URL（https://...）";
 "tenant.verify.btn" = "検証する";
+"tenant.camera.instruction" = "QRコードをフレーム内に合わせてください";
 "tenant.camera.simulator_note" = "カメラ利用不可（シミュレータ環境）";
 "tenant.camera.simulator_btn" = "テスト用テナントQRをスキャン（シミュレート）";
+"error.tenant.invalid_format" = "テナント設定の形式が正しくありません。完全なJSONまたは有効なURLを指定してください。";
+"error.tenant.fetch_failed" = "URLからテナント設定を取得できませんでした。URLとネットワーク接続を確認してください。";
+"error.tenant.verification_failed" = "テナント検証に失敗しました: %@";
 
 // MARK: - Tabs
 "tab.home" = "ホーム";

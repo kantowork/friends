@@ -59,8 +59,16 @@ final class TenantSelectionViewModel: ObservableObject {
         let input = rawInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !input.isEmpty else { return }
 
+        // QRコード等に URL が直接含まれている場合
+        if input.hasPrefix("http://") || input.hasPrefix("https://") {
+            if let url = URL(string: input) {
+                fetchAndVerify(from: url)
+                return
+            }
+        }
+
         guard let tenantId = extractTenantId(from: input) else {
-            verificationState = .failure("形式が正しくありません。")
+            verificationState = .failure(L10n.Error.Tenant.invalidFormat)
             return
         }
         verify(tenantId: tenantId)
@@ -70,14 +78,47 @@ final class TenantSelectionViewModel: ObservableObject {
         let raw = urlInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !raw.isEmpty else { return }
 
-        // friends://tenant?id=t_xxxx  or  https://friends.kanto.work/tenant?id=t_xxxx
-        if let url = URL(string: raw),
-           let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-           let tid = components.queryItems?.first(where: { $0.name == "id" })?.value,
-           tid.hasPrefix("t_") {
-            verify(tenantId: tid)
-        } else {
-            verificationState = .failure("形式が正しくありません。")
+        guard let url = URL(string: raw),
+              let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https" else {
+            verificationState = .failure(L10n.Error.Tenant.invalidFormat)
+            return
+        }
+        fetchAndVerify(from: url)
+    }
+
+    func fetchAndVerify(from url: URL) {
+        verificationState = .loading
+        Task {
+            do {
+                var request = URLRequest(url: url)
+                request.timeoutInterval = 10.0
+                let (data, response) = try await URLSession.shared.data(for: request)
+                guard let httpResponse = response as? HTTPURLResponse,
+                      (200...299).contains(httpResponse.statusCode) else {
+                    await MainActor.run {
+                        self.verificationState = .failure(L10n.Error.Tenant.fetchFailed)
+                    }
+                    return
+                }
+
+                guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let tid = json["tenantId"] as? String, !tid.isEmpty else {
+                    await MainActor.run {
+                        self.verificationState = .failure(L10n.Error.Tenant.invalidFormat)
+                    }
+                    return
+                }
+
+                await MainActor.run {
+                    self.parseAndSaveTenantPayload(json)
+                    self.verify(tenantId: tid)
+                }
+            } catch {
+                await MainActor.run {
+                    self.verificationState = .failure(L10n.Error.Tenant.fetchFailed)
+                }
+            }
         }
     }
 
@@ -112,10 +153,6 @@ final class TenantSelectionViewModel: ObservableObject {
             parseAndSaveTenantPayload(json)
             return tid
         }
-        // 3. Raw tenantId (t_ prefix)
-        if input.hasPrefix("t_") {
-            return input
-        }
         return nil
     }
 
@@ -146,7 +183,7 @@ final class TenantSelectionViewModel: ObservableObject {
                 case .success(let tenant):
                     self?.verificationState = .success(tenant)
                 case .failure(let error):
-                    self?.verificationState = .failure("検証失敗: \(error.localizedDescription)")
+                    self?.verificationState = .failure(L10n.Error.Tenant.verificationFailed(error.localizedDescription))
                 }
             }
         }
@@ -436,7 +473,7 @@ private struct QRCameraPreview: View {
                 // Scanning animation label
                 VStack {
                     Spacer()
-                    Text("QRコードをフレーム内に合わせてください")
+                    Text(L10n.Tenant.cameraInstruction)
                         .font(.caption)
                         .foregroundColor(.white)
                         .padding(.horizontal, 12)
@@ -586,7 +623,7 @@ private struct SimulatorQRFallback: View {
     @ObservedObject var viewModel: TenantSelectionViewModel
 
     private let samplePayload = """
-    FRIENDS_TENANT:eyJ0ZW5hbnRJZCI6InRfZGVmYXVsdCJ9
+    FRIENDS_TENANT:eyJ0eXBlIjoidGVuYW50X2ludml0ZSIsInZlcnNpb24iOjEsInRlbmFudElkIjoidF9kZWZhdWx0IiwidGVuYW50Q29kZSI6ImZyaWVuZHMua2FudG8ud29yayIsInRlbmFudE5hbWUiOiLjg4fjg5Xjgqnjg6vjg4giLCJ0ZW5hbnRNYXN0ZXJLZXkiOiJjTEUwZlR5ZXkxZzhDemlNQUlpN3UxM2MyMmRRZGkvVXpndFpYejcrVXBvPSIsImlzRGVmYXVsdFRlbmFudCI6dHJ1ZSwid29ya2VyQXBpVXJsIjoiaHR0cHM6Ly9mcmllbmRzLWFwaS5jZW8tZGM1LndvcmtlcnMuZGV2IiwicjJDb25maWciOnsicHVibGljQmFzZVVybCI6Imh0dHBzOi8vYnVja2V0LmZyaWVuZHMua2FudG8ud29yayIsImJ1Y2tldE5hbWUiOiJmcmllbmRzLWthbnRvd29yayIsImVuZHBvaW50VXJsIjoiaHR0cHM6Ly9kYzViM2JlYzBhNjg5MWU0MzUwZGE5NTEzYzNmYzVkYi5yMi5jbG91ZGZsYXJlc3RvcmFnZS5jb20iLCJhY2Nlc3NLZXlJZCI6ImEwNWVmMTlmMWRiNTI3NjMxZWE3OTllMGM5NjQ1MjAzIiwic2VjcmV0QWNjZXNzS2V5IjoiNDczOThjYjUwMmVlYWVlYzRmYzc3ZWFkNzNiZmU0MGY1YzdlZDBjNmNhOTVmYzcwZjYzYTMxZTQ4MTUyZDdmZCJ9fQ==
     """
 
     var body: some View {
@@ -628,7 +665,11 @@ private struct JSONInputTab: View {
 
     private let templateJSON = """
     {
-      "tenantId": "t_xxxxx"
+      "tenantId": "t_default",
+      "tenantCode": "friends.kanto.work",
+      "tenantName": "デフォルト",
+      "tenantMasterKey": "<BASE64_MASTER_KEY>",
+      "workerApiUrl": "https://friends-api.<subdomain>.workers.dev"
     }
     """
 
@@ -665,8 +706,7 @@ private struct JSONInputTab: View {
             // Accepted format hints
             VStack(alignment: .leading, spacing: 4) {
                 FormatHint(icon: "qrcode", text: "FRIENDS_TENANT:<base64>")
-                FormatHint(icon: "doc.text", text: "{ \"tenantId\": \"t_xxxx\" }")
-                FormatHint(icon: "textformat.abc", text: "t_xxxxxxxxxxxxxxxx（IDの直接入力）")
+                FormatHint(icon: "doc.text", text: "{ \"tenantId\": ..., \"tenantMasterKey\": ... }")
             }
 
             Button {
@@ -729,7 +769,7 @@ private struct URLInputTab: View {
                 .bold()
                 .foregroundColor(.secondary)
 
-            TextField("friends://tenant?id=t_xxxx", text: $viewModel.urlInput)
+            TextField("https://example.com/preset-tenant.json", text: $viewModel.urlInput)
                 .font(.system(.subheadline, design: .monospaced))
                 .focused($isFocused)
                 .keyboardType(.URL)
@@ -746,8 +786,8 @@ private struct URLInputTab: View {
 
             // URL format hints
             VStack(alignment: .leading, spacing: 4) {
-                FormatHint(icon: "iphone.smartbubble", text: "friends://tenant?id=t_xxxx")
-                FormatHint(icon: "globe", text: "https://friends.kanto.work/tenant?id=t_xxxx")
+                FormatHint(icon: "globe", text: "https://example.com/preset-tenant.json")
+                FormatHint(icon: "link", text: "http://192.168.1.10:8080/tenant.json (ローカル開発)")
             }
 
             Button {

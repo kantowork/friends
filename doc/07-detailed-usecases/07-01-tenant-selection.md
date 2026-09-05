@@ -22,18 +22,28 @@ sequenceDiagram
     App->>App: テナント自動選択
   else デフォルトテナント未設定
     App->>User: A03m テナント選択画面表示（QR スキャン or 手動設定）
-    alt QR スキャン
+    alt QR スキャン (JSON / Base64 または URL)
       User->>QRScanner: QRコードをスキャン
-      QRScanner->>App: QRコード読み込み完了 (JSON)
-      App->>App: tenantId, tenantCode, workerApiUrl, MK_T を抽出
+      QRScanner->>App: QRコード読み込み完了
+      opt QR が URL の場合
+        App->>App: HTTP GET (URL) で JSON フェッチ
+      end
+      App->>App: tenantId, tenantCode, workerApiUrl, MK_T, r2Config を抽出
       App->>Keychain: saveTenantMasterKey(tenantId, MK_T)
-      App->>Settings: saveWorkerApiUrl(tenantId, workerApiUrl)
+      App->>Settings: saveWorkerApiUrl / saveR2Config
       App->>Firestore: /tenants/{tenantId} を取得
     else 手動設定 (JSON)
       User->>App: テナント設定(JSON) を入力
-      App->>App: JSON を検証して tenantId, tenantCode, workerApiUrl, MK_T を抽出
+      App->>App: JSON を検証して tenantId, tenantCode, workerApiUrl, MK_T, r2Config を抽出
       App->>Keychain: saveTenantMasterKey(tenantId, MK_T)
-      App->>Settings: saveWorkerApiUrl(tenantId, workerApiUrl)
+      App->>Settings: saveWorkerApiUrl / saveR2Config
+      App->>Firestore: /tenants/{tenantId} を取得
+    else 設定 URL 指定 (HTTP GET)
+      User->>App: テナント設定 JSON 配信 URL を入力
+      App->>App: HTTP GET で JSON をダウンロード
+      App->>App: JSON を検証して tenantId, tenantCode, workerApiUrl, MK_T, r2Config を抽出
+      App->>Keychain: saveTenantMasterKey(tenantId, MK_T)
+      App->>Settings: saveWorkerApiUrl / saveR2Config
       App->>Firestore: /tenants/{tenantId} を取得
     end
     alt テナント存在
@@ -52,14 +62,15 @@ sequenceDiagram
 
 - ローカル管理 (Keychain / UserDefaults)
   - 選択済み `tenantId`, `tenantCode` とユーザーが最後に利用したテナント状態
-  - **Cloudflare Workers 接続先 URL (`workerApiUrl`)**: QR コード経由でのみ動的注入
+  - **Cloudflare Workers 接続先 URL (`workerApiUrl`)**: QR コードまたは設定 JSON 経由でのみ動的注入
+  - **Cloudflare R2 設定 (`r2Config`)**: QR コードまたは設定 JSON 経由でのみ動的注入
   - **テナントマスターキー ($MK_T$)** (Keychain: `friends_tenant_key_{tenantId}`)
   - オフライン復帰時のテナント選択リストキャッシュ
 - Firestore 管理
   - テナントの正規構成データ（`/tenants/{tenantId}`）
   - テナントの有効/無効状態、公開設定
 
-> 端末上のローカル保存は暗号化マスターキーの厳重管理とユーザー体験向上用であり、権威あるテナント構成は Firestore 側に置きます。また、`workerApiUrl` はソースコードに埋め込まず QR コードからのみ注入されます。
+> 端末上のローカル保存は暗号化マスターキーの厳重管理とユーザー体験向上用であり、権威あるテナント構成は Firestore 側に置きます。また、`workerApiUrl` や `r2Config` はソースコードに埋め込まず、配布されたテナント設定（QR/JSON/URL）からのみ注入されます。
 
 ## 3. エラーハンドリング
 
@@ -67,6 +78,7 @@ sequenceDiagram
 | :-------------------- | :--------------------------------------------- |
 | QR コード無効         | スキャン再試行                                 |
 | JSON フォーマット不正 | 入力バリデーションメッセージ、テンプレート表示 |
+| URL ダウンロード失敗  | ネットワーク接続・URL の確認を促すメッセージ表示 |
 | テナント不存在        | 管理者に確認依頼                               |
 | ネットワークエラー    | リトライ or オフライン表示                     |
 

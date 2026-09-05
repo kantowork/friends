@@ -1,25 +1,25 @@
 {
   "type": "tenant_preset",
   "version": 1,
-  "tenantId": "t_sample_tenant",
-  "tenantCode": "sample.work",
-  "tenantName": "サンプル組織",
-  "tenantMasterKey": "cLE0fTyey1g8CziMAIi7u13c22dQdi/UzgtZXz7+Upo=",
-  "workerApiUrl": "https://friends-api.<your-subdomain>.workers.dev",
+  "tenantId": "t_default",
+  "tenantCode": "default",
+  "tenantName": "kanto.work",
+  "tenantMasterKey": "<BASE64_ENCODED_256_BIT_AES_GCM_KEY>",
+  "workerApiUrl": "https://<WORKER_NAME>.<ACCOUNT_ID>.workers.dev",
   "r2Config": {
-    "publicBaseUrl": "https://bucket.friends.example.com",
-    "bucketName": "friends-sample-bucket",
-    "endpointUrl": "https://<account_id>.r2.cloudflarestorage.com",
-    "accessKeyId": "<your_r2_access_key_id>",
-    "secretAccessKey": "<your_r2_secret_access_key>"
+    "publicBaseUrl": "https://<BUCKET_NAME>.<DOMAIN_NAME>",
+    "bucketName": "<R2_BUCKET_NAME>",
+    "endpointUrl": "https://<ACCOUNT_ID>.r2.cloudflarestorage.com",
+    "accessKeyId": "<R2_ACCESS_KEY_ID>",
+    "secretAccessKey": "<R2_SECRET_ACCESS_KEY>"
   },
   "isDefaultTenant": true,
-  "description": "サンプルテナント設定テンプレート",
+  "description": "デフォルトテナント",
   "configuration": {
     "allowGuestLogin": true,
     "requireApproval": false,
     "maxMembers": 1000
   },
-  "createdAt": "2026-08-20T00:00:00Z",
-  "updatedAt": "2026-08-20T00:00:00Z"
+  "createdAt": "2026-09-01T00:00:00Z",
+  "updatedAt": "2026-09-01T00:00:00Z"
 }
