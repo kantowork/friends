@@ -19,6 +19,9 @@ public struct EditProfileView: View {
     @State private var showingAvatarActionSheet = false
     @State private var showingPresetSheet = false
     @State private var showingUsernameConfirmAlert = false
+    @State private var showingAppInfoModal = false
+    
+    @FocusState private var isUsernameFocused: Bool
     
     private var isSaveDisabled: Bool {
         if isSaving { return true }
@@ -86,34 +89,25 @@ public struct EditProfileView: View {
                             showingAvatarActionSheet = true
                         }
                         
-                        Spacer()
+                        Spacer(minLength: 12)
                         
-                        // 右側: @xxxxxx アカウント入力 (右寄せ・@と入力欄を密着・右端にスペースが出ない動的レイアウト)
-                        HStack(spacing: 0) {
+                        // 右側: @xxxxxx アカウント入力 (ユーザーネームのすぐ左に@を密着配置し、右寄せ)
+                        HStack(spacing: 2) {
                             Text("@")
                                 .font(.system(.body, design: .monospaced))
                                 .foregroundColor(.secondary)
                             
-                            ZStack(alignment: .trailing) {
-                                if usernameText.isEmpty {
-                                    Text(L10n.Settings.profileUsernamePlaceholder)
-                                        .font(.system(.body, design: .monospaced))
-                                        .foregroundColor(Color(uiColor: .placeholderText))
-                                }
-                                
-                                // 幅をテキストまたはプレースホルダーに合わせる不可視テキスト
-                                Text(usernameText.isEmpty ? L10n.Settings.profileUsernamePlaceholder : usernameText)
-                                    .font(.system(.body, design: .monospaced))
-                                    .opacity(0)
-                                    .padding(.horizontal, 1)
-                                
-                                TextField("", text: $usernameText)
-                                    .font(.system(.body, design: .monospaced))
-                                    .multilineTextAlignment(.trailing)
-                                    .textInputAutocapitalization(.never)
-                                    .autocorrectionDisabled()
-                                    .keyboardType(.asciiCapable)
-                            }
+                            TextField(L10n.Settings.profileUsernamePlaceholder, text: $usernameText)
+                                .font(.system(.body, design: .monospaced))
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                                .keyboardType(.asciiCapable)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .focused($isUsernameFocused)
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            isUsernameFocused = true
                         }
                     }
                     .padding(.vertical, 4)
@@ -166,6 +160,22 @@ public struct EditProfileView: View {
                         Text(chatService.currentTenant?.tenantID ?? "-")
                             .font(.system(.body, design: .monospaced))
                             .foregroundColor(.secondary)
+                    }
+                }
+                
+                // Section 3: アプリ情報
+                Section {
+                    Button {
+                        showingAppInfoModal = true
+                    } label: {
+                        HStack {
+                            Text(L10n.AppInfo.title)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
                 
@@ -243,6 +253,14 @@ public struct EditProfileView: View {
                 PresetAvatarPickerSheet { presetImage in
                     self.previewAvatarImage = presetImage
                     self.isAvatarRemoved = false
+                }
+            }
+            .sheet(isPresented: $showingAppInfoModal) {
+                AppInfoView()
+            }
+            .onChange(of: usernameText) { newValue in
+                if newValue.contains("@") {
+                    usernameText = newValue.replacingOccurrences(of: "@", with: "")
                 }
             }
         }

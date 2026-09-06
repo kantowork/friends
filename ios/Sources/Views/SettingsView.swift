@@ -7,6 +7,7 @@ public struct SettingsView: View {
     @State private var showingSecurityResetAlert = false
     @State private var resetSuccessAlert = false
     @State private var showingSignOutAlert = false
+    @State private var showingAppInfo = false
     
     public init() {}
     
@@ -91,18 +92,18 @@ public struct SettingsView: View {
             }
             
             // About Section
-            Section(L10n.Settings.sectionAbout) {
-                HStack {
-                    Text(L10n.Settings.aboutVersion)
-                    Spacer()
-                    Text("1.0.0 (Build 1)")
-                        .foregroundColor(.secondary)
-                }
-                HStack {
-                    Text(L10n.Settings.aboutEncryption)
-                    Spacer()
-                    Text("AES-256-GCM / ECDH")
-                        .foregroundColor(.secondary)
+            Section {
+                Button {
+                    showingAppInfo = true
+                } label: {
+                    HStack {
+                        Text(L10n.AppInfo.title)
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
             }
         }
@@ -114,6 +115,9 @@ public struct SettingsView: View {
         }
         .sheet(isPresented: $showingRecoveryPhrase) {
             RecoveryPhraseSheetView()
+        }
+        .sheet(isPresented: $showingAppInfo) {
+            AppInfoView()
         }
         .alert(L10n.Settings.securityResetConfirmTitle, isPresented: $showingSecurityResetAlert) {
             Button(L10n.Common.cancel, role: .cancel) {}

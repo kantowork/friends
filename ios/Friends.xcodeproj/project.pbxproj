@@ -17,6 +17,7 @@
 		106EE5972E356C200B8C475C /* SwiftMnemonic in Frameworks */ = {isa = PBXBuildFile; productRef = 13413BA24E06763D326438CC /* SwiftMnemonic */; };
 		1119D5EC886404FA020789B6 /* AddGroupMemberSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B49DD43F64120C286745702 /* AddGroupMemberSheet.swift */; };
 		11C0697C000DF7E93DDFF5D3 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 843D20C5C1EE219362DCBF39 /* FirebaseFirestore */; };
+		12AC4D82B919141ED138C98B /* LicenseItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D3FDC67B9DBE919BDB7A64F /* LicenseItem.swift */; };
 		14026010C5E38940B2E0EF14 /* ULID in Frameworks */ = {isa = PBXBuildFile; productRef = 7051210C1CCF956B15728EB2 /* ULID */; };
 		19147032001F1578E179221F /* CryptoKeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB174DA53133AD4E358D0543 /* CryptoKeyManager.swift */; };
 		1C4F574FB6EBCB185BC8BDE7 /* PresetTenantConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BD06C16F1E17F8C9BE1E48F /* PresetTenantConfig.swift */; };
@@ -52,12 +53,14 @@
 		6E56001E6D461263F26716D4 /* InAppToast.swift in Sources */ = {isa = PBXBuildFile; fileRef = E398E98BC6D08ED8318A22C7 /* InAppToast.swift */; };
 		763AD6C13FBC1F6457066D47 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = F118FFCB9DD858C7A0A80E52 /* FirebaseAuth */; };
 		7A183168969883E04BF26D65 /* RecoveryConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = E35773E9E58A89073DA590EC /* RecoveryConfig.swift */; };
+		803C0F3472F6F3041C1EAA08 /* AppInfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7824D71E0EBC04F96AA3657 /* AppInfoView.swift */; };
 		827EC8EA02C8BC5DAB1B12B1 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B0446CB35BD1DED70441109 /* GoogleService-Info.plist */; };
 		87CA0724A7824B7EB8C4F035 /* user.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DC45DCE17FFA7BE9C344104 /* user.pb.swift */; };
 		8A68F86C2F1CB50E9AFA13A9 /* TenantSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 677874861ECB1893E610DCB1 /* TenantSelectionView.swift */; };
 		902C92EF0710E58688137F3D /* ProtobufModelExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73EFF9BEBF88BD245D30582A /* ProtobufModelExtensions.swift */; };
 		925AA0D4AB7D854196D029C2 /* chat.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED0E9E6440449A9F3F4D8985 /* chat.pb.swift */; };
 		9367769AEFFC21E5FFE69599 /* UserAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 742F0659533CB0CAD1247BCE /* UserAvatarView.swift */; };
+		A209E328C3A5F3439C5DCC74 /* LicenseListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F59B46E25858AE165C945259 /* LicenseListView.swift */; };
 		AC175272B9C3FB36433698FB /* GroupDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B461A6C43DFB89F0B7FE3978 /* GroupDetailView.swift */; };
 		ACC46324326623D433E405F8 /* friend.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16CBC033C3BB6387AF2EEFDA /* friend.pb.swift */; };
 		AEA4132FF9C61035DAF1DECF /* R2Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC99C355772086F8C25B473E /* R2Config.swift */; };
@@ -65,8 +68,10 @@
 		B8F8A42F949CE721CE93CAFF /* ChatRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC16F3F99E96F06398EEA0DE /* ChatRepository.swift */; };
 		BC567221FAA48C3E70534049 /* StoredTenant.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFDB95891B042D43FAE6A8E2 /* StoredTenant.swift */; };
 		CE0CACFE6FD36062538BF26C /* CryptoKeyManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D565C3091DA5BECD9CC25D05 /* CryptoKeyManagerTests.swift */; };
+		CFA7A1890B9C5BD686ECC5A6 /* licenses.json in Resources */ = {isa = PBXBuildFile; fileRef = 9A0FE7612E7289F2E532A083 /* licenses.json */; };
 		D2205A3B3B8BCBBFFF4867FE /* FriendListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EA5643E77B341F122508AC1 /* FriendListView.swift */; };
 		D3CC3E86D075BC2B9BD1E310 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E98D73A923F12CB9E9048015 /* MainTabView.swift */; };
+		D844327022ECC6D8A104C2C1 /* LicenseLoaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49803722F58E58CCF52E1B65 /* LicenseLoaderTests.swift */; };
 		DA5E9DA388B3B67CB35E692A /* ULID in Frameworks */ = {isa = PBXBuildFile; productRef = CF4A672980744C252CE0BE17 /* ULID */; };
 		DC00F8C02D033B1FA16F30CE /* GroupAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF710A85A5DA8E610494B10F /* GroupAvatarView.swift */; };
 		DC31A55ADD9D19D59CCA2431 /* FriendsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001733C0CD611DF9D3816ED7 /* FriendsApp.swift */; };
@@ -100,6 +105,7 @@
 		16CBC033C3BB6387AF2EEFDA /* friend.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = friend.pb.swift; sourceTree = "<group>"; };
 		191294B086311E44BAB0875A /* GroupChatServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupChatServiceTests.swift; sourceTree = "<group>"; };
 		1B80054EF7CBD323CD9C1207 /* L10n.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = L10n.swift; sourceTree = "<group>"; };
+		1D3FDC67B9DBE919BDB7A64F /* LicenseItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LicenseItem.swift; sourceTree = "<group>"; };
 		1ED5E80E96490083CC2CF785 /* ChatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatService.swift; sourceTree = "<group>"; };
 		24A914712C89236342ED35B3 /* R2Config.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = R2Config.plist; sourceTree = "<group>"; };
 		265075ED18C1D4EC2DC2D965 /* FriendsTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = FriendsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -110,6 +116,7 @@
 		3B0446CB35BD1DED70441109 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		4688D5B9BB0150EC27D25C7D /* TenantSwitcherView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TenantSwitcherView.swift; sourceTree = "<group>"; };
 		473C7EC7238FB504E3E71A7B /* Friends.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Friends.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		49803722F58E58CCF52E1B65 /* LicenseLoaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LicenseLoaderTests.swift; sourceTree = "<group>"; };
 		4C6C05015932A0DAB3ED3B51 /* R2Config.plist.example */ = {isa = PBXFileReference; path = R2Config.plist.example; sourceTree = "<group>"; };
 		4D9BC65F5B28B01CDA532088 /* KeyBucketRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyBucketRepository.swift; sourceTree = "<group>"; };
 		50C94084CD89A705B5BAF54F /* GroupListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupListView.swift; sourceTree = "<group>"; };
@@ -135,9 +142,11 @@
 		91D3C03BA1244EA258513B9C /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		9474BB46F28B24E4D2E05D1E /* common.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = common.pb.swift; sourceTree = "<group>"; };
 		94AE9645F86F97088044D698 /* RecoveryPhraseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryPhraseTests.swift; sourceTree = "<group>"; };
+		9A0FE7612E7289F2E532A083 /* licenses.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = licenses.json; sourceTree = "<group>"; };
 		9AAE26812CD356FC8FD5F061 /* ReactionRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReactionRepository.swift; sourceTree = "<group>"; };
 		AF710A85A5DA8E610494B10F /* GroupAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupAvatarView.swift; sourceTree = "<group>"; };
 		B461A6C43DFB89F0B7FE3978 /* GroupDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDetailView.swift; sourceTree = "<group>"; };
+		B7824D71E0EBC04F96AA3657 /* AppInfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppInfoView.swift; sourceTree = "<group>"; };
 		C865A7F08BE5EE75FA404A86 /* message.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = message.pb.swift; sourceTree = "<group>"; };
 		CB174DA53133AD4E358D0543 /* CryptoKeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CryptoKeyManager.swift; sourceTree = "<group>"; };
 		CC16F3F99E96F06398EEA0DE /* ChatRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatRepository.swift; sourceTree = "<group>"; };
@@ -152,6 +161,7 @@
 		EC99C355772086F8C25B473E /* R2Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = R2Config.swift; sourceTree = "<group>"; };
 		ED0E9E6440449A9F3F4D8985 /* chat.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = chat.pb.swift; sourceTree = "<group>"; };
 		F1210A3AB46980769A184FB5 /* ToastNotificationManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastNotificationManagerTests.swift; sourceTree = "<group>"; };
+		F59B46E25858AE165C945259 /* LicenseListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LicenseListView.swift; sourceTree = "<group>"; };
 		F806734AD019C0DB45155686 /* AddFriendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFriendView.swift; sourceTree = "<group>"; };
 		FA78CAE1B760FF7E25B883AD /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		FCEECE7C03F984E10D3B0580 /* ReadReceiptRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadReceiptRepository.swift; sourceTree = "<group>"; };
@@ -245,6 +255,7 @@
 				D565C3091DA5BECD9CC25D05 /* CryptoKeyManagerTests.swift */,
 				110A108EC499613F06260DAB /* FriendInvitationTests.swift */,
 				191294B086311E44BAB0875A /* GroupChatServiceTests.swift */,
+				49803722F58E58CCF52E1B65 /* LicenseLoaderTests.swift */,
 				740BFAEC84E77B0229BF5FDD /* ReadReceiptServiceTests.swift */,
 				94AE9645F86F97088044D698 /* RecoveryPhraseTests.swift */,
 				81E86AB8524D4EA5053C536B /* TenantManagerTests.swift */,
@@ -258,6 +269,7 @@
 			children = (
 				F806734AD019C0DB45155686 /* AddFriendView.swift */,
 				6B49DD43F64120C286745702 /* AddGroupMemberSheet.swift */,
+				B7824D71E0EBC04F96AA3657 /* AppInfoView.swift */,
 				7B602697905FD0D50788D4AA /* ChatDetailView.swift */,
 				2CDEFACC8A3FA9C99CF8DF38 /* CreateGroupView.swift */,
 				126499C67BE5E96FA83A30AD /* EditProfileView.swift */,
@@ -266,6 +278,7 @@
 				B461A6C43DFB89F0B7FE3978 /* GroupDetailView.swift */,
 				50C94084CD89A705B5BAF54F /* GroupListView.swift */,
 				571756FF5FB335DACAEE8222 /* HomeView.swift */,
+				F59B46E25858AE165C945259 /* LicenseListView.swift */,
 				E98D73A923F12CB9E9048015 /* MainTabView.swift */,
 				2DE77C113E25A5A25D866CBD /* RootView.swift */,
 				61D0F0DDEF6511C713FE2F6C /* SettingsView.swift */,
@@ -295,6 +308,7 @@
 		BE3E0DC6C98BDAB81310FEDE /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				1D3FDC67B9DBE919BDB7A64F /* LicenseItem.swift */,
 				8BD06C16F1E17F8C9BE1E48F /* PresetTenantConfig.swift */,
 				73EFF9BEBF88BD245D30582A /* ProtobufModelExtensions.swift */,
 				EC99C355772086F8C25B473E /* R2Config.swift */,
@@ -328,6 +342,7 @@
 			isa = PBXGroup;
 			children = (
 				E47EB0AAA0942E9FAD966EAF /* GoogleService-Info.plist.example */,
+				9A0FE7612E7289F2E532A083 /* licenses.json */,
 				8CF1E654734996084DE28F2D /* PresetTenant.plist */,
 				24A914712C89236342ED35B3 /* R2Config.plist */,
 				4C6C05015932A0DAB3ED3B51 /* R2Config.plist.example */,
@@ -459,6 +474,7 @@
 				4BF224C168AD13B15D566172 /* PresetTenant.plist in Resources */,
 				654EC337D4FB3017B9EF5251 /* R2Config.plist in Resources */,
 				EF92B67BDEF41128689C8D39 /* R2Config.plist.example in Resources */,
+				CFA7A1890B9C5BD686ECC5A6 /* licenses.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -472,6 +488,7 @@
 				CE0CACFE6FD36062538BF26C /* CryptoKeyManagerTests.swift in Sources */,
 				226F6A4764327930953CE0E8 /* FriendInvitationTests.swift in Sources */,
 				34A77CA3C504F568E54CAD70 /* GroupChatServiceTests.swift in Sources */,
+				D844327022ECC6D8A104C2C1 /* LicenseLoaderTests.swift in Sources */,
 				4A49D1C8F50F6A2045C2D8B6 /* ReadReceiptServiceTests.swift in Sources */,
 				53B07D6A9EB801FF0EE68EDD /* RecoveryPhraseTests.swift in Sources */,
 				FC73720015E3B722EB8F8558 /* TenantManagerTests.swift in Sources */,
@@ -485,6 +502,7 @@
 			files = (
 				0FD9DDF5C496A8CDBCCB82A1 /* AddFriendView.swift in Sources */,
 				1119D5EC886404FA020789B6 /* AddGroupMemberSheet.swift in Sources */,
+				803C0F3472F6F3041C1EAA08 /* AppInfoView.swift in Sources */,
 				0CD0520C9EC19FA17B2C896B /* AppLogger.swift in Sources */,
 				B053E73BD86493140B7E098C /* AvatarRepository.swift in Sources */,
 				4C9D8C6EE9217D1523467001 /* ChatDetailView.swift in Sources */,
@@ -504,6 +522,8 @@
 				6E56001E6D461263F26716D4 /* InAppToast.swift in Sources */,
 				6568875089F32FD52FBAF027 /* KeyBucketRepository.swift in Sources */,
 				45F275B906350B5D1BF4105C /* L10n.swift in Sources */,
+				12AC4D82B919141ED138C98B /* LicenseItem.swift in Sources */,
+				A209E328C3A5F3439C5DCC74 /* LicenseListView.swift in Sources */,
 				30CC652E859111996CF99B3A /* LoginView.swift in Sources */,
 				D3CC3E86D075BC2B9BD1E310 /* MainTabView.swift in Sources */,
 				24D0348E9A56818D2DB4F5D3 /* MessageRepository.swift in Sources */,

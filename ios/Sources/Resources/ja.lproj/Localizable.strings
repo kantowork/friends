@@ -233,4 +233,17 @@
 // MARK: - Toast Notification
 "toast.new_message" = "新着メッセージ";
 
+// MARK: - App Info & Licenses
+"app_info.title" = "アプリ情報";
+"app_info.version" = "バージョン";
+"app_info.encryption" = "暗号化方式";
+"app_info.encryption_detail" = "AES-256-GCM / X25519 (ECDH)";
+"app_info.encryption_desc" = "メッセージ通信は端末間の Curve25519 鍵交換と HKDF-SHA256 で導出されたセッション鍵による AES-256-GCM E2EE、組織内データはテナントマスターキーによる AES-256-GCM で保護されています。";
+"app_info.licenses" = "ライセンス表示";
+"app_info.license_list_title" = "オープンソースライセンス";
+"app_info.license_search_placeholder" = "ライブラリを検索";
+"app_info.license_repository" = "リポジトリ";
+"app_info.license_view_source" = "ソースコードを表示";
+"app_info.license_empty" = "該当するライブラリが見つかりません。";
+
 

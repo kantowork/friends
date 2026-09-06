@@ -98,22 +98,7 @@ struct AddFriendView: View {
                         .stroke(Color.white.opacity(0.85), lineWidth: 2.5)
                         .frame(width: min(geometry.size.width * 0.7, 220), height: min(geometry.size.width * 0.7, 220))
                     
-                    #if targetEnvironment(simulator)
-                    VStack {
-                        Spacer()
-                        Button {
-                            simulateScan()
-                        } label: {
-                            Image(systemName: "qrcode")
-                                .font(.system(size: 16, weight: .semibold))
-                                .frame(width: 38, height: 38)
-                                .background(Color.blue.opacity(0.85))
-                                .foregroundColor(.white)
-                                .clipShape(Circle())
-                        }
-                        .padding(.bottom, 12)
-                    }
-                    #endif
+
                 }
                 .frame(height: geometry.size.height * 0.5)
                 .clipped()
@@ -416,26 +401,6 @@ struct AddFriendView: View {
                 }
             }
         }
-    }
-    
-    private func simulateScan() {
-        guard let tenant = chatService.currentTenant else { return }
-        let currentStep = FriendPasscodeGenerator.currentStep(date: timerNow)
-        let mockPasscode = FriendPasscodeGenerator.code(forStep: currentStep, uid: "simulated_auth_uid_999", tenantId: tenant.tenantID)
-        
-        var mockPayload = FriendsFriendInvitationPayload()
-        mockPayload.type = "friend_invite"
-        mockPayload.version = 1
-        mockPayload.tenantID = tenant.tenantID
-        mockPayload.userID = "u_simulated_friend"
-        mockPayload.uid = "simulated_auth_uid_999"
-        mockPayload.displayName = "テスト友達 (Simulated)"
-        mockPayload.publicKey = "mockPublicKeyBase64=="
-        mockPayload.passcode = mockPasscode
-        mockPayload.timestamp = currentStep * Int64(FriendPasscodeGenerator.stepInterval)
-        
-        let encoded = FriendInvitationHelper.encode(payload: mockPayload)
-        handleScannedCode(encoded)
     }
 }
 

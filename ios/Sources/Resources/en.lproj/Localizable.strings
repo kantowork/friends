@@ -232,3 +232,16 @@
 
 // MARK: - Toast Notification
 "toast.new_message" = "New Message";
+
+// MARK: - App Info & Licenses
+"app_info.title" = "App Information";
+"app_info.version" = "Version";
+"app_info.encryption" = "Encryption";
+"app_info.encryption_detail" = "AES-256-GCM / X25519 (ECDH)";
+"app_info.encryption_desc" = "Messaging is secured by AES-256-GCM E2EE with session keys derived from Curve25519 ECDH and HKDF-SHA256. Tenant data is encrypted with AES-256-GCM.";
+"app_info.licenses" = "Open Source Licenses";
+"app_info.license_list_title" = "Open Source Licenses";
+"app_info.license_search_placeholder" = "Search libraries";
+"app_info.license_repository" = "Repository";
+"app_info.license_view_source" = "View Source Code";
+"app_info.license_empty" = "No libraries found.";

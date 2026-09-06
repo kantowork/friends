@@ -294,6 +294,21 @@ public enum L10n {
         public static var newMessage: String { tr("toast.new_message") }
     }
 
+    // MARK: - App Info & Licenses
+    public enum AppInfo {
+        public static var title: String { tr("app_info.title") }
+        public static var version: String { tr("app_info.version") }
+        public static var encryption: String { tr("app_info.encryption") }
+        public static var encryptionDetail: String { tr("app_info.encryption_detail") }
+        public static var encryptionDesc: String { tr("app_info.encryption_desc") }
+        public static var licenses: String { tr("app_info.licenses") }
+        public static var licenseListTitle: String { tr("app_info.license_list_title") }
+        public static var licenseSearchPlaceholder: String { tr("app_info.license_search_placeholder") }
+        public static var licenseRepository: String { tr("app_info.license_repository") }
+        public static var licenseViewSource: String { tr("app_info.license_view_source") }
+        public static var licenseEmpty: String { tr("app_info.license_empty") }
+    }
+
     
     // MARK: - Helper Lookup
     private static func tr(_ key: String) -> String {
