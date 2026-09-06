@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#00C7B1"/>
+      <stop offset="40%" stop-color="#00A2E8"/>
+      <stop offset="100%" stop-color="#0066CC"/>
+    </linearGradient>
+
+    <linearGradient id="topHighlight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="20%" stop-color="#FFFFFF" stop-opacity="0.0"/>
+    </linearGradient>
+
+    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#002D5A" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="512" height="512" rx="115" ry="115" fill="url(#bgGradient)"/>
+  
+  <rect x="0" y="0" width="512" height="512" rx="115" ry="115" fill="url(#topHighlight)"/>
+
+  <path fill="#FFFFFF" filter="url(#dropShadow)" d="
+    M 156 116 
+    H 356 
+    C 395.76 116, 428 150.48, 428 193 
+    V 287 
+    C 428 329.52, 395.76 364, 356 364 
+    H 216 
+    L 136 404 
+    V 360.5 
+    C 104.88 349.4, 84 320.2, 84 287 
+    V 193 
+    C 84 150.48, 116.24 116, 156 116 
+    Z"/>
+
+</svg>
