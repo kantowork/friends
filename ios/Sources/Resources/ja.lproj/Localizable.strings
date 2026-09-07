@@ -20,26 +20,11 @@
 // MARK: - Auth & Login
 "auth.login.title" = "Friends";
 "auth.login.guest_btn" = "匿名ログイン";
-"auth.login.or_divider" = "または";
-"auth.login.email_signin_btn" = "メールでサインイン";
-"auth.login.apple_btn" = "Apple";
-"auth.login.google_btn" = "Google";
-"auth.login.email_btn" = "メールアドレスでログイン";
-"auth.login.email_placeholder" = "メールアドレス";
-"auth.login.password_placeholder" = "パスワード";
-"auth.login.signin_action" = "ログイン";
-"auth.login.signup_action" = "アカウント新規登録";
-"auth.login.mode_signin" = "ログイン";
-"auth.login.mode_signup" = "新規登録";
-"auth.login.back_to_options" = "ほかのログイン方法に戻る";
-"auth.login.apple_error" = "Appleサインインに失敗しました。もう一度お試しください。";
-"auth.login.google_error" = "Googleサインインに失敗しました。もう一度お試しください。";
 "auth.login.recovery_btn" = "「ふっかつのじゅもん」で復元";
 "auth.login.reset_device_btn" = "端末データ・鍵の完全リセット";
 "auth.login.reset_device_confirm_title" = "端末データを完全に初期化しますか？";
 "auth.login.reset_device_confirm_msg" = "Keychainに保存された暗号鍵やローカル情報をすべて消去し、初期状態に戻します。";
 "auth.login.tenant_change" = "変更";
-"auth.login.display_name_placeholder" = "お名前 (表示名)";
 
 // MARK: - Tenant Selection
 "tenant.selection.title" = "テナント選択";

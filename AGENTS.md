@@ -92,7 +92,6 @@
 | **R2ストレージ準備** | [doc/10-detailed-design/10-06-r2-storage-setup.md](./doc/10-detailed-design/10-06-r2-storage-setup.md) | Cloudflare R2 バケット作成・カスタムドメイン・CORS・APIトークン発行・事前準備手順書 |
 | **ロガー基盤** | [doc/10-detailed-design/10-07-logging-system.md](./doc/10-detailed-design/10-07-logging-system.md) | OSLog連携、動的ログレベル制御（DEBUG/INFO/WARN/ERROR）仕様 |
 | **Workers基盤準備** | [doc/10-detailed-design/10-08-cloudflare-workers-setup.md](./doc/10-detailed-design/10-08-cloudflare-workers-setup.md) | Cloudflare Workers サーバー基盤・サービスアカウント・事前準備・運用手順書 |
-| **認証基盤準備** | [doc/10-detailed-design/10-09-social-auth-setup.md](./doc/10-detailed-design/10-09-social-auth-setup.md) | Apple / Google / Eメール認証事前準備・Firebase / Apple Developer 運用手順書 |
 
 ---
 *This document is optimized for AI context injection.*

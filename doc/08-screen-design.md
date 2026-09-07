@@ -123,36 +123,17 @@ flowchart TD
 
 - **コンテンツ構成**:
   1. **アプリアイコン & ブランディング**:
-     - **初期状態**: 画面上部に心地よい余白（約60pt、Terms of Serviceまでが1画面に美しく収まる最適設計）を設け、中央に縦並び配置（公式アプリアイコン `FriendsIcon` 76x76 円形クリップ・ドロップシャドウ、その下にタイトル `Friends` 30pt bold (`L10n.Auth.title`)、アプリ名下に適度なマージンを配置）。
-     - **メールサインイン選択時**: アニメーション（`withAnimation`）により画面上部に横並び配置（HStack: `FriendsIcon` 36x36 と `Friends` 24pt bold、右上に `✕` 戻るボタン）。上部スペースを圧縮して入力フォーム領域を確保。
-   2. **全体レイアウト配置 & 上揃え仕様**:
-      - 初期状態は上部ブランディングヘッダー（余白約60pt）から自然なスペーシングでコンテンツを配置。
-      - 「メールでサインイン」選択時は、ヘッダーが左上コンパクト表示（HStack、上部パディング 12pt）へと縮小移動し、無駄な空白を排して直下にテナント選択カードおよびメール認証フォームを **上揃え（Top-aligned）** で展開。空いた下部スペースを活用してキーボード表示時でも快適な入力を実現。
-   3. **テナント選択カード**:
-      - 選択中のテナント名・テナントコード、変更ボタン（`A03m` モーダル表示、上下パディング 10pt のコンパクト設計）。ヘッダー直下に配置。
-  4. **認証選択エリア (初期状態)**:
-     - **匿名ログインボタン**: 最上部に配置 (`L10n.Auth.guestBtn`、高さ 50pt)。
-     - **セパレータ**: 「または」仕切り線 (`L10n.Auth.orDivider`)。
-     - **サインインボタン群**:
-       - 上段: メールアドレスでサインイン (`L10n.Auth.emailSignInBtn`、高さ 48pt、タップで画面内インライン展開)。
-       - 下段 (HStack):
-         - 左下: Appleでサインイン (`L10n.Auth.appleBtn`、高さ 48pt、HIG準拠、タップで `AuthenticationServices` ネイティブ Apple ID 認証シート起動)
-         - 右下: Googleでサインイン (`L10n.Auth.googleBtn`、高さ 48pt、タップで Firebase OAuth Google サインイン起動)
-     - **補助操作 (各1行配置)**:
-       - 復活の呪文ログインボタン (`L10n.Auth.recoveryBtn`、タップで `A04` シート表示)
-       - 端末データ・鍵の完全リセットボタン (`L10n.Auth.resetDeviceBtn` / Permanent Reset) を各1行ずつ縦に配置。
-  5. **メール認証インライン入力エリア (メールサインイン選択時)**:
-     - **モード切り替え**: ログイン / 新規登録のセグメント選択。
-     - **入力フィールド**:
-       - お名前（表示名） (`L10n.Auth.displayNamePlaceholder`、新規登録時のみ表示)
-       - メールアドレス (`L10n.Auth.emailPlaceholder`)
-       - パスワード (`L10n.Auth.passwordPlaceholder`)
-     - **実行ボタン**: ログイン (`L10n.Auth.signInAction`) または アカウント作成 (`L10n.Auth.signUpAction`、高さ 50pt)。
-     - **戻る導線**: ほかのログイン方法に戻る (`L10n.Auth.backToOptions`)。
-  6. **利用規約・プライバシーポリシー表示 (最下部)**:
+     - 画面上部に心地よい余白（約60pt）を設け、中央に縦並び配置（公式アプリアイコン `FriendsIcon` 76x76 円形クリップ・ドロップシャドウ、その下にタイトル `Friends` 30pt bold (`L10n.Auth.title`)）。
+  2. **テナント選択カード**:
+     - 選択中のテナント名・テナントコード、変更ボタン（`A03m` モーダル表示、上下パディング 12pt の設計）。ヘッダー直下に配置。
+  3. **認証操作エリア**:
+     - **匿名ログインボタン**: 最上部に配置 (`L10n.Auth.guestBtn`、高さ 50pt、タップで即時匿名認証・鍵初期化開始)。
+     - **復活の呪文ログインボタン**: 1行配置 (`L10n.Auth.recoveryBtn`、タップで `A04` 復元シート表示)。
+     - **端末データ・鍵の完全リセットボタン**: 1行配置 (`L10n.Auth.resetDeviceBtn`、タップで Keychain・ローカルデータ完全消去の確認アラート表示)。
+  4. **利用規約・プライバシーポリシー表示 (最下部)**:
      - 同意案内文 (`L10n.Legal.termsAgreeNotice`)
-     - 利用規約リンク (`L10n.Legal.termsTitle`、タップで `TermsOfServiceView` モーダル表示、左上閉じるボタン)
-     - プライバシーポリシーリンク (`L10n.Legal.privacyTitle`、タップで `PrivacyPolicyView` モーダル表示、左上閉じるボタン)
+     - 利用規約リンク (`L10n.Legal.termsTitle`、タップで `TermsOfServiceView` モーダル表示)
+     - プライバシーポリシーリンク (`L10n.Legal.privacyTitle`、タップで `PrivacyPolicyView` モーダル表示)
 
 ---
 

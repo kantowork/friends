@@ -18,23 +18,12 @@ sequenceDiagram
     participant FirebaseAuth as "Firebase Auth"
     participant Firestore as "Cloud Firestore"
 
-    User->>UI: 認証方法選択（Apple / Google / メール認証 / 匿名ゲスト）
-    alt Apple サインイン
-        UI->>AuthController: signInWithApple()
-        AuthController->>FirebaseAuth: Apple ID Credential (identityToken, rawNonce) 検証
-    else Google サインイン
-        UI->>AuthController: signInWithGoogle()
-        AuthController->>FirebaseAuth: Google OAuth Credential 検証
-    else Eメール認証
-        UI->>AuthController: signInWithEmail() / signUpWithEmail()
-        AuthController->>FirebaseAuth: Email/Password 検証
-    else 匿名ログイン
-        UI->>AuthController: signInAnonymously()
-        AuthController->>FirebaseAuth: 匿名認証実行
-    end
+    User->>UI: 匿名ログイン開始 (signInAnonymously)
+    UI->>AuthController: signInAnonymously()
+    AuthController->>FirebaseAuth: 匿名認証実行
 
     alt 認証成功
-        FirebaseAuth-->>AuthController: Auth UID (uid), idToken, displayName/email
+        FirebaseAuth-->>AuthController: Auth UID (uid), idToken
         
         Note over AuthController,Keychain: 🔐 1. ユーザー暗号鍵ペア (Curve25519) 初期化
         AuthController->>Keychain: getExistingKeypair(uid)
@@ -58,19 +47,21 @@ sequenceDiagram
         AuthController->>Firestore: /users/{uid} に PK_u, defaultTenantId を保存 (平文 displayName は保存しない)
         Firestore-->>AuthController: Write Success
 
-        AuthController->>UI: ログイン完了 & メイン画面遷移
+        AuthController-->>UI: 認証・初期化完了 (Login Success)
+        UI->>User: ホーム画面 (FriendsListView) へ遷移
     else 認証失敗
-        FirebaseAuth-->>AuthController: 認証エラー
-        AuthController->>UI: エラーダイアログ表示
+        FirebaseAuth-->>AuthController: Auth Error
+        AuthController-->>UI: エラー通知 (L10n)
+        UI->>User: エラーアラート表示
     end
 ```
 
 ---
 
-## 2. 鍵生成・保管仕様
+## 2. 暗号鍵およびプロファイルの保管境界
 
-### 2.1 アルゴリズム
-- **端末鍵ペア**: Curve25519 (X25519) 非対称鍵ペア
+### 2.1 鍵仕様
+- **鍵ペアアルゴリズム**: Curve25519 (X25519 鍵交換 / ECDH 方式)
 - **生成ライブラリ**: Apple `CryptoKit` (`Curve25519.KeyAgreement.PrivateKey()`)
 - **データ表現**: 32 バイト生データ (Raw Representation) を Base64 エンコードした文字列
 - **表示名暗号化**: テナントマスターキー ($MK_T$) による **AES-256-GCM 暗号化** (12 バイト Nonce + 16 バイト認証タグ)
@@ -88,35 +79,38 @@ sequenceDiagram
 ### 2.3 データベース配置 (Cloud Firestore)
 公開鍵 ($PK_u$) および暗号化されたプロファイルのみを Firestore 上に配置します。**平文の `displayName` は DB 上に保存されません。**
 
-1. **テナント所属ユーザー情報**: `/tenants/{tenantId}/users/{userId}`
-   ```json
-   {
-     "userId": "u_12345678",
-     "uid": "firebase_auth_uid_abc",
-     "tenantId": "t_kanto_corp",
-     "encryptedDisplayName": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA...",
-     "displayNameNonce": "MDEyMzQ1Njc4OWFi",
-     "publicKey": "X25519_Base64Encoded_PublicKey_32bytes==",
-     "role": 1,
-     "accountType": 1,
-     "updatedAt": "2026-08-27T00:00:00Z"
-   }
-   ```
-2. **全域ユーザー情報**: `/users/{uid}`
-   ```json
-   {
-     "uid": "firebase_auth_uid_abc",
-     "publicKey": "X25519_Base64Encoded_PublicKey_32bytes==",
-     "defaultTenantId": "t_kanto_corp",
-     "updatedAt": "2026-08-27T00:00:00Z"
-   }
-   ```
+#### `/users/{uid}` (グローバルユーザー情報)
+```json
+{
+  "uid": "FIREBASE_AUTH_UID",
+  "publicKey": "BASE64_CURVE25519_PUBLIC_KEY",
+  "defaultTenantId": "t_01HKXYZ...",
+  "updatedAt": "2026-03-30T10:00:00Z"
+}
+```
+
+#### `/tenants/{tenantId}/users/{userId}` (テナント内プロファイル)
+```json
+{
+  "userId": "u_01HKXYZ...",
+  "uid": "FIREBASE_AUTH_UID",
+  "tenantId": "t_01HKXYZ...",
+  "publicKey": "BASE64_CURVE25519_PUBLIC_KEY",
+  "encryptedDisplayName": "BASE64_AES_GCM_CIPHERTEXT",
+  "displayNameNonce": "BASE64_12BYTE_NONCE",
+  "accountType": 1,
+  "role": "MEMBER",
+  "status": "ACTIVE",
+  "createdAt": "2026-03-30T10:00:00Z",
+  "updatedAt": "2026-03-30T10:00:00Z"
+}
+```
 
 ---
 
-## 3. ローカル管理と Firestore 管理の区分
+## 3. セキュリティ原則 (ゼロ知識アーキテクチャ)
 
-- **ローカル管理 (Secure Storage / Keychain)**:
+- **Keychain 管理**:
   - 秘密鍵 ($SK_u$)
   - テナントマスターキー ($MK_T$)
   - 復活の呪文、復旧用派生キー ($K_{priv\_enc}$)
@@ -128,15 +122,6 @@ sequenceDiagram
   - 友達リスト、会話メタデータ、暗号化メッセージ本文 (`encryptedPayload`)
 
 > ユーザー個人の秘密鍵、テナントマスターキー、平文の氏名・表示名はサーバー・DB 上に一切保存されず、暗号化データと公開鍵・認可メタデータのみが保持されます。
-
-### 3.1 各認証プロバイダとアカウント種別・初期表示名マッピング
-
-| プロバイダ | アカウント種別 (`AccountType`) | 初回表示名の抽出ロジック | 初回ログイン時プロファイル自動登録 |
-|:---|:---|:---|:---|
-| **Apple** | `ACCOUNT_TYPE_PERSISTENT` (2) | `ASAuthorizationAppleIDCredential.fullName`（姓名結合）。未提供時は "Apple User" | プロファイル未存在時に自動生成 |
-| **Google** | `ACCOUNT_TYPE_PERSISTENT` (2) | `User.displayName`（Googleアカウント表示名）。未提供時は email 前半部 | プロファイル未存在時に自動生成 |
-| **Eメール** | `ACCOUNT_TYPE_PERSISTENT` (2) | 新規登録時フォーム入力 `displayName` | 新規登録時に即時生成 |
-| **匿名** | `ACCOUNT_TYPE_ANONYMOUS` (1) | "ゲストユーザー" | 初回ログイン時に即時生成 |
 
 ---
 
@@ -161,11 +146,9 @@ sequenceDiagram
 | `KEY_GENERATION_FAILED` | CryptoKit による鍵生成例外 | リトライおよびユーザーへ再試行通知 |
 | `KEYCHAIN_STORE_FAILED` | Keychain 書き込み権限または容量エラー | エラーコードを記録しリカバリ |
 | `FIRESTORE_WRITE_FAILED` | ネットワーク接続不良またはパーミッション | リトライキューへ投入し再接続時に同期 |
-| `AUTH_PROVIDER_FAILED` | 各プロバイダ (Apple / Google) 認証エラー・キャンセル | エラーメッセージを L10n 経由でトースト/インライン表示 |
 
 ---
 
 ## 6. 多言語対応 (i18n)
 
 - 認証フローおよび鍵初期化に関わるすべての文言・エラーメッセージは `L10n` を通じて `auth.*` / `error.auth.*` のドット記法キーで管理します。
-- 旧仮実装用キー（`auth.social.coming_soon` 等）は完全撤廃し、各プロバイダ正規処理用の状態管理を行います。

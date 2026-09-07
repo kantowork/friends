@@ -40,8 +40,6 @@ targets:
         product: Base58Swift
       - package: SwiftMnemonic
         product: SwiftMnemonic
-    entitlements:
-      path: Sources/Friends.entitlements
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: work.kanto.friends

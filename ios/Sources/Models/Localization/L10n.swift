@@ -26,26 +26,11 @@ public enum L10n {
     public enum Auth {
         public static var title: String { tr("auth.login.title") }
         public static var guestBtn: String { tr("auth.login.guest_btn") }
-        public static var orDivider: String { tr("auth.login.or_divider") }
-        public static var emailSignInBtn: String { tr("auth.login.email_signin_btn") }
-        public static var appleBtn: String { tr("auth.login.apple_btn") }
-        public static var googleBtn: String { tr("auth.login.google_btn") }
-        public static var emailBtn: String { tr("auth.login.email_btn") }
-        public static var emailPlaceholder: String { tr("auth.login.email_placeholder") }
-        public static var passwordPlaceholder: String { tr("auth.login.password_placeholder") }
-        public static var signInAction: String { tr("auth.login.signin_action") }
-        public static var signUpAction: String { tr("auth.login.signup_action") }
-        public static var modeSignIn: String { tr("auth.login.mode_signin") }
-        public static var modeSignUp: String { tr("auth.login.mode_signup") }
-        public static var backToOptions: String { tr("auth.login.back_to_options") }
-        public static var appleError: String { tr("auth.login.apple_error") }
-        public static var googleError: String { tr("auth.login.google_error") }
         public static var recoveryBtn: String { tr("auth.login.recovery_btn") }
         public static var resetDeviceBtn: String { tr("auth.login.reset_device_btn") }
         public static var resetDeviceConfirmTitle: String { tr("auth.login.reset_device_confirm_title") }
         public static var resetDeviceConfirmMsg: String { tr("auth.login.reset_device_confirm_msg") }
         public static var tenantChange: String { tr("auth.login.tenant_change") }
-        public static var displayNamePlaceholder: String { tr("auth.login.display_name_placeholder") }
         public static var recoveryRestoreButton: String { tr("auth.recovery.restore_button") }
         public static func recoveryWordCountError(count: Int) -> String { String(format: tr("auth.recovery.word_count_error"), count) }
         public static var recoveryInvalidPhrase: String { tr("auth.recovery.invalid_phrase") }

@@ -20,26 +20,11 @@
 // MARK: - Auth & Login
 "auth.login.title" = "Friends";
 "auth.login.guest_btn" = "Sign in Anonymously";
-"auth.login.or_divider" = "or";
-"auth.login.email_signin_btn" = "Sign in with Email";
-"auth.login.apple_btn" = "Apple";
-"auth.login.google_btn" = "Google";
-"auth.login.email_btn" = "Sign in with Email";
-"auth.login.email_placeholder" = "Email";
-"auth.login.password_placeholder" = "Password";
-"auth.login.signin_action" = "Sign In";
-"auth.login.signup_action" = "Create Account";
-"auth.login.mode_signin" = "Sign In";
-"auth.login.mode_signup" = "Sign Up";
-"auth.login.back_to_options" = "Other sign-in options";
-"auth.login.apple_error" = "Failed to sign in with Apple. Please try again.";
-"auth.login.google_error" = "Failed to sign in with Google. Please try again.";
 "auth.login.recovery_btn" = "Restore with Recovery Phrase";
 "auth.login.reset_device_btn" = "Permanent Reset";
 "auth.login.reset_device_confirm_title" = "Reset all device data & keys?";
 "auth.login.reset_device_confirm_msg" = "Permanently deletes all encryption keys and local data stored in Keychain.";
 "auth.login.tenant_change" = "Change";
-"auth.login.display_name_placeholder" = "Your Name (Display Name)";
 
 // MARK: - Tenant Selection
 "tenant.selection.title" = "Select Tenant";

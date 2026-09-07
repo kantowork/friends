@@ -41,7 +41,6 @@
 		45F275B906350B5D1BF4105C /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B80054EF7CBD323CD9C1207 /* L10n.swift */; };
 		46F53CA0F7783E87945541DA /* Base58Swift in Frameworks */ = {isa = PBXBuildFile; productRef = F7675460E7EC690DE77B2CF3 /* Base58Swift */; };
 		48F247699B6525301366BCAE /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D3D6E79E66D9200AC47B80F8 /* PrivacyInfo.xcprivacy */; };
-		4A2A3B80AA3C6ECD13140D90 /* AppleAuthCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78B7BCD19961E2845DF7537F /* AppleAuthCoordinator.swift */; };
 		4A49D1C8F50F6A2045C2D8B6 /* ReadReceiptServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 740BFAEC84E77B0229BF5FDD /* ReadReceiptServiceTests.swift */; };
 		4A7880FE529F84723CD094D9 /* SwiftMnemonic in Frameworks */ = {isa = PBXBuildFile; productRef = 79A5D86B008FB84CD73674AA /* SwiftMnemonic */; };
 		4BDA6B8814AF5417E8C7888B /* ToastNotificationManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1210A3AB46980769A184FB5 /* ToastNotificationManagerTests.swift */; };
@@ -114,7 +113,6 @@
 /* Begin PBXFileReference section */
 		001733C0CD611DF9D3816ED7 /* FriendsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsApp.swift; sourceTree = "<group>"; };
 		00A0E4F421D19681024F04AB /* AvatarRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarRepository.swift; sourceTree = "<group>"; };
-		051A932CED693458599E852B /* Friends.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Friends.entitlements; sourceTree = "<group>"; };
 		05DDCF2D8BDE9701E3351AEF /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		0B1ACDADAC04F2FB5824859F /* tenant.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = tenant.pb.swift; sourceTree = "<group>"; };
 		0F1F7949FDFBF8F8AAAB3A10 /* AppLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLogger.swift; sourceTree = "<group>"; };
@@ -155,7 +153,6 @@
 		73EFF9BEBF88BD245D30582A /* ProtobufModelExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtobufModelExtensions.swift; sourceTree = "<group>"; };
 		740BFAEC84E77B0229BF5FDD /* ReadReceiptServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadReceiptServiceTests.swift; sourceTree = "<group>"; };
 		742F0659533CB0CAD1247BCE /* UserAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserAvatarView.swift; sourceTree = "<group>"; };
-		78B7BCD19961E2845DF7537F /* AppleAuthCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleAuthCoordinator.swift; sourceTree = "<group>"; };
 		7B602697905FD0D50788D4AA /* ChatDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatDetailView.swift; sourceTree = "<group>"; };
 		7DC45DCE17FFA7BE9C344104 /* user.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = user.pb.swift; sourceTree = "<group>"; };
 		7E870B04CB55396AA196C5EA /* ToastNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastNotificationManager.swift; sourceTree = "<group>"; };
@@ -348,7 +345,6 @@
 		BDA46F69B389A37B3F15C01D /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				78B7BCD19961E2845DF7537F /* AppleAuthCoordinator.swift */,
 				0F1F7949FDFBF8F8AAAB3A10 /* AppLogger.swift */,
 				3630942E9BEE496896B42A65 /* BlockManager.swift */,
 				1ED5E80E96490083CC2CF785 /* ChatService.swift */,
@@ -421,7 +417,6 @@
 			isa = PBXGroup;
 			children = (
 				CD36FC1580443FFBF44D7AEC /* Assets.xcassets */,
-				051A932CED693458599E852B /* Friends.entitlements */,
 				001733C0CD611DF9D3816ED7 /* FriendsApp.swift */,
 				0C85DC66854ABC3C2359058D /* Config */,
 				BE3E0DC6C98BDAB81310FEDE /* Models */,
@@ -571,7 +566,6 @@
 				1119D5EC886404FA020789B6 /* AddGroupMemberSheet.swift in Sources */,
 				803C0F3472F6F3041C1EAA08 /* AppInfoView.swift in Sources */,
 				0CD0520C9EC19FA17B2C896B /* AppLogger.swift in Sources */,
-				4A2A3B80AA3C6ECD13140D90 /* AppleAuthCoordinator.swift in Sources */,
 				AB44BBE08DC79B3765473499 /* AttachmentRepository.swift in Sources */,
 				B053E73BD86493140B7E098C /* AvatarRepository.swift in Sources */,
 				36861C1DC788103A37D1C084 /* BlockManager.swift in Sources */,
@@ -740,7 +734,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = Sources/Friends.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Friends;
@@ -768,7 +761,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = Sources/Friends.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Friends;
