@@ -122,4 +122,59 @@ final class CryptoKeyManagerTests: XCTestCase {
             XCTAssertNotNil(error)
         }
     }
+    
+    // MARK: - File Attachment (Envelope Encryption) Tests
+    
+    func testFileAttachmentEncryptionAndDecryption() throws {
+        let sampleFileData = Data("This is a confidential photo binary sample for Friends E2EE testing.".utf8)
+        let fileKey = CryptoKeyManager.shared.generateFileKey()
+        
+        // 1. Encrypt file binary
+        let (encryptedData, nonce) = try CryptoKeyManager.shared.encryptFile(fileData: sampleFileData, key: fileKey)
+        XCTAssertFalse(encryptedData.isEmpty)
+        XCTAssertFalse(nonce.isEmpty)
+        XCTAssertNotEqual(sampleFileData, encryptedData, "暗号化バイナリは生データと異なる必要があります")
+        
+        // 2. Decrypt with correct key
+        let decryptedData = try CryptoKeyManager.shared.decryptFile(encryptedData: encryptedData, key: fileKey)
+        XCTAssertEqual(sampleFileData, decryptedData, "復号データは元の生データと完全に一致する必要があります")
+        
+        // 3. Decrypt with wrong key should fail
+        let wrongKey = CryptoKeyManager.shared.generateFileKey()
+        XCTAssertThrowsError(try CryptoKeyManager.shared.decryptFile(encryptedData: encryptedData, key: wrongKey), "異なるファイル鍵での復号は失敗する必要があります")
+    }
+    
+    func testMessageContentPayloadCodableAndDecryptedMessageParsing() throws {
+        let attachment = MessageAttachment(
+            attachmentId: "att_test_123",
+            storagePath: "tenants/t_test/chats/dm_1_2/attachments/att_test_123.enc",
+            fileKey: "dGVzdEtleTEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNA==",
+            nonce: "dGVzdE5vbmNlMTI=",
+            mimeType: "image/jpeg",
+            width: 1920,
+            height: 1080,
+            size: 102400
+        )
+        
+        let payload = MessageContentPayload(text: "写真送ります！", attachments: [attachment])
+        let encodedData = try JSONEncoder().encode(payload)
+        let jsonString = String(data: encodedData, encoding: .utf8)!
+        
+        var pbMsg = FriendsMessage()
+        pbMsg.messageID = "m_test_msg_1"
+        pbMsg.messageType = .image
+        
+        let decryptedMsg = DecryptedMessage(
+            message: pbMsg,
+            senderName: "テスト送信者",
+            plainText: jsonString,
+            decryptedText: jsonString
+        )
+        
+        XCTAssertEqual(decryptedMsg.plainText, "写真送ります！", "JSONペイロードからテキストが正しく抽出される必要があります")
+        XCTAssertTrue(decryptedMsg.hasAttachments, "添付ファイルが存在すると判定される必要があります")
+        XCTAssertEqual(decryptedMsg.attachments.count, 1)
+        XCTAssertEqual(decryptedMsg.attachments[0].attachmentId, "att_test_123")
+        XCTAssertEqual(decryptedMsg.attachments[0].width, 1920)
+    }
 }

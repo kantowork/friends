@@ -1,0 +1,3 @@
+/* InfoPlist.strings (Japanese) */
+"CFBundleDisplayName" = "Friends";
+"NSCameraUsageDescription" = "テナントや友達の二次元コードをスキャンするためにカメラを使用します。";

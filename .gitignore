@@ -43,8 +43,11 @@ Pods/
 *.cer
 
 
-# Auto-Generated Code (Proto3 / Models)
+# Auto-Generated Code & Assets (Proto3 / Models / Legal / Licenses / AppIcon)
 ios/Sources/Models/Generated/
+ios/Sources/Resources/legal/
+ios/Sources/Resources/licenses.json
+ios/Sources/Assets.xcassets/
 
 # IDE / Editors
 .idea/
@@ -70,4 +73,5 @@ PresetTenant.plist
 !*.plist.example
 shared/data/preset-tenant.json
 !shared/data/preset-tenant.json.example
+shared/legal/licenses.md
 

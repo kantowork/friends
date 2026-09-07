@@ -7,7 +7,10 @@ public struct SettingsView: View {
     @State private var showingSecurityResetAlert = false
     @State private var resetSuccessAlert = false
     @State private var showingSignOutAlert = false
-    @State private var showingAppInfo = false
+    @State private var showingAccountDeleteAlert = false
+    @State private var isDeletingAccount = false
+    @State private var accountDeleteError: String? = nil
+    @State private var showingDeleteErrorAlert = false
     
     public init() {}
     
@@ -60,8 +63,15 @@ public struct SettingsView: View {
             }
 
             
-            // Security & Recovery Section
+            // Security Section (ブロックしたともだち -> ふっかつのじゅもん -> セキュリティリセット)
             Section(L10n.Settings.sectionSecurity) {
+                NavigationLink {
+                    BlockedUsersView()
+                } label: {
+                    Label(L10n.Block.listTitle, systemImage: "shield.slash.fill")
+                        .foregroundColor(.primary)
+                }
+                
                 Button {
                     showingRecoveryPhrase = true
                 } label: {
@@ -82,28 +92,29 @@ public struct SettingsView: View {
                 }
             }
             
-            // Account Sign Out Section
+            // About Section
+            Section {
+                NavigationLink {
+                    AppInfoView()
+                } label: {
+                    Text(L10n.AppInfo.title)
+                        .foregroundColor(.primary)
+                }
+            }
+            
+            // Account & Destructive Actions Section
             Section {
                 Button(role: .destructive) {
                     showingSignOutAlert = true
                 } label: {
                     Label(L10n.Settings.logout, systemImage: "rectangle.portrait.and.arrow.right")
                 }
-            }
-            
-            // About Section
-            Section {
-                Button {
-                    showingAppInfo = true
+                
+                Button(role: .destructive) {
+                    showingAccountDeleteAlert = true
                 } label: {
-                    HStack {
-                        Text(L10n.AppInfo.title)
-                            .foregroundColor(.primary)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
+                    Label(L10n.Settings.accountDelete, systemImage: "person.crop.circle.badge.xmark")
+                        .foregroundColor(.red)
                 }
             }
         }
@@ -115,9 +126,6 @@ public struct SettingsView: View {
         }
         .sheet(isPresented: $showingRecoveryPhrase) {
             RecoveryPhraseSheetView()
-        }
-        .sheet(isPresented: $showingAppInfo) {
-            AppInfoView()
         }
         .alert(L10n.Settings.securityResetConfirmTitle, isPresented: $showingSecurityResetAlert) {
             Button(L10n.Common.cancel, role: .cancel) {}
@@ -145,6 +153,28 @@ public struct SettingsView: View {
             }
         } message: {
             Text(L10n.Settings.logoutConfirmMsg)
+        }
+        .alert(L10n.Settings.accountDeleteConfirmTitle, isPresented: $showingAccountDeleteAlert) {
+            Button(L10n.Common.cancel, role: .cancel) {}
+            Button(L10n.Settings.accountDeleteExecute, role: .destructive) {
+                isDeletingAccount = true
+                chatService.deleteAccount { result in
+                    DispatchQueue.main.async {
+                        isDeletingAccount = false
+                        if case .failure(let error) = result {
+                            accountDeleteError = error.localizedDescription
+                            showingDeleteErrorAlert = true
+                        }
+                    }
+                }
+            }
+        } message: {
+            Text(L10n.Settings.accountDeleteConfirmMsg)
+        }
+        .alert(L10n.Common.error, isPresented: $showingDeleteErrorAlert) {
+            Button(L10n.Common.ok, role: .cancel) {}
+        } message: {
+            Text(accountDeleteError ?? L10n.Common.error)
         }
     }
 }

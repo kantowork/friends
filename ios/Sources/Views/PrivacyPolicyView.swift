@@ -1,8 +1,9 @@
 import SwiftUI
 
-// MARK: - LicenseListView (B06-a オープンソースライセンス画面)
-/// shared/legal/licenses.md を読み込んでレンダリング
-public struct LicenseListView: View {
+// MARK: - PrivacyPolicyView
+/// プライバシーポリシー画面 (個人情報保護法 & Apple Guideline 5.1.1 適合)
+/// shared/legal/privacy_policy.md を読み込んでレンダリング
+public struct PrivacyPolicyView: View {
     @Environment(\.dismiss) private var dismiss
     var isPresentedInModal: Bool
     
@@ -15,7 +16,7 @@ public struct LicenseListView: View {
             NavigationStack {
                 content
                     .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
+                        ToolbarItem(placement: .topBarLeading) {
                             Button(L10n.Common.close) {
                                 dismiss()
                             }
@@ -28,8 +29,8 @@ public struct LicenseListView: View {
     }
     
     private var content: some View {
-        LegalMarkdownView(fileName: "licenses")
-            .navigationTitle(L10n.AppInfo.licenses)
+        LegalMarkdownView(fileName: "privacy_policy")
+            .navigationTitle(L10n.Legal.privacyTitle)
             .navigationBarTitleDisplayMode(.inline)
     }
 }

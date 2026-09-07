@@ -8,30 +8,30 @@ import Security
 
 final class CryptoKeyManager {
     static let shared = CryptoKeyManager()
-    
+
     private let serviceName = "work.kanto.friends.keys"
-    
+
     private init() {}
-    
+
     // MARK: - Keypair Generation & Retrieval
-    
+
     /// 指定された UID に対する既存の鍵ペアを取得するか、存在しない場合は新規生成して Keychain に永続化する
     func getOrCreateKeypair(uid: String) throws -> (privateKey: Curve25519.KeyAgreement.PrivateKey, publicKeyBase64: String) {
         if let existingPrivKey = getPrivateKey(uid: uid) {
             let pubKeyBase64 = existingPrivKey.publicKey.rawRepresentation.base64EncodedString()
             return (existingPrivKey, pubKeyBase64)
         }
-        
+
         // 新規 Curve25519 鍵ペアの生成
         let newPrivateKey = Curve25519.KeyAgreement.PrivateKey()
         let pubKeyBase64 = newPrivateKey.publicKey.rawRepresentation.base64EncodedString()
-        
+
         try savePrivateKey(uid: uid, privateKey: newPrivateKey)
         savePublicKeyString(uid: uid, publicKeyBase64: pubKeyBase64)
-        
+
         return (newPrivateKey, pubKeyBase64)
     }
-    
+
     /// 指定された UID の秘密鍵を取得する
     func getPrivateKey(uid: String) -> Curve25519.KeyAgreement.PrivateKey? {
         let keyTag = privateKeyTag(for: uid)
@@ -40,7 +40,7 @@ final class CryptoKeyManager {
         }
         return try? Curve25519.KeyAgreement.PrivateKey(rawRepresentation: keyData)
     }
-    
+
     /// 指定された UID の公開鍵 (Base64) を取得する
     func getPublicKeyBase64(uid: String) -> String? {
         if let pubKeyStr = loadStringFromKeychain(key: publicKeyTag(for: uid)),
@@ -54,7 +54,7 @@ final class CryptoKeyManager {
         }
         return nil
     }
-    
+
     /// 秘密鍵を Keychain に保存する
     func savePrivateKey(uid: String, privateKey: Curve25519.KeyAgreement.PrivateKey) throws {
         let keyTag = privateKeyTag(for: uid)
@@ -68,14 +68,14 @@ final class CryptoKeyManager {
             )
         }
     }
-    
+
     private func savePublicKeyString(uid: String, publicKeyBase64: String) {
         let keyTag = publicKeyTag(for: uid)
         if let data = publicKeyBase64.data(using: .utf8) {
             _ = saveToKeychain(key: keyTag, data: data)
         }
     }
-    
+
     /// アカウント削除やリセット時に鍵ペアおよびふっかつのじゅもんを削除する
     func deleteKeypair(uid: String) {
         deleteFromKeychain(key: privateKeyTag(for: uid))
@@ -83,47 +83,47 @@ final class CryptoKeyManager {
         deleteFromKeychain(key: myDisplayNameTag(for: uid))
         deleteMnemonicPhrase(uid: uid)
     }
-    
+
     // MARK: - My Display Name Keychain Storage
-    
+
     func saveMyDisplayName(uid: String, name: String) {
         let tag = myDisplayNameTag(for: uid)
         if let data = name.data(using: .utf8) {
             _ = saveToKeychain(key: tag, data: data)
         }
     }
-    
+
     func getMyDisplayName(uid: String) -> String? {
         let tag = myDisplayNameTag(for: uid)
         return loadStringFromKeychain(key: tag)
     }
-    
+
     private func myDisplayNameTag(for uid: String) -> String {
         "friends_my_display_name_\(uid)"
     }
-    
+
     // MARK: - Tenant Master Key (MK_T) Management & Encryption
-    
+
     /// テナントマスターキー (MK_T) を Keychain に保存する
     func saveTenantMasterKey(tenantId: String, masterKeyBase64: String) {
         guard let data = Data(base64Encoded: masterKeyBase64), data.count >= 16 else { return }
         let keyTag = tenantKeyTag(for: tenantId)
         _ = saveToKeychain(key: keyTag, data: data)
     }
-    
+
     /// テナントマスターキー (MK_T) を Keychain から削除する
     func deleteTenantMasterKey(tenantId: String) {
         let keyTag = tenantKeyTag(for: tenantId)
         deleteFromKeychain(key: keyTag)
     }
-    
+
     /// テナントマスターキー (MK_T) を Keychain から取得する
     func getTenantMasterKey(tenantId: String) -> SymmetricKey? {
         let keyTag = tenantKeyTag(for: tenantId)
         if let data = loadFromKeychain(key: keyTag) {
             return SymmetricKey(data: data)
         }
-        
+
         // PresetTenantConfig にプリセット鍵が設定されている場合
         if tenantId == PresetTenantConfig.tenantId,
            let presetKeyData = Data(base64Encoded: PresetTenantConfig.tenantMasterKey),
@@ -131,7 +131,7 @@ final class CryptoKeyManager {
             _ = saveToKeychain(key: keyTag, data: presetKeyData)
             return SymmetricKey(data: presetKeyData)
         }
-        
+
         // デフォルトテナント向けフォールバック鍵（確定シードによる派生）
         if tenantId.hasPrefix("t_") || tenantId.isEmpty {
             let seed = "friends-tenant-default-master-key-\(tenantId)"
@@ -143,7 +143,7 @@ final class CryptoKeyManager {
         }
         return nil
     }
-    
+
     /// テナントマスターキーを用いて文字列を AES-256-GCM 暗号化する
     func encryptWithTenantKey(plainText: String, tenantId: String) throws -> (encryptedData: String, nonce: String) {
         guard let masterKey = getTenantMasterKey(tenantId: tenantId) else {
@@ -153,11 +153,11 @@ final class CryptoKeyManager {
                 userInfo: [NSLocalizedDescriptionKey: "Tenant master key not found for tenant \(tenantId)"]
             )
         }
-        
+
         let plainData = Data(plainText.utf8)
         let nonce = AES.GCM.Nonce()
         let sealedBox = try AES.GCM.seal(plainData, using: masterKey, nonce: nonce)
-        
+
         guard let combined = sealedBox.combined else {
             throw NSError(
                 domain: "CryptoKeyManager",
@@ -165,13 +165,13 @@ final class CryptoKeyManager {
                 userInfo: [NSLocalizedDescriptionKey: "Failed to seal AES-GCM payload"]
             )
         }
-        
+
         let encryptedBase64 = combined.base64EncodedString()
         let nonceBase64 = Data(nonce).base64EncodedString()
-        
+
         return (encryptedBase64, nonceBase64)
     }
-    
+
     /// テナントマスターキーを用いて暗号文を復号する
     func decryptWithTenantKey(encryptedData: String, nonce: String, tenantId: String) throws -> String {
         guard let masterKey = getTenantMasterKey(tenantId: tenantId) else {
@@ -181,7 +181,7 @@ final class CryptoKeyManager {
                 userInfo: [NSLocalizedDescriptionKey: "Tenant master key not found for tenant \(tenantId)"]
             )
         }
-        
+
         guard let combinedData = Data(base64Encoded: encryptedData), combinedData.count >= 28 else {
             throw NSError(
                 domain: "CryptoKeyManager",
@@ -189,10 +189,10 @@ final class CryptoKeyManager {
                 userInfo: [NSLocalizedDescriptionKey: "Invalid base64 encrypted data or insufficient payload length"]
             )
         }
-        
+
         let sealedBox = try AES.GCM.SealedBox(combined: combinedData)
         let decryptedData = try AES.GCM.open(sealedBox, using: masterKey)
-        
+
         guard let decryptedString = String(data: decryptedData, encoding: .utf8) else {
             throw NSError(
                 domain: "CryptoKeyManager",
@@ -200,12 +200,12 @@ final class CryptoKeyManager {
                 userInfo: [NSLocalizedDescriptionKey: "Decrypted data is not valid UTF-8 string"]
             )
         }
-        
+
         return decryptedString
     }
-    
+
     // MARK: - Personal Key (SK_u based) Encryption
-    
+
     /// 自分の秘密鍵 (SK_u) から自分専用の対称暗号鍵 (Personal Master Key: MK_u) を決定論的に導出する
     func getPersonalKey(uid: String) -> SymmetricKey? {
         guard let privKey = getPrivateKey(uid: uid) else { return nil }
@@ -217,7 +217,7 @@ final class CryptoKeyManager {
         )
         return derived
     }
-    
+
     /// 自分専用の鍵で文字列を AES-256-GCM 暗号化する
     func encryptWithPersonalKey(plainText: String, uid: String) throws -> (encryptedData: String, nonce: String) {
         guard let key = getPersonalKey(uid: uid) else {
@@ -231,7 +231,7 @@ final class CryptoKeyManager {
         }
         return (combined.base64EncodedString(), Data(nonce).base64EncodedString())
     }
-    
+
     /// 自分専用の鍵で暗号文を復号する
     func decryptWithPersonalKey(encryptedData: String, nonce: String, uid: String) throws -> String {
         guard let key = getPersonalKey(uid: uid) else {
@@ -247,26 +247,26 @@ final class CryptoKeyManager {
         }
         return str
     }
-    
+
     // MARK: - E2EE Direct Message Encryption (1:1 ECDH + HKDF + AES-256-GCM)
-    
+
     /// 自分の秘密鍵と相手の公開鍵から 1:1 チャット用セッション鍵 (SK_direct) を導出する
     func deriveDirectSessionKey(myUid: String, peerPublicKeyBase64: String, tenantId: String) throws -> SymmetricKey {
         guard let myPrivateKey = getPrivateKey(uid: myUid) else {
             throw NSError(domain: "CryptoKeyManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "My private key not found for uid \(myUid)"])
         }
-        
+
         guard let peerPubData = Data(base64Encoded: peerPublicKeyBase64), peerPubData.count == 32 else {
             throw NSError(domain: "CryptoKeyManager", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid peer public key base64: length must be exactly 32 bytes (got \(Data(base64Encoded: peerPublicKeyBase64)?.count ?? 0))"])
         }
-        
+
         let peerPublicKey = try Curve25519.KeyAgreement.PublicKey(rawRepresentation: peerPubData)
         let sharedSecret = try myPrivateKey.sharedSecretFromKeyAgreement(with: peerPublicKey)
-        
+
         let saltString = "friends-direct-salt-\(tenantId)"
         let salt = Data(saltString.utf8)
         let info = Data("friends-direct-v1".utf8)
-        
+
         let symmetricKey = sharedSecret.hkdfDerivedSymmetricKey(
             using: SHA256.self,
             salt: salt,
@@ -275,41 +275,65 @@ final class CryptoKeyManager {
         )
         return symmetricKey
     }
-    
+
     /// メッセージ本文を E2EE 暗号化する
     func encryptDirectMessage(plainText: String, sessionKey: SymmetricKey) throws -> (ciphertext: String, nonce: String) {
         let plainData = Data(plainText.utf8)
         let nonce = AES.GCM.Nonce()
         let sealedBox = try AES.GCM.seal(plainData, using: sessionKey, nonce: nonce)
-        
+
         guard let combined = sealedBox.combined else {
             throw NSError(domain: "CryptoKeyManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to seal direct message payload"])
         }
-        
+
         return (combined.base64EncodedString(), Data(nonce).base64EncodedString())
     }
-    
+
     /// E2EE 暗号化されたメッセージ本文を復号する
     func decryptDirectMessage(ciphertext: String, nonce: String, sessionKey: SymmetricKey) throws -> String {
         guard let combinedData = Data(base64Encoded: ciphertext), combinedData.count >= 28 else {
             throw NSError(domain: "CryptoKeyManager", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid ciphertext base64: payload too short (\(Data(base64Encoded: ciphertext)?.count ?? 0) bytes)"])
         }
-        
+
         let sealedBox = try AES.GCM.SealedBox(combined: combinedData)
         let decryptedData = try AES.GCM.open(sealedBox, using: sessionKey)
-        
+
         guard let text = String(data: decryptedData, encoding: .utf8) else {
             throw NSError(domain: "CryptoKeyManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Decrypted payload is not valid UTF-8 text"])
         }
         return text
     }
+
+    // MARK: - File Attachment Encryption (Envelope Encryption)
+
+    /// ファイル添付用のランダムな 256-bit 対称鍵 (K_file) を生成
+    func generateFileKey() -> SymmetricKey {
+        return SymmetricKey(size: .bits256)
+    }
+
+    /// ファイルバイナリを K_file で AES-256-GCM 暗号化する
+    func encryptFile(fileData: Data, key: SymmetricKey) throws -> (encryptedData: Data, nonceBase64: String) {
+        let nonce = AES.GCM.Nonce()
+        let sealedBox = try AES.GCM.seal(fileData, using: key, nonce: nonce)
+        guard let combined = sealedBox.combined else {
+            throw NSError(domain: "CryptoKeyManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to seal file data"])
+        }
+        return (combined, Data(nonce).base64EncodedString())
+    }
+
+    /// 暗号化ファイルバイナリを K_file で復号する (combined形式: nonce + ciphertext + tag)
+    func decryptFile(encryptedData: Data, key: SymmetricKey) throws -> Data {
+        let sealedBox = try AES.GCM.SealedBox(combined: encryptedData)
+        return try AES.GCM.open(sealedBox, using: key)
+    }
+
     // MARK: - E2EE Group Message & KeyBucket Management (Forward Secrecy)
-    
+
     /// ランダムな 256-bit グループ会話鍵 (SK_group) を生成
     func generateGroupKey() -> SymmetricKey {
         return SymmetricKey(size: .bits256)
     }
-    
+
     /// グループ会話鍵 (SK_group) を各メンバーの公開鍵で暗号化して Base64 マップを作成する
     /// - Parameters:
     ///   - groupKey: 生成した SK_group
@@ -323,10 +347,10 @@ final class CryptoKeyManager {
         guard let myPrivateKey = getPrivateKey(uid: myUid) else {
             throw NSError(domain: "CryptoKeyManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "My private key not found"])
         }
-        
+
         let keyRawData = groupKey.withUnsafeBytes { Data($0) }
         var encryptedMap: [String: String] = [:]
-        
+
         for (userId, pubKeyBase64) in memberPublicKeys {
             guard let pubData = Data(base64Encoded: pubKeyBase64), pubData.count == 32 else {
                 continue
@@ -336,7 +360,7 @@ final class CryptoKeyManager {
                 let salt = Data("friends-group-key-salt-\(tenantId)".utf8)
                 let info = Data("friends-group-key-v1".utf8)
                 let wrapKey = sharedSecret.hkdfDerivedSymmetricKey(using: SHA256.self, salt: salt, sharedInfo: info, outputByteCount: 32)
-                
+
                 let nonce = AES.GCM.Nonce()
                 if let sealedBox = try? AES.GCM.seal(keyRawData, using: wrapKey, nonce: nonce),
                    let combined = sealedBox.combined {
@@ -344,10 +368,10 @@ final class CryptoKeyManager {
                 }
             }
         }
-        
+
         return encryptedMap
     }
-    
+
     /// 受信した KeyBucket 内の暗号化されたグループ鍵を自分の秘密鍵で復号する
     func decryptGroupKey(
         encryptedGroupKeyBase64: String,
@@ -364,37 +388,37 @@ final class CryptoKeyManager {
         guard let combinedData = Data(base64Encoded: encryptedGroupKeyBase64), combinedData.count >= 28 else {
             throw NSError(domain: "CryptoKeyManager", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid encrypted group key payload"])
         }
-        
+
         let peerPubKey = try Curve25519.KeyAgreement.PublicKey(rawRepresentation: peerPubData)
         let sharedSecret = try myPrivateKey.sharedSecretFromKeyAgreement(with: peerPubKey)
         let salt = Data("friends-group-key-salt-\(tenantId)".utf8)
         let info = Data("friends-group-key-v1".utf8)
         let wrapKey = sharedSecret.hkdfDerivedSymmetricKey(using: SHA256.self, salt: salt, sharedInfo: info, outputByteCount: 32)
-        
+
         let sealedBox = try AES.GCM.SealedBox(combined: combinedData)
         let decryptedData = try AES.GCM.open(sealedBox, using: wrapKey)
-        
+
         return SymmetricKey(data: decryptedData)
     }
-    
+
     private func privateKeyTag(for uid: String) -> String {
         "friends_priv_key_\(uid)"
     }
-    
+
     private func publicKeyTag(for uid: String) -> String {
         "friends_pub_key_\(uid)"
     }
-    
+
     private func tenantKeyTag(for tenantId: String) -> String {
         "friends_tenant_key_\(tenantId)"
     }
-    
+
     private func mnemonicTag(for uid: String) -> String {
         "friends_mnemonic_\(uid)"
     }
-    
+
     // MARK: - Mnemonic Phrase (ふっかつのじゅもん) Management
-    
+
     /// 端末内 Keychain に「ふっかつのじゅもん」を安全に保存する
     func saveMnemonicPhrase(uid: String, words: [String]) throws {
         let joined = words.joined(separator: " ")
@@ -409,7 +433,7 @@ final class CryptoKeyManager {
             )
         }
     }
-    
+
     /// 端末内 Keychain から「ふっかつのじゅもん」を取得する
     func getMnemonicPhrase(uid: String) -> [String]? {
         let keyTag = mnemonicTag(for: uid)
@@ -417,37 +441,39 @@ final class CryptoKeyManager {
         let words = phraseStr.components(separatedBy: " ").filter { !$0.isEmpty }
         return words.isEmpty ? nil : words
     }
-    
+
     /// 端末内 Keychain から「ふっかつのじゅもん」を削除する
     func deleteMnemonicPhrase(uid: String) {
         deleteFromKeychain(key: mnemonicTag(for: uid))
     }
-    
+
     // MARK: - Keychain CRUD Helpers
-    
+
     private func saveToKeychain(key: String, data: Data) -> OSStatus {
         // 既存の同名キーがあれば一度削除
         deleteFromKeychain(key: key)
-        
+
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: serviceName,
             kSecAttrAccount as String: key,
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
+            kSecAttrSynchronizable as String: true
         ]
         return SecItemAdd(query as CFDictionary, nil)
     }
-    
+
     private func loadFromKeychain(key: String) -> Data? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: serviceName,
             kSecAttrAccount as String: key,
             kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
+            kSecMatchLimit as String: kSecMatchLimitOne,
+            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny
         ]
-        
+
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         guard status == errSecSuccess, let data = result as? Data else {
@@ -455,21 +481,22 @@ final class CryptoKeyManager {
         }
         return data
     }
-    
+
     private func loadStringFromKeychain(key: String) -> String? {
         guard let data = loadFromKeychain(key: key) else { return nil }
         return String(data: data, encoding: .utf8)
     }
-    
+
     private func deleteFromKeychain(key: String) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: serviceName,
-            kSecAttrAccount as String: key
+            kSecAttrAccount as String: key,
+            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny
         ]
         SecItemDelete(query as CFDictionary)
     }
-    
+
     /// アプリに紐づくすべての Keychain 項目（秘密鍵・公開鍵・テナントキー・セッション鍵）を完全消去する
     func clearAllKeys() {
         let secClasses = [
@@ -482,7 +509,8 @@ final class CryptoKeyManager {
         for secClass in secClasses {
             let query: [String: Any] = [
                 kSecClass as String: secClass,
-                kSecAttrService as String: serviceName
+                kSecAttrService as String: serviceName,
+                kSecAttrSynchronizable as String: kSecAttrSynchronizableAny
             ]
             SecItemDelete(query as CFDictionary)
         }

@@ -54,6 +54,9 @@ final class MessageRepository {
                     let updatedBy = data["updatedBy"] as? String ?? senderId
                     let updatedAt = (data["updatedAt"] as? Timestamp)?.dateValue() ?? createdAt
                     
+                    let rawTypeStr = data["messageType"] as? String ?? "text"
+                    let msgType: FriendsMessageType = (rawTypeStr == "image") ? .image : .text
+                    
                     let msg = FriendsMessage(
                         messageID: messageId,
                         tenantID: tenantId,
@@ -62,7 +65,7 @@ final class MessageRepository {
                         keyVersion: keyVersion,
                         ciphertext: ciphertext,
                         nonce: nonce,
-                        messageType: .text,
+                        messageType: msgType,
                         createdBy: createdBy,
                         createdAt: createdAt,
                         updatedBy: updatedBy,
@@ -85,6 +88,7 @@ final class MessageRepository {
         completion: ((Result<Void, Error>) -> Void)? = nil
     ) {
         let senderId = message.senderID
+        let typeString = (message.messageType == .image) ? "image" : "text"
         let messageData: [String: Any] = [
             "messageId": message.messageID,
             "tenantId": tenantId,
@@ -95,7 +99,7 @@ final class MessageRepository {
                 "ciphertext": message.encryptedPayload.ciphertext,
                 "nonce": message.encryptedPayload.nonce
             ],
-            "messageType": "text",
+            "messageType": typeString,
             "createdBy": senderId,
             "createdAt": FieldValue.serverTimestamp(),
             "updatedBy": senderId,

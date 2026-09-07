@@ -33,9 +33,10 @@ enum ReactionType {
   REACTION_TYPE_HEART = 2;       // ❤️
   REACTION_TYPE_OK = 3;          // 🆗
   REACTION_TYPE_SMILE = 4;       // 😊
-  REACTION_TYPE_SURPRISED = 5;   // 😲
+  REACTION_TYPE_SURPRISED = 5;   // 😱
   REACTION_TYPE_SAD = 6;         // 😢
   REACTION_TYPE_THINKING = 7;    // 🤔
+  REACTION_TYPE_LAUGH = 8;       // 🤣
 }
 
 // メッセージリアクション詳細 (/tenants/{tenantId}/chats/{chatId}/messages/{messageId}/reactions/{userId})

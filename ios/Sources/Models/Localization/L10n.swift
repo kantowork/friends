@@ -25,9 +25,21 @@ public enum L10n {
     // MARK: - Auth & Login
     public enum Auth {
         public static var title: String { tr("auth.login.title") }
-        public static var subtitle: String { tr("auth.login.subtitle") }
         public static var guestBtn: String { tr("auth.login.guest_btn") }
+        public static var orDivider: String { tr("auth.login.or_divider") }
+        public static var emailSignInBtn: String { tr("auth.login.email_signin_btn") }
+        public static var appleBtn: String { tr("auth.login.apple_btn") }
+        public static var googleBtn: String { tr("auth.login.google_btn") }
         public static var emailBtn: String { tr("auth.login.email_btn") }
+        public static var emailPlaceholder: String { tr("auth.login.email_placeholder") }
+        public static var passwordPlaceholder: String { tr("auth.login.password_placeholder") }
+        public static var signInAction: String { tr("auth.login.signin_action") }
+        public static var signUpAction: String { tr("auth.login.signup_action") }
+        public static var modeSignIn: String { tr("auth.login.mode_signin") }
+        public static var modeSignUp: String { tr("auth.login.mode_signup") }
+        public static var backToOptions: String { tr("auth.login.back_to_options") }
+        public static var appleError: String { tr("auth.login.apple_error") }
+        public static var googleError: String { tr("auth.login.google_error") }
         public static var recoveryBtn: String { tr("auth.login.recovery_btn") }
         public static var resetDeviceBtn: String { tr("auth.login.reset_device_btn") }
         public static var resetDeviceConfirmTitle: String { tr("auth.login.reset_device_confirm_title") }
@@ -150,6 +162,14 @@ public enum L10n {
         public static func readCount(_ count: Int) -> String {
             String(format: tr("chat.read.count"), count)
         }
+        public static var attachmentActionTitle: String { tr("chat.detail.attachment_action_title") }
+        public static var takePhoto: String { tr("chat.detail.take_photo") }
+        public static var chooseFromLibrary: String { tr("chat.detail.choose_from_library") }
+        public static var cameraNotAvailable: String { tr("chat.detail.camera_not_available") }
+        public static var sendingImages: String { tr("chat.detail.sending_images") }
+        public static var uploadFailed: String { tr("chat.detail.upload_failed") }
+        public static var imageMessage: String { tr("chat.detail.image_message") }
+        public static var maxImagesExceeded: String { tr("chat.detail.max_images_exceeded") }
     }
     
     // MARK: - Reactions
@@ -161,6 +181,7 @@ public enum L10n {
         public static var heart: String { tr("chat.reaction.heart") }
         public static var ok: String { tr("chat.reaction.ok") }
         public static var smile: String { tr("chat.reaction.smile") }
+        public static var laugh: String { tr("chat.reaction.laugh") }
         public static var surprised: String { tr("chat.reaction.surprised") }
         public static var sad: String { tr("chat.reaction.sad") }
         public static var thinking: String { tr("chat.reaction.thinking") }
@@ -247,6 +268,13 @@ public enum L10n {
         public static var logoutConfirmMsg: String { tr("settings.logout.confirm_msg") }
         public static var aboutVersion: String { tr("settings.about.version") }
         public static var aboutEncryption: String { tr("settings.about.encryption") }
+        public static var sectionSafety: String { tr("settings.section.safety") }
+        public static var sectionLegal: String { tr("settings.section.legal") }
+        public static var accountDelete: String { tr("settings.account_delete") }
+        public static var accountDeleteConfirmTitle: String { tr("settings.account_delete_confirm_title") }
+        public static var accountDeleteConfirmMsg: String { tr("settings.account_delete_confirm_msg") }
+        public static var accountDeleteExecute: String { tr("settings.account_delete_execute") }
+        public static var accountDeleteSuccess: String { tr("settings.account_delete_success") }
         
         // Profile Edit (B03)
         public static var editProfileTitle: String { tr("settings.profile.edit_title") }
@@ -300,6 +328,8 @@ public enum L10n {
         public static var version: String { tr("app_info.version") }
         public static var encryption: String { tr("app_info.encryption") }
         public static var encryptionDetail: String { tr("app_info.encryption_detail") }
+        public static var encryptionDetail1: String { tr("app_info.encryption_detail_1") }
+        public static var encryptionDetail2: String { tr("app_info.encryption_detail_2") }
         public static var encryptionDesc: String { tr("app_info.encryption_desc") }
         public static var licenses: String { tr("app_info.licenses") }
         public static var licenseListTitle: String { tr("app_info.license_list_title") }
@@ -307,6 +337,32 @@ public enum L10n {
         public static var licenseRepository: String { tr("app_info.license_repository") }
         public static var licenseViewSource: String { tr("app_info.license_view_source") }
         public static var licenseEmpty: String { tr("app_info.license_empty") }
+    }
+
+    // MARK: - Block
+    public enum Block {
+        public static var action: String { tr("block.action") }
+        public static func confirmTitle(_ name: String) -> String {
+            String(format: tr("block.confirm_title"), name)
+        }
+        public static var confirmMsg: String { tr("block.confirm_msg") }
+        public static var execute: String { tr("block.execute") }
+        public static var unblockAction: String { tr("block.unblock_action") }
+        public static func unblockConfirmTitle(_ name: String) -> String {
+            String(format: tr("block.unblock_confirm_title"), name)
+        }
+        public static var unblockConfirmMsg: String { tr("block.unblock_confirm_msg") }
+        public static var unblockExecute: String { tr("block.unblock_execute") }
+        public static var listTitle: String { tr("block.list_title") }
+        public static var listEmpty: String { tr("block.list_empty") }
+        public static var blockedBanner: String { tr("block.blocked_banner") }
+    }
+
+    // MARK: - Legal & Policy
+    public enum Legal {
+        public static var termsTitle: String { tr("legal.terms_title") }
+        public static var privacyTitle: String { tr("legal.privacy_title") }
+        public static var termsAgreeNotice: String { tr("legal.terms_agree_notice") }
     }
 
     

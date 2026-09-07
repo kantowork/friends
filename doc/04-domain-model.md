@@ -82,7 +82,7 @@
 - `chatId`: トークID (`dm_...` / `gm_...`)
 - `messageId`: 対象メッセージID (`m_...`)
 - `tenantId`: 所属テナントID (`t_...`)
-- `emoji`: リアクション絵文字種別（7種）
+- `emoji`: リアクション絵文字種別（8種、クイックアクション7種）
 - `createdBy`, `createdAt`, `updatedBy`, `updatedAt`
 
 ### ReadReceipt (既読水位線カーソル)

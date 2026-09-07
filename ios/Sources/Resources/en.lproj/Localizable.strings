@@ -19,11 +19,23 @@
 
 // MARK: - Auth & Login
 "auth.login.title" = "Friends";
-"auth.login.subtitle" = "Secure & Simple E2EE Communication";
 "auth.login.guest_btn" = "Sign in Anonymously";
+"auth.login.or_divider" = "or";
+"auth.login.email_signin_btn" = "Sign in with Email";
+"auth.login.apple_btn" = "Apple";
+"auth.login.google_btn" = "Google";
 "auth.login.email_btn" = "Sign in with Email";
+"auth.login.email_placeholder" = "Email";
+"auth.login.password_placeholder" = "Password";
+"auth.login.signin_action" = "Sign In";
+"auth.login.signup_action" = "Create Account";
+"auth.login.mode_signin" = "Sign In";
+"auth.login.mode_signup" = "Sign Up";
+"auth.login.back_to_options" = "Other sign-in options";
+"auth.login.apple_error" = "Failed to sign in with Apple. Please try again.";
+"auth.login.google_error" = "Failed to sign in with Google. Please try again.";
 "auth.login.recovery_btn" = "Restore with Recovery Phrase";
-"auth.login.reset_device_btn" = "Reset Device & Keys";
+"auth.login.reset_device_btn" = "Permanent Reset";
 "auth.login.reset_device_confirm_title" = "Reset all device data & keys?";
 "auth.login.reset_device_confirm_msg" = "Permanently deletes all encryption keys and local data stored in Keychain.";
 "auth.login.tenant_change" = "Change";
@@ -117,6 +129,14 @@
 "chat.detail.empty" = "No messages yet\nSend a message to start chatting";
 "chat.read.status" = "Read";
 "chat.read.count" = "Read %d";
+"chat.detail.attachment_action_title" = "Attach Photo";
+"chat.detail.take_photo" = "Take Photo";
+"chat.detail.choose_from_library" = "Choose from Library";
+"chat.detail.camera_not_available" = "Camera is not available on this device.";
+"chat.detail.sending_images" = "Encrypting and sending photos…";
+"chat.detail.upload_failed" = "Failed to upload photos.";
+"chat.detail.image_message" = "Photo";
+"chat.detail.max_images_exceeded" = "You can attach up to 10 photos at a time.";
 
 
 // MARK: - Reactions
@@ -127,6 +147,7 @@
 "chat.reaction.heart" = "Heart";
 "chat.reaction.ok" = "OK";
 "chat.reaction.smile" = "Smile";
+"chat.reaction.laugh" = "Laughing";
 "chat.reaction.surprised" = "Surprised";
 "chat.reaction.sad" = "Sad";
 "chat.reaction.thinking" = "Thinking";
@@ -165,7 +186,7 @@
 "settings.title" = "Settings";
 "settings.section.profile" = "Profile";
 "settings.section.tenant" = "Tenant";
-"settings.section.security" = "Security & Backup";
+"settings.section.security" = "Security";
 "settings.section.about" = "App Information";
 "settings.profile.display_name" = "name";
 "settings.profile.username" = "account";
@@ -238,6 +259,8 @@
 "app_info.version" = "Version";
 "app_info.encryption" = "Encryption";
 "app_info.encryption_detail" = "AES-256-GCM / X25519 (ECDH)";
+"app_info.encryption_detail_1" = "AES-256-GCM";
+"app_info.encryption_detail_2" = "X25519 (ECDH)";
 "app_info.encryption_desc" = "Messaging is secured by AES-256-GCM E2EE with session keys derived from Curve25519 ECDH and HKDF-SHA256. Tenant data is encrypted with AES-256-GCM.";
 "app_info.licenses" = "Open Source Licenses";
 "app_info.license_list_title" = "Open Source Licenses";
@@ -245,3 +268,31 @@
 "app_info.license_repository" = "Repository";
 "app_info.license_view_source" = "View Source Code";
 "app_info.license_empty" = "No libraries found.";
+
+// MARK: - Account Deletion
+"settings.account_delete" = "Delete Account Permanently";
+"settings.account_delete_confirm_title" = "Delete Account Permanently?";
+"settings.account_delete_confirm_msg" = "This action cannot be undone. All your chat history, friends, settings, and encryption key backups will be permanently deleted.";
+"settings.account_delete_execute" = "Delete Account";
+"settings.account_delete_success" = "Your account has been permanently deleted.";
+
+// MARK: - Safety & Block
+"settings.section.safety" = "Safety";
+"block.action" = "Block User";
+"block.confirm_title" = "Block %@?";
+"block.confirm_msg" = "Messages from this user will be hidden, and direct messages cannot be exchanged.";
+"block.execute" = "Block";
+"block.unblock_action" = "Unblock";
+"block.unblock_confirm_title" = "Unblock %@?";
+"block.unblock_confirm_msg" = "Messages from this user will be visible again.";
+"block.unblock_execute" = "Unblock";
+"block.list_title" = "Blocked Friends";
+"block.list_empty" = "No blocked users.";
+"block.blocked_banner" = "You have blocked this user";
+
+// MARK: - Legal & Policy
+"settings.section.legal" = "Terms, Policies & Licenses";
+"legal.terms_title" = "Terms of Service (EULA)";
+"legal.privacy_title" = "Privacy Policy";
+"legal.terms_agree_notice" = "By creating an account or using this service, you agree to our Terms of Service and Privacy Policy.";
+

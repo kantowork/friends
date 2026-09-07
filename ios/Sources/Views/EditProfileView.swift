@@ -19,7 +19,6 @@ public struct EditProfileView: View {
     @State private var showingAvatarActionSheet = false
     @State private var showingPresetSheet = false
     @State private var showingUsernameConfirmAlert = false
-    @State private var showingAppInfoModal = false
     
     @FocusState private var isUsernameFocused: Bool
     
@@ -163,22 +162,6 @@ public struct EditProfileView: View {
                     }
                 }
                 
-                // Section 3: アプリ情報
-                Section {
-                    Button {
-                        showingAppInfoModal = true
-                    } label: {
-                        HStack {
-                            Text(L10n.AppInfo.title)
-                                .foregroundColor(.primary)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-                
                 if let err = errorMessage {
                     Section {
                         Text(err)
@@ -254,9 +237,6 @@ public struct EditProfileView: View {
                     self.previewAvatarImage = presetImage
                     self.isAvatarRemoved = false
                 }
-            }
-            .sheet(isPresented: $showingAppInfoModal) {
-                AppInfoView()
             }
             .onChange(of: usernameText) { newValue in
                 if newValue.contains("@") {

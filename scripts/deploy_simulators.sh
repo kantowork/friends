@@ -10,7 +10,18 @@ SCHEME="Friends"
 BUNDLE_ID="work.kanto.friends"
 BUILD_DIR="${IOS_DIR}/build"
 
-echo "=== 1. プロジェクト同期 (xcodegen) ==="
+echo "=== 1. リソース準備 & プロジェクト同期 (xcodegen) ==="
+if [ ! -f "${IOS_DIR}/Sources/Assets.xcassets/AppIcon.appiconset/AppIcon.png" ] || [ ! -f "${IOS_DIR}/Sources/Assets.xcassets/FriendsIcon.imageset/FriendsIcon.png" ] || [ "${WORKSPACE_ROOT}/shared/data/friends.icon.svg" -nt "${IOS_DIR}/Sources/Assets.xcassets/AppIcon.appiconset/AppIcon.png" ]; then
+    echo "🎨 AppIcon & FriendsIcon を生成中..."
+    mkdir -p "${WORKSPACE_ROOT}/.build/clang-cache"
+    swift -module-cache-path "${WORKSPACE_ROOT}/.build/clang-cache" "${WORKSPACE_ROOT}/scripts/generate_app_icon.swift" || true
+fi
+if [ ! -f "${WORKSPACE_ROOT}/shared/legal/licenses.md" ]; then
+    echo "📄 licenses.md が未生成のためパッケージ情報から自動生成します..."
+    node "${WORKSPACE_ROOT}/scripts/generate_licenses.mjs" || true
+fi
+node "${WORKSPACE_ROOT}/scripts/sync_legal.mjs" || true
+
 cd "${IOS_DIR}"
 if command -v xcodegen >/dev/null 2>&1; then
     xcodegen generate --quiet

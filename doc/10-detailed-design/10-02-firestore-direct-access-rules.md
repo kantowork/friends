@@ -136,5 +136,29 @@ Firestore に保存されるすべてのフィールドは、セキュリティ�
 - グループチャットのタイトル（`title`）変更は、グループの改ざん・スパム防止のため**グループオーナー (`owner`) または グループ管理者 (`admin`)** に限定されます。
 - セキュリティルール上、`title` が変更対象キーに含まれる場合は `isGroupOwnerOrAdmin` が真であることを必須とします。
 
+---
+
+## 6. アカウント削除ルール仕様 (Apple Guideline 5.1.1(v) 適合)
+
+Apple 審査ガイドラインに基づき、利用者が自発的にアカウント消去を要求した場合、クライアント SDK から関連ドキュメントの物理削除を許可します。
+
+### 6.1 各コレクションの削除認可
+1. **全域ユーザー情報 (`/users/{uid}`)**:
+   - `allow delete: if isUser(uid);`
+   - 本人の認証トークン（Auth UID）と一致する場合のみ物理削除を許可。
+2. **秘密鍵バックアップ領域 (`/users/{uid}/private/data`)**:
+   - `allow delete: if isUser(uid);`
+   - 本人のみバックアップデータの物理消去を許可。
+3. **テナント内ユーザープロファイル (`/tenants/{tenantId}/users/{userId}`)**:
+   - `allow delete: if isTenantUser(tenantId, userId);`
+   - 当該テナントの所有者本人のみ物理削除を許可。
+4. **ユーザーネーム予約インデックス (`/tenants/{tenantId}/usernames/{username}`)**:
+   - `allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;`
+   - 予約インデックスを開放。
+5. **復旧ボルト (`/recovery_vault/{recoveryHash}`)**:
+   - `allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;`
+   - 復元用レコードを完全削除。
+
+
 
 

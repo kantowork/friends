@@ -5,169 +5,65 @@ public struct LoginView: View {
     
     @State private var showingRecoverySheet = false
     @State private var showingTenantAddSheet = false
-    @State private var showingEmailAuthSheet = false
     @State private var showingResetConfirmAlert = false
+    @State private var showingTerms = false
+    @State private var showingPrivacy = false
+    
     @State private var isLoggingIn = false
+    @State private var isLoggingInWithApple = false
+    @State private var isLoggingInWithGoogle = false
     @State private var errorMessage: String? = nil
+    
+    // メール認証インライン展開用の状態
+    @State private var isEmailAuthMode = false
+    @State private var isSignUp = false
+    @State private var email = ""
+    @State private var password = ""
+    @State private var displayName = ""
+    @State private var isLoadingEmailAuth = false
+    
+    private var isAnyLoading: Bool {
+        isLoggingIn || isLoggingInWithApple || isLoggingInWithGoogle || isLoadingEmailAuth
+    }
     
     public init() {}
     
     public var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                Spacer()
-                
-                // 1. App Icon & Branding
-                VStack(spacing: 20) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.blue.opacity(0.12))
-                            .frame(width: 100, height: 100)
-                        
-                        Image(systemName: "bubble.left.and.bubble.right.fill")
-                            .font(.system(size: 40))
-                            .foregroundColor(.blue)
-                    }
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 0) {
+                    // 1. App Icon & Branding Header
+                    headerView
                     
+                    // 2. Main Content Area
                     VStack(spacing: 12) {
-                        Text(L10n.Auth.title)
-                            .font(.system(size: 36, weight: .heavy, design: .rounded))
-                            .foregroundColor(.primary)
+                        // テナント選択カード
+                        tenantSelectorCard
                         
-                        Text(L10n.Auth.subtitle)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                Spacer()
-                
-                // 2. Tenant Selection Card & Action Buttons
-                VStack(spacing: 16) {
-                    if let error = errorMessage {
-                        Text(error)
-                            .font(.caption)
-                            .foregroundColor(.red)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 8)
-                    }
-                    
-                    // Tenant Selector Card (タップでテナント変更)
-                    Button {
-                        showingTenantAddSheet = true
-                    } label: {
-                        HStack(alignment: .center) {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(chatService.currentTenant?.tenantName ?? PresetTenantConfig.tenantName)
-                                    .font(.headline)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.primary)
-                                
-                                Text(chatService.currentTenant?.tenantCode ?? PresetTenantConfig.tenantCode)
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                            }
-                            
-                            Spacer()
-                            
-                            HStack(spacing: 6) {
-                                Image(systemName: "qrcode.viewfinder")
-                                    .font(.system(size: 18, weight: .medium))
-                                Text(L10n.Auth.tenantChange)
-                                    .font(.subheadline)
-                                    .fontWeight(.semibold)
-                            }
-                            .foregroundColor(.blue)
-                        }
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 16)
-                        .background(Color(uiColor: .secondarySystemGroupedBackground))
-                        .cornerRadius(16)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(Color.primary.opacity(0.1), lineWidth: 1)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    
-                    // Button 1: 匿名でログイン
-                    Button {
-                        performAnonymousLogin()
-                    } label: {
-                        HStack(spacing: 8) {
-                            if isLoggingIn {
-                                ProgressView()
-                                    .tint(.white)
-                            } else {
-                                Image(systemName: "person.fill")
-                                    .font(.body.weight(.bold))
-                            }
-                            Text(L10n.Auth.guestBtn)
-                                .font(.body)
-                                .fontWeight(.bold)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(14)
-                    }
-                    .disabled(isLoggingIn)
-                    
-                    // Button 2: メールアドレスでログイン
-                    Button {
-                        showingEmailAuthSheet = true
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "envelope.fill")
-                                .font(.body.weight(.semibold))
-                            Text(L10n.Auth.emailBtn)
-                                .font(.body)
-                                .fontWeight(.bold)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(Color.clear)
-                        .foregroundColor(.blue)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14)
-                                .stroke(Color.blue.opacity(0.8), lineWidth: 1.5)
-                        )
-                    }
-                    
-                    // Button 3: 復活の呪文
-                    Button {
-                        showingRecoverySheet = true
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "key.fill")
-                                .font(.subheadline)
-                            Text(L10n.Auth.recoveryBtn)
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                        }
-                        .foregroundColor(.secondary)
-                        .padding(.top, 4)
-                    }
-                    
-                    // Button 4: 端末データ・鍵の完全リセット (Keychainクリア)
-                    Button(role: .destructive) {
-                        showingResetConfirmAlert = true
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "trash.circle.fill")
+                        if let error = errorMessage {
+                            Text(error)
                                 .font(.caption)
-                            Text(L10n.Auth.resetDeviceBtn)
-                                .font(.caption)
-                                .fontWeight(.medium)
+                                .foregroundColor(.red)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 8)
                         }
-                        .foregroundColor(.secondary.opacity(0.8))
-                        .padding(.top, 2)
-                        .padding(.bottom, 8)
+                        
+                        // 認証操作エリア（初期ボタン群 または メールインライン入力フォーム）
+                        if isEmailAuthMode {
+                            emailInlineAuthView
+                                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                        } else {
+                            mainAuthOptionsView
+                                .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
+                        
+                        // 利用規約・プライバシーポリシー
+                        termsAndPrivacyNotice
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.top, isEmailAuthMode ? 6 : 12)
+                    .padding(.bottom, 16)
                 }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 32)
             }
             .navigationBarHidden(true)
             .sheet(isPresented: $showingRecoverySheet) {
@@ -176,8 +72,11 @@ public struct LoginView: View {
             .sheet(isPresented: $showingTenantAddSheet) {
                 TenantSelectionView()
             }
-            .sheet(isPresented: $showingEmailAuthSheet) {
-                EmailAuthSheetView()
+            .sheet(isPresented: $showingTerms) {
+                TermsOfServiceView(isPresentedInModal: true)
+            }
+            .sheet(isPresented: $showingPrivacy) {
+                PrivacyPolicyView(isPresentedInModal: true)
             }
             .alert(L10n.Auth.resetDeviceConfirmTitle, isPresented: $showingResetConfirmAlert) {
                 Button(L10n.Common.cancel, role: .cancel) {}
@@ -189,6 +88,381 @@ public struct LoginView: View {
             }
         }
     }
+    
+    // MARK: - Subviews
+    
+    @ViewBuilder
+    private var headerView: some View {
+        if isEmailAuthMode {
+            // メールサインイン選択時: アイコンとFriendsを横並びに配置し上部スペースを圧縮
+            HStack(spacing: 10) {
+                Image("FriendsIcon")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 32, height: 32)
+                    .clipShape(Circle())
+                    .shadow(color: Color.black.opacity(0.12), radius: 4, x: 0, y: 2)
+                
+                Text(L10n.Auth.title)
+                    .font(.system(size: 24, weight: .heavy, design: .rounded))
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                Button {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        isEmailAuthMode = false
+                        errorMessage = nil
+                    }
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .padding(.bottom, 4)
+        } else {
+            // 初期状態: アイコン <改行> Friends を中央に縦並び配置
+            VStack(spacing: 12) {
+                Image("FriendsIcon")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 76, height: 76)
+                    .clipShape(Circle())
+                    .shadow(color: Color.black.opacity(0.12), radius: 6, x: 0, y: 3)
+                
+                Text(L10n.Auth.title)
+                    .font(.system(size: 30, weight: .heavy, design: .rounded))
+                    .foregroundColor(.primary)
+            }
+            .padding(.top, 60)
+            .padding(.bottom, 12)
+        }
+    }
+    
+    @ViewBuilder
+    private var tenantSelectorCard: some View {
+        Button {
+            showingTenantAddSheet = true
+        } label: {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(chatService.currentTenant?.tenantName ?? PresetTenantConfig.tenantName)
+                        .font(.subheadline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
+                    
+                    Text(chatService.currentTenant?.tenantCode ?? PresetTenantConfig.tenantCode)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                HStack(spacing: 4) {
+                    Image(systemName: "qrcode.viewfinder")
+                        .font(.system(size: 16, weight: .medium))
+                    Text(L10n.Auth.tenantChange)
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                }
+                .foregroundColor(.blue)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(Color(uiColor: .secondarySystemGroupedBackground))
+            .cornerRadius(14)
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+    
+    @ViewBuilder
+    private var mainAuthOptionsView: some View {
+        VStack(spacing: 11) {
+            // 匿名ログインボタン
+            Button {
+                performAnonymousLogin()
+            } label: {
+                HStack(spacing: 8) {
+                    if isLoggingIn {
+                        ProgressView()
+                            .tint(.white)
+                    } else {
+                        Image(systemName: "person.fill")
+                            .font(.body.weight(.bold))
+                    }
+                    Text(L10n.Auth.guestBtn)
+                        .font(.body)
+                        .fontWeight(.bold)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(Color.blue)
+                .foregroundColor(.white)
+                .cornerRadius(13)
+            }
+            .disabled(isAnyLoading)
+            
+            // または 仕切り線
+            HStack {
+                Rectangle()
+                    .fill(Color.secondary.opacity(0.2))
+                    .frame(height: 1)
+                Text(L10n.Auth.orDivider)
+                    .font(.caption2)
+                    .fontWeight(.medium)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 6)
+                Rectangle()
+                    .fill(Color.secondary.opacity(0.2))
+                    .frame(height: 1)
+            }
+            .padding(.vertical, 2)
+            
+            // サインインボタン群 (メール、Apple、Google)
+            VStack(spacing: 10) {
+                // メールでサインイン (上段)
+                Button {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        isEmailAuthMode = true
+                        errorMessage = nil
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "envelope.fill")
+                            .font(.body.weight(.semibold))
+                        Text(L10n.Auth.emailSignInBtn)
+                            .font(.body)
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .background(Color(uiColor: .secondarySystemGroupedBackground))
+                    .foregroundColor(.primary)
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.primary.opacity(0.15), lineWidth: 1)
+                    )
+                }
+                .disabled(isAnyLoading)
+                
+                // メールの左下にApple・右下にGoogle (下段)
+                HStack(spacing: 8) {
+                    // Apple (左下)
+                    Button {
+                        performAppleLogin()
+                    } label: {
+                        HStack(spacing: 6) {
+                            if isLoggingInWithApple {
+                                ProgressView()
+                                    .tint(Color(uiColor: .systemBackground))
+                            } else {
+                                Image(systemName: "apple.logo")
+                                    .font(.system(size: 18, weight: .semibold))
+                            }
+                            Text(L10n.Auth.appleBtn)
+                                .font(.body)
+                                .fontWeight(.semibold)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 48)
+                        .background(Color.primary)
+                        .foregroundColor(Color(uiColor: .systemBackground))
+                        .cornerRadius(12)
+                    }
+                    .disabled(isAnyLoading)
+                    
+                    // Google (右下)
+                    Button {
+                        performGoogleLogin()
+                    } label: {
+                        HStack(spacing: 6) {
+                            if isLoggingInWithGoogle {
+                                ProgressView()
+                                    .tint(.primary)
+                            } else {
+                                Image(systemName: "g.circle.fill")
+                                    .font(.system(size: 18, weight: .bold))
+                            }
+                            Text(L10n.Auth.googleBtn)
+                                .font(.body)
+                                .fontWeight(.semibold)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 48)
+                        .background(Color(uiColor: .secondarySystemGroupedBackground))
+                        .foregroundColor(.primary)
+                        .cornerRadius(12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.primary.opacity(0.15), lineWidth: 1)
+                        )
+                    }
+                    .disabled(isAnyLoading)
+                }
+            }
+            
+            // 復活の呪文ログイン (1行)
+            Button {
+                showingRecoverySheet = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "key.fill")
+                        .font(.caption)
+                    Text(L10n.Auth.recoveryBtn)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                }
+                .foregroundColor(.secondary)
+            }
+            .padding(.top, 4)
+            
+            // 端末データ・鍵の完全リセット (1行)
+            Button(role: .destructive) {
+                showingResetConfirmAlert = true
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "trash.circle.fill")
+                        .font(.caption2)
+                    Text(L10n.Auth.resetDeviceBtn)
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                }
+                .foregroundColor(.secondary.opacity(0.8))
+            }
+            .padding(.top, 1)
+        }
+    }
+    
+    @ViewBuilder
+    private var emailInlineAuthView: some View {
+        VStack(spacing: 12) {
+            // ログイン / 新規登録 セグメント
+            Picker("", selection: $isSignUp) {
+                Text(L10n.Auth.modeSignIn).tag(false)
+                Text(L10n.Auth.modeSignUp).tag(true)
+            }
+            .pickerStyle(.segmented)
+            
+            // 入力フィールド群
+            VStack(spacing: 10) {
+                if isSignUp {
+                    TextField(L10n.Auth.displayNamePlaceholder, text: $displayName)
+                        .padding(.horizontal, 14)
+                        .frame(height: 44)
+                        .background(Color(uiColor: .secondarySystemGroupedBackground))
+                        .cornerRadius(10)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                        )
+                }
+                
+                TextField(L10n.Auth.emailPlaceholder, text: $email)
+                    .keyboardType(.emailAddress)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .padding(.horizontal, 14)
+                    .frame(height: 44)
+                    .background(Color(uiColor: .secondarySystemGroupedBackground))
+                    .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                    )
+                
+                SecureField(L10n.Auth.passwordPlaceholder, text: $password)
+                    .padding(.horizontal, 14)
+                    .frame(height: 44)
+                    .background(Color(uiColor: .secondarySystemGroupedBackground))
+                    .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                    )
+            }
+            
+            // 認証実行ボタン
+            Button {
+                performEmailAuth()
+            } label: {
+                HStack(spacing: 8) {
+                    if isLoadingEmailAuth {
+                        ProgressView()
+                            .tint(.white)
+                    }
+                    Text(isSignUp ? L10n.Auth.signUpAction : L10n.Auth.signInAction)
+                        .font(.body)
+                        .fontWeight(.bold)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(Color.blue)
+                .foregroundColor(.white)
+                .cornerRadius(13)
+            }
+            .disabled(isLoadingEmailAuth || email.isEmpty || password.isEmpty || (isSignUp && displayName.isEmpty))
+            
+            // ほかのログイン方法に戻る
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    isEmailAuthMode = false
+                    errorMessage = nil
+                }
+            } label: {
+                Text(L10n.Auth.backToOptions)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.secondary)
+                    .padding(.vertical, 4)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var termsAndPrivacyNotice: some View {
+        VStack(spacing: 4) {
+            Text(L10n.Legal.termsAgreeNotice)
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            
+            HStack(spacing: 8) {
+                Button {
+                    showingTerms = true
+                } label: {
+                    Text(L10n.Legal.termsTitle)
+                        .font(.system(size: 11, weight: .medium))
+                        .underline()
+                        .foregroundColor(.blue)
+                }
+                
+                Text("•")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                
+                Button {
+                    showingPrivacy = true
+                } label: {
+                    Text(L10n.Legal.privacyTitle)
+                        .font(.system(size: 11, weight: .medium))
+                        .underline()
+                        .foregroundColor(.blue)
+                }
+            }
+        }
+        .padding(.top, 4)
+        .padding(.bottom, 8)
+    }
+    
+    // MARK: - Actions
     
     private func performAnonymousLogin() {
         isLoggingIn = true
@@ -206,94 +480,62 @@ public struct LoginView: View {
             }
         }
     }
-}
-
-// MARK: - Email Auth Sheet View
-
-struct EmailAuthSheetView: View {
-    @Environment(\.dismiss) private var dismiss
-    @ObservedObject var chatService = ChatService.shared
     
-    @State private var isSignUp = false
-    @State private var email = ""
-    @State private var password = ""
-    @State private var displayName = ""
-    @State private var isLoading = false
-    @State private var errorMessage: String? = nil
-    
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    Picker("モード", selection: $isSignUp) {
-                        Text(L10n.Auth.emailBtn).tag(false)
-                        Text("新規登録").tag(true)
+    private func performAppleLogin() {
+        isLoggingInWithApple = true
+        errorMessage = nil
+        
+        chatService.signInWithApple { result in
+            DispatchQueue.main.async {
+                isLoggingInWithApple = false
+                switch result {
+                case .success:
+                    break
+                case .failure(let error):
+                    let nsError = error as NSError
+                    if nsError.domain == "com.apple.AuthenticationServices.AuthorizationError" && nsError.code == 1001 {
+                        // ユーザーによるキャンセル
+                        return
                     }
-                    .pickerStyle(.segmented)
-                }
-                
-                Section(header: Text("アカウント情報")) {
-                    if isSignUp {
-                        TextField(L10n.Auth.displayNamePlaceholder, text: $displayName)
-                    }
-                    
-                    TextField("メールアドレス", text: $email)
-                        .keyboardType(.emailAddress)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    
-                    SecureField("パスワード", text: $password)
-                }
-                
-                if let error = errorMessage {
-                    Section {
-                        Text(error)
-                            .font(.caption)
-                            .foregroundColor(.red)
-                    }
-                }
-                
-                Section {
-                    Button {
-                        submit()
-                    } label: {
-                        HStack {
-                            Spacer()
-                            if isLoading {
-                                ProgressView()
-                                    .padding(.trailing, 4)
-                            }
-                            Text(isSignUp ? "アカウント新規作成" : L10n.Auth.emailBtn)
-                                .bold()
-                            Spacer()
-                        }
-                    }
-                    .disabled(email.isEmpty || password.isEmpty || isLoading)
-                }
-            }
-            .navigationTitle(isSignUp ? "メールで新規登録" : L10n.Auth.emailBtn)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(L10n.Common.cancel) {
-                        dismiss()
-                    }
+                    errorMessage = error.localizedDescription
                 }
             }
         }
     }
     
-    private func submit() {
-        isLoading = true
+    private func performGoogleLogin() {
+        isLoggingInWithGoogle = true
+        errorMessage = nil
+        
+        chatService.signInWithGoogle { result in
+            DispatchQueue.main.async {
+                isLoggingInWithGoogle = false
+                switch result {
+                case .success:
+                    break
+                case .failure(let error):
+                    let nsError = error as NSError
+                    if nsError.domain == "FIRAuthErrorDomain" && nsError.code == 17058 {
+                        // ユーザーによる Safari/Web 認証キャンセル
+                        return
+                    }
+                    errorMessage = error.localizedDescription
+                }
+            }
+        }
+    }
+    
+    private func performEmailAuth() {
+        isLoadingEmailAuth = true
         errorMessage = nil
         
         if isSignUp {
             chatService.signUpWithEmail(email: email, password: password, displayName: displayName) { result in
                 DispatchQueue.main.async {
-                    isLoading = false
+                    isLoadingEmailAuth = false
                     switch result {
                     case .success:
-                        dismiss()
+                        break
                     case .failure(let error):
                         errorMessage = error.localizedDescription
                     }
@@ -302,10 +544,10 @@ struct EmailAuthSheetView: View {
         } else {
             chatService.signInWithEmail(email: email, password: password) { result in
                 DispatchQueue.main.async {
-                    isLoading = false
+                    isLoadingEmailAuth = false
                     switch result {
                     case .success:
-                        dismiss()
+                        break
                     case .failure(let error):
                         errorMessage = error.localizedDescription
                     }

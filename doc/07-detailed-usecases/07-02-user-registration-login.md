@@ -18,12 +18,23 @@ sequenceDiagram
     participant FirebaseAuth as "Firebase Auth"
     participant Firestore as "Cloud Firestore"
 
-    User->>UI: 認証方法選択（匿名開始 / メールログイン / 登録）
-    UI->>AuthController: authenticate(credentials, tenantId, displayName)
-    AuthController->>FirebaseAuth: ログイン / サインアップ実行
+    User->>UI: 認証方法選択（Apple / Google / メール認証 / 匿名ゲスト）
+    alt Apple サインイン
+        UI->>AuthController: signInWithApple()
+        AuthController->>FirebaseAuth: Apple ID Credential (identityToken, rawNonce) 検証
+    else Google サインイン
+        UI->>AuthController: signInWithGoogle()
+        AuthController->>FirebaseAuth: Google OAuth Credential 検証
+    else Eメール認証
+        UI->>AuthController: signInWithEmail() / signUpWithEmail()
+        AuthController->>FirebaseAuth: Email/Password 検証
+    else 匿名ログイン
+        UI->>AuthController: signInAnonymously()
+        AuthController->>FirebaseAuth: 匿名認証実行
+    end
 
     alt 認証成功
-        FirebaseAuth-->>AuthController: Auth UID (uid), idToken
+        FirebaseAuth-->>AuthController: Auth UID (uid), idToken, displayName/email
         
         Note over AuthController,Keychain: 🔐 1. ユーザー暗号鍵ペア (Curve25519) 初期化
         AuthController->>Keychain: getExistingKeypair(uid)
@@ -64,14 +75,15 @@ sequenceDiagram
 - **データ表現**: 32 バイト生データ (Raw Representation) を Base64 エンコードした文字列
 - **表示名暗号化**: テナントマスターキー ($MK_T$) による **AES-256-GCM 暗号化** (12 バイト Nonce + 16 バイト認証タグ)
 
-### 2.2 ローカル保持 (iOS Keychain)
+### 2.2 ローカル保持 (iOS Keychain & iCloud キーチェーン同期)
 秘密鍵およびテナントマスターキーは端末のセキュアストレージ（iOS Keychain）に厳密に保管し、クラウドやサーバーへ平文で送信することは固く禁止します。
+同一 Apple ID の端末間での安全な引き継ぎと自動復元を可能とするため、E2EE暗号化同期属性 `kSecAttrSynchronizable = true` を適用します。
 
-| キー名 | 格納先 | アクセシビリティ属性 | 説明 |
-|:---|:---|:---|:---|
-| `friends_priv_key_{uid}` | iOS Keychain | `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` | ユーザー端末秘密鍵 ($SK_u$) |
-| `friends_pub_key_{uid}` | iOS Keychain | `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` | ユーザー端末公開鍵 ($PK_u$) |
-| `friends_tenant_key_{tenantId}` | iOS Keychain | `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` | テナントマスターキー ($MK_T$) |
+| キー名 | 格納先 | アクセシビリティ属性 | 同期属性 (`kSecAttrSynchronizable`) | 説明 |
+|:---|:---|:---|:---|:---|
+| `friends_priv_key_{uid}` | iOS Keychain | `kSecAttrAccessibleAfterFirstUnlock` | `true` (iCloud E2EE 同期) | ユーザー端末秘密鍵 ($SK_u$) |
+| `friends_pub_key_{uid}` | iOS Keychain | `kSecAttrAccessibleAfterFirstUnlock` | `true` (iCloud E2EE 同期) | ユーザー端末公開鍵 ($PK_u$) |
+| `friends_tenant_key_{tenantId}` | iOS Keychain | `kSecAttrAccessibleAfterFirstUnlock` | `true` (iCloud E2EE 同期) | テナントマスターキー ($MK_T$) |
 
 ### 2.3 データベース配置 (Cloud Firestore)
 公開鍵 ($PK_u$) および暗号化されたプロファイルのみを Firestore 上に配置します。**平文の `displayName` は DB 上に保存されません。**
@@ -117,6 +129,15 @@ sequenceDiagram
 
 > ユーザー個人の秘密鍵、テナントマスターキー、平文の氏名・表示名はサーバー・DB 上に一切保存されず、暗号化データと公開鍵・認可メタデータのみが保持されます。
 
+### 3.1 各認証プロバイダとアカウント種別・初期表示名マッピング
+
+| プロバイダ | アカウント種別 (`AccountType`) | 初回表示名の抽出ロジック | 初回ログイン時プロファイル自動登録 |
+|:---|:---|:---|:---|
+| **Apple** | `ACCOUNT_TYPE_PERSISTENT` (2) | `ASAuthorizationAppleIDCredential.fullName`（姓名結合）。未提供時は "Apple User" | プロファイル未存在時に自動生成 |
+| **Google** | `ACCOUNT_TYPE_PERSISTENT` (2) | `User.displayName`（Googleアカウント表示名）。未提供時は email 前半部 | プロファイル未存在時に自動生成 |
+| **Eメール** | `ACCOUNT_TYPE_PERSISTENT` (2) | 新規登録時フォーム入力 `displayName` | 新規登録時に即時生成 |
+| **匿名** | `ACCOUNT_TYPE_ANONYMOUS` (1) | "ゲストユーザー" | 初回ログイン時に即時生成 |
+
 ---
 
 ## 4. 端末データ・Keychain 完全消去仕様 (Device Reset & Sign Out)
@@ -140,9 +161,11 @@ sequenceDiagram
 | `KEY_GENERATION_FAILED` | CryptoKit による鍵生成例外 | リトライおよびユーザーへ再試行通知 |
 | `KEYCHAIN_STORE_FAILED` | Keychain 書き込み権限または容量エラー | エラーコードを記録しリカバリ |
 | `FIRESTORE_WRITE_FAILED` | ネットワーク接続不良またはパーミッション | リトライキューへ投入し再接続時に同期 |
+| `AUTH_PROVIDER_FAILED` | 各プロバイダ (Apple / Google) 認証エラー・キャンセル | エラーメッセージを L10n 経由でトースト/インライン表示 |
 
 ---
 
-## 5. 多言語対応 (i18n)
+## 6. 多言語対応 (i18n)
 
 - 認証フローおよび鍵初期化に関わるすべての文言・エラーメッセージは `L10n` を通じて `auth.*` / `error.auth.*` のドット記法キーで管理します。
+- 旧仮実装用キー（`auth.social.coming_soon` 等）は完全撤廃し、各プロバイダ正規処理用の状態管理を行います。

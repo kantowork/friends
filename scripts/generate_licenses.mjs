@@ -5,7 +5,7 @@
  * 
  * Swift Package Manager (SPM) の Package.resolved および DerivedData のチェックアウトフォルダから、
  * アプリが使用しているすべてのオープンソースライブラリのライセンス情報を抽出し、
- * ios/Sources/Resources/licenses.json に自動集約・出力するスクリプト。
+ * shared/legal/licenses.md および ios/Sources/Resources/legal/licenses.md に自動集約・出力するスクリプト。
  */
 
 import fs from 'fs';
@@ -24,7 +24,6 @@ const resolvedCandidates = [
 
 let resolvedPath = resolvedCandidates.find(p => fs.existsSync(p));
 if (!resolvedPath) {
-  // ~/Library/Developer/Xcode/DerivedData/Friends-*/SourcePackages/Package.resolved を検索
   const homeDir = process.env.HOME || '';
   const derivedDataRoot = path.join(homeDir, 'Library', 'Developer', 'Xcode', 'DerivedData');
   try {
@@ -58,7 +57,6 @@ console.log(`📦 検出された依存パッケージ数: ${pins.length}`);
 // 2. checkouts ディレクトリの探索
 const checkoutsCandidates = [
   path.join(rootDir, 'ios', 'build', 'DerivedData', 'SourcePackages', 'checkouts'),
-  path.join(rootDir, 'ios', 'build', 'DerivedDataTest', 'SourcePackages', 'checkouts')
 ];
 
 const homeDir = process.env.HOME || '';
@@ -73,29 +71,36 @@ try {
     }
   }
 } catch (e) {
-  // sandbox環境下でのパーミッション制約をスキップ
+  // ignore
 }
 
 const checkoutsDir = checkoutsCandidates.find(p => fs.existsSync(p));
-console.log(`📂 checkouts ディレクトリ: ${checkoutsDir || 'なし (フォールバック使用)'}`);
+if (checkoutsDir) {
+  console.log(`📂 checkouts ディレクトリ: ${checkoutsDir}`);
+} else {
+  console.warn('⚠️ checkouts ディレクトリが見つかりませんでした。');
+}
 
-const licenseFileNames = [
-  'LICENSE', 'LICENSE.md', 'LICENSE.txt', 'LICENSE.rst',
-  'LICENCE', 'LICENCE.md', 'LICENCE.txt',
-  'COPYING', 'COPYING.txt'
+// 3. ライセンスファイル探索ヘルパー
+const licenseFilePatterns = [
+  /^license(\.(md|txt|rst))?$/i,
+  /^licence(\.(md|txt|rst))?$/i,
+  /^copying(\.(md|txt|rst))?$/i,
+  /^copyright(\.(md|txt|rst))?$/i
 ];
 
-function findLicenseInDir(dir) {
-  if (!fs.existsSync(dir)) return null;
-  const files = fs.readdirSync(dir);
-  for (const name of licenseFileNames) {
-    const match = files.find(f => f.toLowerCase() === name.toLowerCase());
-    if (match) {
-      const fullPath = path.join(dir, match);
-      if (fs.statSync(fullPath).isFile()) {
-        return fs.readFileSync(fullPath, 'utf8');
+function findLicenseInDir(dirPath) {
+  if (!fs.existsSync(dirPath)) return null;
+  try {
+    const files = fs.readdirSync(dirPath);
+    for (const pattern of licenseFilePatterns) {
+      const match = files.find(f => pattern.test(f));
+      if (match) {
+        return fs.readFileSync(path.join(dirPath, match), 'utf8');
       }
     }
+  } catch (e) {
+    // ignore
   }
   return null;
 }
@@ -136,7 +141,6 @@ for (const pin of pins) {
   let licenseText = null;
 
   if (checkoutsDir) {
-    // フォルダ名候補（identity そのまま、または location の末尾）
     const candidates = [
       path.join(checkoutsDir, identity),
       path.join(checkoutsDir, path.basename(location, '.git')),
@@ -149,7 +153,6 @@ for (const pin of pins) {
     }
   }
 
-  // ライセンスが見つからない場合の標準フォールバック
   if (!licenseText) {
     licenseText = `License text not bundled locally.\nPlease visit repository: ${location}`;
   }
@@ -166,13 +169,43 @@ for (const pin of pins) {
 // 名前順（アルファベット順）にソート
 results.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 
-// 出力先
-const outputDir = path.join(rootDir, 'ios', 'Sources', 'Resources');
-if (!fs.existsSync(outputDir)) {
-  fs.mkdirSync(outputDir, { recursive: true });
+// 4. Markdown の構築
+let mdContent = `# オープンソースライセンス (Open Source Licenses)
+
+本アプリケーションでは、以下のオープンソースソフトウェア（OSS）を使用しています。各ソフトウェアの著作権者およびライセンス条項は以下のとおりです。
+
+---
+`;
+
+results.forEach((item, index) => {
+  mdContent += `
+## ${index + 1}. ${item.name}
+- **バージョン**: ${item.version}
+- **リポジトリ**: ${item.url}
+
+\`\`\`
+${item.license}
+\`\`\`
+
+---
+`;
+});
+
+// 5. 出力先 (shared/legal/licenses.md および ios/Sources/Resources/legal/licenses.md)
+const sharedOutputDir = path.join(rootDir, 'shared', 'legal');
+if (!fs.existsSync(sharedOutputDir)) {
+  fs.mkdirSync(sharedOutputDir, { recursive: true });
 }
+const sharedOutputPath = path.join(sharedOutputDir, 'licenses.md');
+fs.writeFileSync(sharedOutputPath, mdContent, 'utf8');
 
-const outputPath = path.join(outputDir, 'licenses.json');
-fs.writeFileSync(outputPath, JSON.stringify(results, null, 2), 'utf8');
+const iosOutputDir = path.join(rootDir, 'ios', 'Sources', 'Resources', 'legal');
+if (!fs.existsSync(iosOutputDir)) {
+  fs.mkdirSync(iosOutputDir, { recursive: true });
+}
+const iosOutputPath = path.join(iosOutputDir, 'licenses.md');
+fs.writeFileSync(iosOutputPath, mdContent, 'utf8');
 
-console.log(`✅ ${results.length} 件のライセンス情報を ${outputPath} に出力しました。`);
+console.log(`✅ ${results.length} 件のライセンス情報をパッケージ情報から出力しました:`);
+console.log(`  - ${sharedOutputPath}`);
+console.log(`  - ${iosOutputPath}`);

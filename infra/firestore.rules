@@ -109,8 +109,8 @@ service cloud.firestore {
         && request.resource.data.uid == uid
         && (!('publicKey' in request.resource.data) || request.resource.data.publicKey is string);
 
-      // アカウント情報の物理削除は禁止
-      allow delete: if false;
+      // アカウント情報の物理削除は本人のみ可能 (退会・データ抹消)
+      allow delete: if isUser(uid);
 
       // 【本人専用領域】秘密鍵のバックアップ・復元データ (/users/{uid}/private/data)
       match /private/data {
@@ -129,8 +129,8 @@ service cloud.firestore {
           && request.resource.data.nonce.size() > 0
           && request.resource.data.nonce.size() < 128;
 
-        // 復元データの物理削除は禁止（バックアップ保全）
-        allow delete: if false;
+        // 復元データの物理削除は本人のみ可能 (退会・データ抹消)
+        allow delete: if isUser(uid);
       }
     }
 
@@ -201,8 +201,8 @@ service cloud.firestore {
           && request.resource.data.userId == userId
           && isValidAuditUpdate(tenantId);
 
-        // ユーザープロファイルの削除は禁止
-        allow delete: if false;
+        // ユーザープロファイルの削除は本人のみ可能 (退会・データ抹消)
+        allow delete: if isTenantUser(tenantId, userId);
 
         // ---------------------------------------------------------------------
         // 2.1.1 友達サブコレクション (/tenants/{tenantId}/users/{userId}/friends/{friendUserId})

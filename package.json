@@ -10,7 +10,10 @@
     "deploy:sims": "./scripts/deploy_simulators.sh",
     "deploy:rules": "firebase deploy --config infra/firebase.json --only firestore:rules,firestore:indexes",
     "clean:messages": "node ./scripts/clean_messages.mjs",
-    "generate:licenses": "node ./scripts/generate_licenses.mjs"
+    "generate:icon": "swift -module-cache-path .build/clang-cache ./scripts/generate_app_icon.swift",
+    "generate:licenses": "node ./scripts/generate_licenses.mjs",
+    "sync:legal": "node ./scripts/sync_legal.mjs",
+    "prepare:resources": "npm run generate:icon && npm run generate:licenses && npm run sync:legal"
   },
   "devDependencies": {
     "markdownlint-cli": "^0.44.0"

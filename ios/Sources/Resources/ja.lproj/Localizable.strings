@@ -19,9 +19,21 @@
 
 // MARK: - Auth & Login
 "auth.login.title" = "Friends";
-"auth.login.subtitle" = "安全でシンプルなE2EEコミュニケーション";
-"auth.login.guest_btn" = "匿名でログイン";
+"auth.login.guest_btn" = "匿名ログイン";
+"auth.login.or_divider" = "または";
+"auth.login.email_signin_btn" = "メールでサインイン";
+"auth.login.apple_btn" = "Apple";
+"auth.login.google_btn" = "Google";
 "auth.login.email_btn" = "メールアドレスでログイン";
+"auth.login.email_placeholder" = "メールアドレス";
+"auth.login.password_placeholder" = "パスワード";
+"auth.login.signin_action" = "ログイン";
+"auth.login.signup_action" = "アカウント新規登録";
+"auth.login.mode_signin" = "ログイン";
+"auth.login.mode_signup" = "新規登録";
+"auth.login.back_to_options" = "ほかのログイン方法に戻る";
+"auth.login.apple_error" = "Appleサインインに失敗しました。もう一度お試しください。";
+"auth.login.google_error" = "Googleサインインに失敗しました。もう一度お試しください。";
 "auth.login.recovery_btn" = "「ふっかつのじゅもん」で復元";
 "auth.login.reset_device_btn" = "端末データ・鍵の完全リセット";
 "auth.login.reset_device_confirm_title" = "端末データを完全に初期化しますか？";
@@ -117,6 +129,14 @@
 "chat.detail.empty" = "メッセージのやり取りはまだありません\n最初のメッセージを送信してみましょう";
 "chat.read.status" = "既読";
 "chat.read.count" = "既読 %d";
+"chat.detail.attachment_action_title" = "写真の添付";
+"chat.detail.take_photo" = "写真を撮る";
+"chat.detail.choose_from_library" = "写真一覧から選択";
+"chat.detail.camera_not_available" = "カメラが利用できません。実機端末でご利用ください。";
+"chat.detail.sending_images" = "写真を暗号化して送信中…";
+"chat.detail.upload_failed" = "写真のアップロードに失敗しました。";
+"chat.detail.image_message" = "写真";
+"chat.detail.max_images_exceeded" = "写真は一度に最大10枚まで選択できます。";
 
 
 // MARK: - Reactions
@@ -127,6 +147,7 @@
 "chat.reaction.heart" = "ハート";
 "chat.reaction.ok" = "OK";
 "chat.reaction.smile" = "スマイル";
+"chat.reaction.laugh" = "大笑い";
 "chat.reaction.surprised" = "びっくり";
 "chat.reaction.sad" = "かなしい";
 "chat.reaction.thinking" = "考え中";
@@ -165,7 +186,7 @@
 "settings.title" = "設定";
 "settings.section.profile" = "プロフィール";
 "settings.section.tenant" = "テナント";
-"settings.section.security" = "セキュリティ & バックアップ";
+"settings.section.security" = "セキュリティ";
 "settings.section.about" = "アプリ情報";
 "settings.profile.display_name" = "名前";
 "settings.profile.username" = "アカウント";
@@ -238,6 +259,8 @@
 "app_info.version" = "バージョン";
 "app_info.encryption" = "暗号化方式";
 "app_info.encryption_detail" = "AES-256-GCM / X25519 (ECDH)";
+"app_info.encryption_detail_1" = "AES-256-GCM";
+"app_info.encryption_detail_2" = "X25519 (ECDH)";
 "app_info.encryption_desc" = "メッセージ通信は端末間の Curve25519 鍵交換と HKDF-SHA256 で導出されたセッション鍵による AES-256-GCM E2EE、組織内データはテナントマスターキーによる AES-256-GCM で保護されています。";
 "app_info.licenses" = "ライセンス表示";
 "app_info.license_list_title" = "オープンソースライセンス";
@@ -245,5 +268,32 @@
 "app_info.license_repository" = "リポジトリ";
 "app_info.license_view_source" = "ソースコードを表示";
 "app_info.license_empty" = "該当するライブラリが見つかりません。";
+
+// MARK: - Account Deletion
+"settings.account_delete" = "アカウントを完全に削除";
+"settings.account_delete_confirm_title" = "アカウントを完全に削除しますか？";
+"settings.account_delete_confirm_msg" = "この操作は取り消せません。アカウントを削除すると、チャット履歴、友達関係、設定、暗号化鍵バックアップなどのすべてのデータが完全に抹消されます。";
+"settings.account_delete_execute" = "完全に削除する";
+"settings.account_delete_success" = "アカウントが完全に削除されました。";
+
+// MARK: - Safety & Block
+"settings.section.safety" = "セーフティ";
+"block.action" = "ユーザーをブロック";
+"block.confirm_title" = "%@ をブロックしますか？";
+"block.confirm_msg" = "このユーザーからのメッセージは非表示になり、ダイレクトメッセージの送受信ができなくなります。";
+"block.execute" = "ブロックする";
+"block.unblock_action" = "ブロック解除";
+"block.unblock_confirm_title" = "%@ のブロックを解除しますか？";
+"block.unblock_confirm_msg" = "このユーザーからのメッセージが再度表示されるようになります。";
+"block.unblock_execute" = "解除する";
+"block.list_title" = "ブロックしたユーザー";
+"block.list_empty" = "ブロックしているユーザーはいません";
+"block.blocked_banner" = "このユーザーをブロックしています";
+
+// MARK: - Legal & Policy
+"settings.section.legal" = "規約・ポリシー・ライセンス";
+"legal.terms_title" = "利用規約 (EULA)";
+"legal.privacy_title" = "プライバシーポリシー";
+"legal.terms_agree_notice" = "アカウントを作成または利用を開始することで、利用規約およびプライバシーポリシーに同意したものとみなされます。";
 
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 struct ChatDetailView: View {
     let chat: FriendsChatUIModel
@@ -6,6 +7,14 @@ struct ChatDetailView: View {
     @State private var messageText = ""
     @FocusState private var isInputFocused: Bool
     @State private var selectedMessageForReactions: DecryptedMessage? = nil
+    
+    // 写真・添付ファイル用ステート
+    @State private var showingAttachmentActionSheet: Bool = false
+    @State private var showingCameraPicker: Bool = false
+    @State private var showingPhotoPicker: Bool = false
+    @State private var selectedPhotoItems: [PhotosPickerItem] = []
+    @State private var isSendingImages: Bool = false
+    @State private var cameraUnavailableAlert: Bool = false
     
     // 全体スワイプによる詳細・ユーザー名の一括表示状態
     @State private var isAllDetailsRevealed: Bool = false
@@ -15,8 +24,11 @@ struct ChatDetailView: View {
         self.chat = chat
     }
     
+    @ObservedObject var blockManager = BlockManager.shared
+    
     var currentMessages: [DecryptedMessage] {
-        chatService.messages[chat.chatID] ?? []
+        let all = chatService.messages[chat.chatID] ?? []
+        return all.filter { !blockManager.isBlocked(userId: $0.senderID) }
     }
     
     @State private var lastBottomMessageId: String? = nil
@@ -25,6 +37,8 @@ struct ChatDetailView: View {
     @State private var isInitialScrollDone: Bool = false
     @State private var showingEditFriendNameAlert: Bool = false
     @State private var editingFriendNameText: String = ""
+    @State private var showingBlockConfirmAlert: Bool = false
+    @State private var showingUnblockConfirmAlert: Bool = false
     
     private var peerFriend: FriendsPublicUserProfile? {
         if chat.chatType == .direct {
@@ -52,6 +66,11 @@ struct ChatDetailView: View {
             return friend.displayName
         }
         return chat.displayTitle
+    }
+    
+    private var isPeerBlocked: Bool {
+        guard chat.chatType == .direct, let peer = peerFriend else { return false }
+        return blockManager.isBlocked(userId: peer.userID)
     }
     
     public var body: some View {
@@ -211,34 +230,82 @@ struct ChatDetailView: View {
             
             Divider()
             
-            // Message Input Bar
-            HStack(spacing: 10) {
-                TextField(L10n.Chat.inputPlaceholder, text: $messageText, axis: .vertical)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(Color(uiColor: .secondarySystemBackground))
-                    .cornerRadius(20)
-                    .lineLimit(1...5)
-                    .focused($isInputFocused)
-                    .onSubmit {
-                        performSendMessage()
+            // Message Input Bar or Blocked Banner
+            if isPeerBlocked {
+                HStack(spacing: 12) {
+                    Image(systemName: "shield.slash.fill")
+                        .foregroundColor(.secondary)
+                    Text(L10n.Block.blockedBanner)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Button(L10n.Block.unblockAction) {
+                        showingUnblockConfirmAlert = true
                     }
-                
-                Button {
-                    performSendMessage()
-                } label: {
-                    Image(systemName: "paperplane.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(width: 38, height: 38)
-                        .background(messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.gray.opacity(0.4) : Color.blue)
-                        .clipShape(Circle())
+                    .buttonStyle(.bordered)
+                    .font(.caption)
                 }
-                .disabled(messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color(uiColor: .secondarySystemBackground))
+            } else {
+                if isSendingImages {
+                    HStack(spacing: 6) {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Text(L10n.Chat.sendingImages)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 4)
+                    .background(Color(uiColor: .secondarySystemBackground).opacity(0.8))
+                }
+                
+                HStack(spacing: 8) {
+                    // [ 写真アイコン ]
+                    Button {
+                        showingAttachmentActionSheet = true
+                    } label: {
+                        Image(systemName: "photo.on.rectangle.angled")
+                            .font(.system(size: 19, weight: .medium))
+                            .foregroundColor(.blue)
+                            .frame(width: 38, height: 38)
+                            .background(Color(uiColor: .secondarySystemBackground))
+                            .clipShape(Circle())
+                    }
+                    .disabled(isSendingImages)
+                    
+                    // [ テキスト入力欄 ]
+                    TextField(L10n.Chat.inputPlaceholder, text: $messageText, axis: .vertical)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Color(uiColor: .secondarySystemBackground))
+                        .cornerRadius(20)
+                        .lineLimit(1...5)
+                        .focused($isInputFocused)
+                        .onSubmit {
+                            performSendMessage()
+                        }
+                    
+                    // [ 送信アイコン ]
+                    Button {
+                        performSendMessage()
+                    } label: {
+                        Image(systemName: "paperplane.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(width: 38, height: 38)
+                            .background(messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.gray.opacity(0.4) : Color.blue)
+                            .clipShape(Circle())
+                    }
+                    .disabled(messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSendingImages)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color(uiColor: .systemBackground))
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Color(uiColor: .systemBackground))
         }
         .navigationTitle(resolvedTitle)
         .navigationBarTitleDisplayMode(.inline)
@@ -252,14 +319,33 @@ struct ChatDetailView: View {
                 }
             } else if let friend = peerFriend {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        editingFriendNameText = friend.displayName
-                        showingEditFriendNameAlert = true
+                    Menu {
+                        Button {
+                            editingFriendNameText = friend.displayName
+                            showingEditFriendNameAlert = true
+                        } label: {
+                            Label(L10n.Friend.editNameAction, systemImage: "pencil")
+                        }
+                        
+                        Divider()
+                        
+                        if isPeerBlocked {
+                            Button {
+                                showingUnblockConfirmAlert = true
+                            } label: {
+                                Label(L10n.Block.unblockAction, systemImage: "shield.slash")
+                            }
+                        } else {
+                            Button(role: .destructive) {
+                                showingBlockConfirmAlert = true
+                            } label: {
+                                Label(L10n.Block.action, systemImage: "shield.slash.fill")
+                            }
+                        }
                     } label: {
-                        Image(systemName: "pencil")
-                            .font(.system(size: 16))
+                        Image(systemName: "ellipsis.circle")
+                            .font(.system(size: 18))
                     }
-                    .accessibilityLabel(L10n.Friend.editNameAction)
                 }
             }
         }
@@ -277,8 +363,66 @@ struct ChatDetailView: View {
         } message: {
             Text(L10n.Friend.editNameMessage)
         }
+        .alert(L10n.Block.confirmTitle(peerFriend?.displayName ?? ""), isPresented: $showingBlockConfirmAlert) {
+            Button(L10n.Common.cancel, role: .cancel) {}
+            Button(L10n.Block.execute, role: .destructive) {
+                if let peer = peerFriend {
+                    blockManager.block(userId: peer.userID)
+                }
+            }
+        } message: {
+            Text(L10n.Block.confirmMsg)
+        }
+        .alert(L10n.Block.unblockConfirmTitle(peerFriend?.displayName ?? ""), isPresented: $showingUnblockConfirmAlert) {
+            Button(L10n.Common.cancel, role: .cancel) {}
+            Button(L10n.Block.unblockExecute) {
+                if let peer = peerFriend {
+                    blockManager.unblock(userId: peer.userID)
+                }
+            }
+        } message: {
+            Text(L10n.Block.unblockConfirmMsg)
+        }
         .sheet(item: $selectedMessageForReactions) { message in
             ReactionDetailSheetView(chatId: chat.chatID, message: message)
+        }
+        .confirmationDialog(L10n.Chat.attachmentActionTitle, isPresented: $showingAttachmentActionSheet, titleVisibility: .visible) {
+            Button {
+                if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                    showingCameraPicker = true
+                } else {
+                    cameraUnavailableAlert = true
+                }
+            } label: {
+                Text(L10n.Chat.takePhoto)
+            }
+            Button {
+                showingPhotoPicker = true
+            } label: {
+                Text(L10n.Chat.chooseFromLibrary)
+            }
+            Button(L10n.Common.cancel, role: .cancel) {}
+        }
+        .sheet(isPresented: $showingCameraPicker) {
+            ImagePickerView(sourceType: .camera) { capturedImage in
+                handleSendImages(images: [capturedImage])
+            }
+        }
+        .photosPicker(
+            isPresented: $showingPhotoPicker,
+            selection: $selectedPhotoItems,
+            maxSelectionCount: 10,
+            matching: .images
+        )
+        .onChange(of: selectedPhotoItems) { newItems in
+            guard !newItems.isEmpty else { return }
+            loadAndSendSelectedPhotos(newItems)
+        }
+        .alert(L10n.Chat.cameraNotAvailable, isPresented: $cameraUnavailableAlert) {
+            Button(L10n.Common.ok, role: .cancel) {}
+        }
+        .alert(L10n.Chat.uploadFailed, isPresented: $showingUploadErrorAlert) {
+            Button(L10n.Common.ok, role: .cancel) {}
         }
         .onAppear {
             chatService.activeChatId = chat.chatID
@@ -326,6 +470,51 @@ struct ChatDetailView: View {
         }
     }
     
+    @State private var showingUploadErrorAlert: Bool = false
+    
+    private func handleSendImages(images: [UIImage]) {
+        guard !images.isEmpty else { return }
+        let currentText = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
+        isSendingImages = true
+        self.messageText = ""
+        
+        chatService.sendImageMessage(chatId: chat.chatID, images: images, text: currentText) { result in
+            DispatchQueue.main.async {
+                self.isSendingImages = false
+                switch result {
+                case .success:
+                    self.hasUnseenNewMessages = false
+                case .failure(let error):
+                    AppLogger.error("Failed to send images: \(error.localizedDescription)", category: .chat)
+                    self.showingUploadErrorAlert = true
+                }
+            }
+        }
+    }
+    
+    private func loadAndSendSelectedPhotos(_ items: [PhotosPickerItem]) {
+        guard !items.isEmpty else { return }
+        isSendingImages = true
+        
+        Task {
+            var loadedImages: [UIImage] = []
+            for item in items {
+                if let data = try? await item.loadTransferable(type: Data.self),
+                   let img = UIImage(data: data) {
+                    loadedImages.append(img)
+                }
+            }
+            await MainActor.run {
+                self.selectedPhotoItems = []
+                if !loadedImages.isEmpty {
+                    self.handleSendImages(images: loadedImages)
+                } else {
+                    self.isSendingImages = false
+                }
+            }
+        }
+    }
+    
     private func isMessageRead(_ message: DecryptedMessage) -> Bool {
         chatService.isMessageRead(
             chatId: chat.chatID,
@@ -356,6 +545,7 @@ struct MessageBubbleView: View {
     
     @ObservedObject private var chatService = ChatService.shared
     @State private var showActionMenu: Bool = false
+    @State private var selectedViewerImage: UIImage? = nil
     
     private var isRead: Bool {
         chatService.isMessageRead(
@@ -546,10 +736,10 @@ struct MessageBubbleView: View {
     
     // MARK: - Subviews
     
-    /// メッセージ長押し時に直下に表示するアクションメニューカード（絵文字6種 ＋ コピー）
+    /// メッセージ長押し時に直下に表示するアクションメニューカード（絵文字7種 ＋ コピー）
     private var actionMenuCard: some View {
         VStack(alignment: .leading, spacing: 6) {
-            // 絵文字リアクション行: 👍 ❤️ 🆗 😊 😢 😱
+            // 絵文字リアクション行: 👍 ❤️ 🆗 😊 🤣 😢 😱
             HStack(spacing: 6) {
                 ForEach(FriendsReactionType.quickActionTypes) { type in
                     Button {
@@ -616,20 +806,37 @@ struct MessageBubbleView: View {
     }
 
     private func messageBubble(isMe: Bool) -> some View {
-        Text(message.decryptedText)
-            .font(.system(size: 15))
-            .foregroundColor(isMe ? .white : .primary)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 9)
-            .background(isMe ? Color.blue : Color(uiColor: .secondarySystemBackground))
-            .clipShape(BubbleShape(isFromMe: isMe))
-            .onLongPressGesture(minimumDuration: 0.35) {
-                let generator = UIImpactFeedbackGenerator(style: .medium)
-                generator.impactOccurred()
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                    showActionMenu.toggle()
+        VStack(alignment: isMe ? .trailing : .leading, spacing: 6) {
+            if message.hasAttachments {
+                MessageAttachmentsGridView(attachments: message.attachments) { tappedImg in
+                    selectedViewerImage = tappedImg
                 }
             }
+            if !message.decryptedText.isEmpty {
+                Text(message.decryptedText)
+                    .font(.system(size: 15))
+                    .foregroundColor(isMe ? .white : .primary)
+                    .padding(.horizontal, message.hasAttachments ? 6 : 14)
+                    .padding(.vertical, message.hasAttachments ? 4 : 9)
+            }
+        }
+        .padding(.horizontal, message.hasAttachments && message.decryptedText.isEmpty ? 4 : (message.hasAttachments ? 4 : 0))
+        .padding(.vertical, message.hasAttachments && message.decryptedText.isEmpty ? 4 : (message.hasAttachments ? 4 : 0))
+        .background(isMe ? Color.blue : Color(uiColor: .secondarySystemBackground))
+        .clipShape(BubbleShape(isFromMe: isMe))
+        .onLongPressGesture(minimumDuration: 0.35) {
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.impactOccurred()
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                showActionMenu.toggle()
+            }
+        }
+        .fullScreenCover(item: Binding<ViewerImageItem?>(
+            get: { selectedViewerImage.map { ViewerImageItem(image: $0) } },
+            set: { selectedViewerImage = $0?.image }
+        )) { item in
+            ImageViewerView(image: item.image)
+        }
     }
     
     private func timeString(from date: Date) -> String {
@@ -806,5 +1013,116 @@ struct ReactionDetailSheetView: View {
         }
     }
 }
+
+// MARK: - Message Attachment Grid & Thumbnail Views
+
+struct ViewerImageItem: Identifiable {
+    let id = UUID()
+    let image: UIImage
+}
+
+struct MessageAttachmentsGridView: View {
+    let attachments: [MessageAttachment]
+    let onImageTapped: (UIImage) -> Void
+    
+    var body: some View {
+        Group {
+            if attachments.count == 1 {
+                AttachmentSingleThumbnailView(
+                    attachment: attachments[0],
+                    size: CGSize(width: 220, height: 220),
+                    onTap: onImageTapped
+                )
+            } else if attachments.count == 2 {
+                HStack(spacing: 4) {
+                    ForEach(attachments) { att in
+                        AttachmentSingleThumbnailView(
+                            attachment: att,
+                            size: CGSize(width: 108, height: 108),
+                            onTap: onImageTapped
+                        )
+                    }
+                }
+            } else {
+                let columns = [
+                    GridItem(.fixed(108), spacing: 4),
+                    GridItem(.fixed(108), spacing: 4)
+                ]
+                LazyVGrid(columns: columns, spacing: 4) {
+                    ForEach(attachments) { att in
+                        AttachmentSingleThumbnailView(
+                            attachment: att,
+                            size: CGSize(width: 108, height: 108),
+                            onTap: onImageTapped
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct AttachmentSingleThumbnailView: View {
+    let attachment: MessageAttachment
+    let size: CGSize
+    let onTap: (UIImage) -> Void
+    
+    @State private var loadedImage: UIImage? = nil
+    @State private var isLoading: Bool = true
+    
+    var body: some View {
+        Group {
+            if let img = loadedImage {
+                Image(uiImage: img)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: size.width, height: size.height)
+                    .clipped()
+                    .cornerRadius(10)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        onTap(img)
+                    }
+            } else if isLoading {
+                ZStack {
+                    Color.gray.opacity(0.15)
+                    ProgressView()
+                        .scaleEffect(0.8)
+                }
+                .frame(width: size.width, height: size.height)
+                .cornerRadius(10)
+            } else {
+                ZStack {
+                    Color.gray.opacity(0.15)
+                    Image(systemName: "photo")
+                        .foregroundColor(.secondary)
+                }
+                .frame(width: size.width, height: size.height)
+                .cornerRadius(10)
+            }
+        }
+        .onAppear {
+            loadImage()
+        }
+    }
+    
+    private func loadImage() {
+        if let cached = AttachmentRepository.shared.getCachedImage(attachmentId: attachment.attachmentId) {
+            self.loadedImage = cached
+            self.isLoading = false
+            return
+        }
+        
+        AttachmentRepository.shared.fetchAttachmentImage(attachment: attachment) { result in
+            DispatchQueue.main.async {
+                self.isLoading = false
+                if case .success(let img) = result {
+                    self.loadedImage = img
+                }
+            }
+        }
+    }
+}
+
 
 

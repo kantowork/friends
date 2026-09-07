@@ -1,8 +1,9 @@
 import SwiftUI
 
-// MARK: - LicenseListView (B06-a オープンソースライセンス画面)
-/// shared/legal/licenses.md を読み込んでレンダリング
-public struct LicenseListView: View {
+// MARK: - TermsOfServiceView
+/// 利用規約 (EULA) 画面 (Apple Guideline 1.2 ゼロトレランス方針準拠)
+/// shared/legal/terms_of_service.md を読み込んでレンダリング
+public struct TermsOfServiceView: View {
     @Environment(\.dismiss) private var dismiss
     var isPresentedInModal: Bool
     
@@ -15,7 +16,7 @@ public struct LicenseListView: View {
             NavigationStack {
                 content
                     .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
+                        ToolbarItem(placement: .topBarLeading) {
                             Button(L10n.Common.close) {
                                 dismiss()
                             }
@@ -28,8 +29,8 @@ public struct LicenseListView: View {
     }
     
     private var content: some View {
-        LegalMarkdownView(fileName: "licenses")
-            .navigationTitle(L10n.AppInfo.licenses)
+        LegalMarkdownView(fileName: "terms_of_service")
+            .navigationTitle(L10n.Legal.termsTitle)
             .navigationBarTitleDisplayMode(.inline)
     }
 }

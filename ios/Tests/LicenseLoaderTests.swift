@@ -3,39 +3,65 @@ import XCTest
 
 final class LicenseLoaderTests: XCTestCase {
     
-    func testLicenseLoaderLoadsLicenses() {
-        let licenses = LicenseLoader.shared.loadLicenses()
-        XCTAssertFalse(licenses.isEmpty, "licenses.json should contain licenses")
-        XCTAssertGreaterThanOrEqual(licenses.count, 15, "Should have loaded at least 15 OSS packages")
+    func testLicensesMarkdownExistsAndContainsPackages() {
+        let candidates: [URL?] = [
+            Bundle.main.url(forResource: "licenses", withExtension: "md"),
+            Bundle.main.url(forResource: "licenses", withExtension: "md", subdirectory: "legal"),
+            Bundle.main.url(forResource: "licenses", withExtension: "md", subdirectory: "Resources/legal")
+        ]
+        let url = candidates.compactMap({ $0 }).first
+        XCTAssertNotNil(url, "licenses.md should exist in bundle")
+        
+        if let url = url, let content = try? String(contentsOf: url, encoding: .utf8) {
+            XCTAssertFalse(content.isEmpty, "licenses.md should not be empty")
+            XCTAssertTrue(content.contains("SwiftProtobuf"), "Should contain SwiftProtobuf")
+            XCTAssertTrue(content.contains("Base58Swift"), "Should contain Base58Swift")
+            XCTAssertTrue(content.contains("Apple Swift Crypto"), "Should contain Apple Swift Crypto")
+            XCTAssertTrue(content.contains("Firebase iOS SDK"), "Should contain Firebase iOS SDK")
+        }
     }
     
-    func testLicenseItemIntegrity() {
-        let licenses = LicenseLoader.shared.loadLicenses()
-        for item in licenses {
-            XCTAssertFalse(item.id.isEmpty, "Item id must not be empty")
-            XCTAssertFalse(item.name.isEmpty, "Item name must not be empty")
-            XCTAssertFalse(item.version.isEmpty, "Item version must not be empty")
-            XCTAssertFalse(item.license.isEmpty, "Item license must not be empty")
-        }
+    func testTermsOfServiceMarkdownExistsAndContainsTrademarkClauses() {
+        let candidates: [URL?] = [
+            Bundle.main.url(forResource: "terms_of_service", withExtension: "md"),
+            Bundle.main.url(forResource: "terms_of_service", withExtension: "md", subdirectory: "legal"),
+            Bundle.main.url(forResource: "terms_of_service", withExtension: "md", subdirectory: "Resources/legal")
+        ]
+        let url = candidates.compactMap({ $0 }).first
+        XCTAssertNotNil(url, "terms_of_service.md should exist in bundle")
         
-        // Check for specific core packages
-        let ids = Set(licenses.map { $0.id.lowercased() })
-        XCTAssertTrue(ids.contains("swift-protobuf"), "Should contain swift-protobuf")
-        XCTAssertTrue(ids.contains("base58swift"), "Should contain base58swift")
-        XCTAssertTrue(ids.contains("swift-crypto"), "Should contain swift-crypto")
+        if let url = url, let content = try? String(contentsOf: url, encoding: .utf8) {
+            XCTAssertFalse(content.isEmpty, "terms_of_service.md should not be empty")
+            XCTAssertTrue(content.contains("商標"), "Should contain trademark clauses")
+            XCTAssertTrue(content.contains("悪用") || content.contains("不正"), "Should contain prohibition against misuse")
+            XCTAssertTrue(content.contains("輸出"), "Should contain export control clauses")
+        }
+    }
+    
+    func testPrivacyPolicyMarkdownExistsAndContainsRetentionClause() {
+        let candidates: [URL?] = [
+            Bundle.main.url(forResource: "privacy_policy", withExtension: "md"),
+            Bundle.main.url(forResource: "privacy_policy", withExtension: "md", subdirectory: "legal"),
+            Bundle.main.url(forResource: "privacy_policy", withExtension: "md", subdirectory: "Resources/legal")
+        ]
+        let url = candidates.compactMap({ $0 }).first
+        XCTAssertNotNil(url, "privacy_policy.md should exist in bundle")
+        
+        if let url = url, let content = try? String(contentsOf: url, encoding: .utf8) {
+            XCTAssertFalse(content.isEmpty, "privacy_policy.md should not be empty")
+            XCTAssertTrue(content.contains("かいぎ"), "Should contain group chat 'かいぎ' retention mentions")
+            XCTAssertTrue(content.contains("退会したユーザー"), "Should contain '退会したユーザー' handling")
+            XCTAssertTrue(content.contains("アカウントを削除") || content.contains("アカウント削除"), "Should contain account deletion")
+        }
     }
     
     func testL10nAppInfoKeys() {
         XCTAssertFalse(L10n.AppInfo.title.isEmpty)
         XCTAssertFalse(L10n.AppInfo.version.isEmpty)
         XCTAssertFalse(L10n.AppInfo.encryption.isEmpty)
-        XCTAssertFalse(L10n.AppInfo.encryptionDetail.isEmpty)
+        XCTAssertFalse(L10n.AppInfo.encryptionDetail1.isEmpty)
+        XCTAssertFalse(L10n.AppInfo.encryptionDetail2.isEmpty)
         XCTAssertFalse(L10n.AppInfo.encryptionDesc.isEmpty)
         XCTAssertFalse(L10n.AppInfo.licenses.isEmpty)
-        XCTAssertFalse(L10n.AppInfo.licenseListTitle.isEmpty)
-        XCTAssertFalse(L10n.AppInfo.licenseSearchPlaceholder.isEmpty)
-        XCTAssertFalse(L10n.AppInfo.licenseRepository.isEmpty)
-        XCTAssertFalse(L10n.AppInfo.licenseViewSource.isEmpty)
-        XCTAssertFalse(L10n.AppInfo.licenseEmpty.isEmpty)
     }
 }

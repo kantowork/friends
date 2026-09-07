@@ -16,7 +16,13 @@ public class ChatService: ObservableObject {
     public static let shared = ChatService()
     
     @Published var authStatus: AuthStatus = .unknown
-    @Published var currentTenant: FriendsTenant? = PresetTenantConfig.defaultTenant
+    @Published var currentTenant: FriendsTenant? = PresetTenantConfig.defaultTenant {
+        didSet {
+            if let tenantId = currentTenant?.tenantID {
+                BlockManager.shared.configure(tenantId: tenantId)
+            }
+        }
+    }
     @Published var currentUser: FriendsPublicUserProfile? = nil
     @Published var friends: [FriendsPublicUserProfile] = []
     @Published var chats: [FriendsChatUIModel] = []
@@ -41,6 +47,9 @@ public class ChatService: ObservableObject {
 
     
     private init() {
+        if let defaultTid = currentTenant?.tenantID {
+            BlockManager.shared.configure(tenantId: defaultTid)
+        }
         checkAuthState()
     }
     
@@ -223,18 +232,74 @@ public class ChatService: ObservableObject {
             }
             
             let name = displayName.isEmpty ? "ゲストユーザー" : displayName
-            if let tenant = self.currentTenant {
-                self.createAndSaveUserProfile(uid: user.uid, tenantId: tenant.tenantID, displayName: name, accountType: .anonymous, completion: completion)
-            } else {
-                self.fetchDefaultTenant { result in
-                    switch result {
-                    case .success(let tenant):
-                        DispatchQueue.main.async { self.currentTenant = tenant }
-                        self.createAndSaveUserProfile(uid: user.uid, tenantId: tenant.tenantID, displayName: name, accountType: .anonymous, completion: completion)
-                    case .failure(let err):
-                        completion(.failure(err))
+            self.handleAuthenticatedUser(user: user, preferredDisplayName: name, accountType: .anonymous, completion: completion)
+        }
+    }
+    
+    // MARK: - Sign In with Apple
+    
+    @MainActor
+    public func signInWithApple(completion: @escaping (Result<Void, Error>) -> Void) {
+        AppleAuthCoordinator.shared.startSignIn { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .success(let (credential, appleDisplayName)):
+                Auth.auth().signIn(with: credential) { [weak self] authResult, error in
+                    guard let self = self else { return }
+                    if let error = error {
+                        completion(.failure(error))
+                        return
                     }
+                    guard let user = authResult?.user else {
+                        completion(.failure(NSError(domain: "AuthError", code: 500, userInfo: [NSLocalizedDescriptionKey: "User context not found after Apple sign in."])))
+                        return
+                    }
+                    self.handleAuthenticatedUser(
+                        user: user,
+                        preferredDisplayName: appleDisplayName,
+                        accountType: .persistent,
+                        completion: completion
+                    )
                 }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+    
+    // MARK: - Sign In with Google
+    
+    public func signInWithGoogle(completion: @escaping (Result<Void, Error>) -> Void) {
+        let provider = OAuthProvider(providerID: "google.com")
+        provider.scopes = ["profile", "email"]
+        
+        provider.getCredentialWith(nil) { [weak self] credential, error in
+            guard let self = self else { return }
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+            guard let credential = credential else {
+                completion(.failure(NSError(domain: "AuthError", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to retrieve Google credentials."])))
+                return
+            }
+            
+            Auth.auth().signIn(with: credential) { [weak self] authResult, error in
+                guard let self = self else { return }
+                if let error = error {
+                    completion(.failure(error))
+                    return
+                }
+                guard let user = authResult?.user else {
+                    completion(.failure(NSError(domain: "AuthError", code: 500, userInfo: [NSLocalizedDescriptionKey: "User context not found after Google sign in."])))
+                    return
+                }
+                self.handleAuthenticatedUser(
+                    user: user,
+                    preferredDisplayName: user.displayName,
+                    accountType: .persistent,
+                    completion: completion
+                )
             }
         }
     }
@@ -250,9 +315,12 @@ public class ChatService: ObservableObject {
             }
             guard let user = authResult?.user else { return }
             
-            let tenantId = self.currentTenant?.tenantID ?? "t_default"
-            self.loadUserProfile(uid: user.uid, tenantId: tenantId)
-            completion(.success(()))
+            self.handleAuthenticatedUser(
+                user: user,
+                preferredDisplayName: nil,
+                accountType: .persistent,
+                completion: completion
+            )
         }
     }
     
@@ -265,17 +333,79 @@ public class ChatService: ObservableObject {
             }
             guard let user = authResult?.user else { return }
             
-            if let tenant = self.currentTenant {
-                self.createAndSaveUserProfile(uid: user.uid, tenantId: tenant.tenantID, displayName: displayName, completion: completion)
-            } else {
-                self.fetchDefaultTenant { result in
-                    switch result {
-                    case .success(let tenant):
-                        DispatchQueue.main.async { self.currentTenant = tenant }
-                        self.createAndSaveUserProfile(uid: user.uid, tenantId: tenant.tenantID, displayName: displayName, completion: completion)
-                    case .failure(let err):
-                        completion(.failure(err))
+            self.ensureTenantLoaded { tenant in
+                self.createAndSaveUserProfile(
+                    uid: user.uid,
+                    tenantId: tenant.tenantID,
+                    displayName: displayName,
+                    accountType: .persistent,
+                    completion: completion
+                )
+            }
+        }
+    }
+    
+    // MARK: - Authenticated User Profile Handler
+    
+    private func handleAuthenticatedUser(
+        user: User,
+        preferredDisplayName: String?,
+        accountType: FriendsAccountType,
+        completion: @escaping (Result<Void, Error>) -> Void
+    ) {
+        ensureTenantLoaded { [weak self] tenant in
+            guard let self = self else { return }
+            let tenantId = tenant.tenantID
+            
+            UserRepository.shared.getUserProfileByUid(tenantId: tenantId, uid: user.uid) { [weak self] result in
+                guard let self = self else { return }
+                switch result {
+                case .success:
+                    if let preferred = preferredDisplayName, !preferred.isEmpty {
+                        if CryptoKeyManager.shared.getMyDisplayName(uid: user.uid) == nil {
+                            CryptoKeyManager.shared.saveMyDisplayName(uid: user.uid, name: preferred)
+                        }
                     }
+                    self.loadUserProfile(uid: user.uid, tenantId: tenantId)
+                    completion(.success(()))
+                    
+                case .failure:
+                    let finalDisplayName: String
+                    if let preferred = preferredDisplayName, !preferred.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        finalDisplayName = preferred.trimmingCharacters(in: .whitespacesAndNewlines)
+                    } else if let authName = user.displayName, !authName.isEmpty {
+                        finalDisplayName = authName
+                    } else if let email = user.email, !email.isEmpty {
+                        finalDisplayName = email.components(separatedBy: "@").first ?? "ユーザー"
+                    } else {
+                        finalDisplayName = (accountType == .anonymous) ? "ゲストユーザー" : "Friendsユーザー"
+                    }
+                    
+                    self.createAndSaveUserProfile(
+                        uid: user.uid,
+                        tenantId: tenantId,
+                        displayName: finalDisplayName,
+                        accountType: accountType,
+                        completion: completion
+                    )
+                }
+            }
+        }
+    }
+    
+    private func ensureTenantLoaded(action: @escaping (FriendsTenant) -> Void) {
+        if let currentTenant = self.currentTenant {
+            action(currentTenant)
+        } else {
+            self.fetchDefaultTenant { result in
+                switch result {
+                case .success(let tenant):
+                    DispatchQueue.main.async { self.currentTenant = tenant }
+                    action(tenant)
+                case .failure:
+                    let defaultTenant = PresetTenantConfig.defaultTenant
+                    DispatchQueue.main.async { self.currentTenant = defaultTenant }
+                    action(defaultTenant)
                 }
             }
         }
@@ -699,6 +829,96 @@ public class ChatService: ObservableObject {
     /// 端末データおよび Keychain の完全リセット（ログイン画面からも利用可能）
     public func resetDeviceAndKeychain() {
         signOut(clearKeys: true)
+    }
+    
+    // MARK: - Account Deletion (Apple Guideline 5.1.1(v))
+    
+    /// アカウントの完全消去（Firestore ドキュメント、端末内 Keychain 鍵、Firebase Auth ユーザーの消去）
+    public func deleteAccount(completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let user = currentUser, let firebaseUser = Auth.auth().currentUser else {
+            completion(.failure(NSError(domain: "ChatService", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated."])))
+            return
+        }
+        
+        let uid = firebaseUser.uid
+        let userId = user.userID
+        let username = user.effectiveUsername.lowercased()
+        let tenantId = currentTenant?.tenantID ?? user.tenantID
+        
+        AppLogger.info("Starting complete account deletion for user: \(userId) (uid: \(uid))", category: .auth)
+        
+        let dispatchGroup = DispatchGroup()
+        
+        // 1. テナント内ユーザープロファイル削除: /tenants/{tenantId}/users/{userId}
+        if !tenantId.isEmpty && !userId.isEmpty {
+            dispatchGroup.enter()
+            db.collection("tenants").document(tenantId).collection("users").document(userId).delete { err in
+                if let err = err {
+                    AppLogger.error("Failed to delete tenant user doc: \(err)", category: .auth)
+                }
+                dispatchGroup.leave()
+            }
+        }
+        
+        // 2. ユーザーネーム予約インデックス削除: /tenants/{tenantId}/usernames/{username}
+        if !tenantId.isEmpty && !username.isEmpty {
+            dispatchGroup.enter()
+            db.collection("tenants").document(tenantId).collection("usernames").document(username).delete { err in
+                if let err = err {
+                    AppLogger.warning("Failed to delete username doc (non-blocking): \(err)", category: .auth)
+                }
+                dispatchGroup.leave()
+            }
+        }
+        
+        // 3. 秘密鍵バックアップデータ削除: /users/{uid}/private/data
+        dispatchGroup.enter()
+        db.collection("users").document(uid).collection("private").document("data").delete { err in
+            if let err = err {
+                AppLogger.warning("Failed to delete private data doc: \(err)", category: .auth)
+            }
+            dispatchGroup.leave()
+        }
+        
+        // 4. 復旧ボルト削除: recoveryHash があれば
+        if let phrase = CryptoKeyManager.shared.getMnemonicPhrase(uid: uid),
+           let keys = try? MnemonicManager.shared.deriveKeys(from: phrase) {
+            dispatchGroup.enter()
+            db.collection("recovery_vault").document(keys.recoveryHash).delete { err in
+                if let err = err {
+                    AppLogger.warning("Failed to delete recovery vault doc: \(err)", category: .auth)
+                }
+                dispatchGroup.leave()
+            }
+        }
+        
+        // 5. 全域ユーザー情報削除: /users/{uid}
+        dispatchGroup.enter()
+        db.collection("users").document(uid).delete { err in
+            if let err = err {
+                AppLogger.error("Failed to delete users/{uid} doc: \(err)", category: .auth)
+            }
+            dispatchGroup.leave()
+        }
+        
+        dispatchGroup.notify(queue: .main) {
+            // 6. 端末内 Keychain の完全消去 & BlockManager クリア
+            CryptoKeyManager.shared.clearAllKeys()
+            BlockManager.shared.clear()
+            
+            // 7. Firebase Auth ユーザーの削除
+            firebaseUser.delete { authErr in
+                if let authErr = authErr {
+                    AppLogger.error("Failed to delete Firebase Auth user: \(authErr)", category: .auth)
+                    self.signOut(clearKeys: true)
+                    completion(.failure(authErr))
+                } else {
+                    AppLogger.info("Successfully deleted Firebase Auth user and account data.", category: .auth)
+                    self.signOut(clearKeys: true)
+                    completion(.success(()))
+                }
+            }
+        }
     }
     
     // MARK: - Friends Management & Listeners
@@ -1409,6 +1629,219 @@ public class ChatService: ObservableObject {
                 }
             }
         }
+    }
+    
+    // MARK: - Send Image Attachments to R2 & Firestore (E2EE Envelope Encryption)
+    
+    public func sendImageMessage(
+        chatId: String,
+        images: [UIImage],
+        text: String = "",
+        completion: ((Result<Void, Error>) -> Void)? = nil
+    ) {
+        guard !images.isEmpty else {
+            completion?(.failure(NSError(domain: "ChatError", code: 400, userInfo: [NSLocalizedDescriptionKey: "Images array is empty"])))
+            return
+        }
+        guard let tenant = currentTenant else {
+            completion?(.failure(NSError(domain: "ChatError", code: 401, userInfo: [NSLocalizedDescriptionKey: "Current tenant is nil"])))
+            return
+        }
+        guard let user = currentUser else {
+            completion?(.failure(NSError(domain: "ChatError", code: 401, userInfo: [NSLocalizedDescriptionKey: "Current user is nil"])))
+            return
+        }
+        
+        let tenantId = tenant.tenantID
+        let messageId = "m_\(ULID().ulidString)"
+        
+        // メンバーリストの導出
+        var members: [String] = []
+        if chatId.hasPrefix("dm_") {
+            let rawStr = String(chatId.dropFirst(3))
+            let parts = rawStr.components(separatedBy: "_u_")
+            if parts.count == 2 {
+                let userA = parts[0].hasPrefix("u_") ? parts[0] : "u_" + parts[0]
+                let userB = "u_" + parts[1]
+                members = [userA, userB].sorted()
+            }
+        } else if let existingChat = chats.first(where: { $0.chatID == chatId }) {
+            members = existingChat.chat.members
+        }
+        
+        // バックグラウンドで画像リサイズ・暗号化・R2アップロードを実行
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            
+            let uploadGroup = DispatchGroup()
+            var attachments: [MessageAttachment] = []
+            var uploadError: Error?
+            let lock = NSLock()
+            
+            for img in images {
+                uploadGroup.enter()
+                
+                // リサイズ & JPEG圧縮
+                let resized = self.resizeImageForUpload(image: img, maxDimension: 1920)
+                guard let jpegData = resized.jpegData(compressionQuality: 0.8) else {
+                    lock.lock()
+                    uploadError = NSError(domain: "ChatError", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to compress image data"])
+                    lock.unlock()
+                    uploadGroup.leave()
+                    continue
+                }
+                
+                let attId = "att_\(ULID().ulidString)"
+                let storagePath = "tenants/\(tenantId)/chats/\(chatId)/attachments/\(attId).enc"
+                let fileKey = CryptoKeyManager.shared.generateFileKey()
+                let fileKeyBase64 = fileKey.withUnsafeBytes { Data($0) }.base64EncodedString()
+                
+                do {
+                    let encResult = try CryptoKeyManager.shared.encryptFile(fileData: jpegData, key: fileKey)
+                    AttachmentRepository.shared.uploadAttachment(encryptedData: encResult.encryptedData, storagePath: storagePath) { r2Result in
+                        defer { uploadGroup.leave() }
+                        switch r2Result {
+                        case .failure(let err):
+                            lock.lock()
+                            if uploadError == nil { uploadError = err }
+                            lock.unlock()
+                        case .success:
+                            let attachment = MessageAttachment(
+                                attachmentId: attId,
+                                storagePath: storagePath,
+                                fileKey: fileKeyBase64,
+                                nonce: encResult.nonceBase64,
+                                mimeType: "image/jpeg",
+                                width: Int(resized.size.width),
+                                height: Int(resized.size.height),
+                                size: jpegData.count
+                            )
+                            lock.lock()
+                            attachments.append(attachment)
+                            lock.unlock()
+                        }
+                    }
+                } catch {
+                    lock.lock()
+                    if uploadError == nil { uploadError = error }
+                    lock.unlock()
+                    uploadGroup.leave()
+                }
+            }
+            
+            uploadGroup.wait()
+            
+            if let error = uploadError, attachments.isEmpty {
+                DispatchQueue.main.async {
+                    completion?(.failure(error))
+                }
+                return
+            }
+            
+            // ペイロード構築
+            let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            let payloadObj = MessageContentPayload(text: trimmedText, attachments: attachments)
+            guard let payloadData = try? JSONEncoder().encode(payloadObj),
+                  let payloadJsonString = String(data: payloadData, encoding: .utf8) else {
+                DispatchQueue.main.async {
+                    completion?(.failure(NSError(domain: "ChatError", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to encode message payload JSON"])))
+                }
+                return
+            }
+            
+            let getKeyHandler: (@escaping (SymmetricKey?) -> Void) -> Void = { handler in
+                if chatId.hasPrefix("gm_") {
+                    self.getGroupSessionKey(chatId: chatId, tenantId: tenantId, completion: handler)
+                } else {
+                    self.getDirectSessionKey(chatId: chatId, tenantId: tenantId, completion: handler)
+                }
+            }
+            
+            getKeyHandler { sessionKey in
+                var ciphertext = ""
+                var nonce = ""
+                
+                if let key = sessionKey {
+                    if let enc = try? CryptoKeyManager.shared.encryptDirectMessage(plainText: payloadJsonString, sessionKey: key) {
+                        ciphertext = enc.ciphertext
+                        nonce = enc.nonce
+                    }
+                }
+                
+                if ciphertext.isEmpty {
+                    if let enc = try? CryptoKeyManager.shared.encryptWithTenantKey(plainText: payloadJsonString, tenantId: tenantId) {
+                        ciphertext = enc.encryptedData
+                        nonce = enc.nonce
+                    }
+                }
+                
+                let pbMsg = FriendsMessage(
+                    messageID: messageId,
+                    tenantID: tenantId,
+                    chatID: chatId,
+                    senderID: user.userID,
+                    keyVersion: "v_1",
+                    ciphertext: ciphertext,
+                    nonce: nonce,
+                    messageType: .image,
+                    createdAt: Date()
+                )
+                
+                let decryptedMsg = DecryptedMessage(
+                    message: pbMsg,
+                    senderName: user.displayName,
+                    plainText: trimmedText,
+                    decryptedText: payloadJsonString,
+                    myReaction: nil,
+                    attachments: attachments
+                )
+                
+                MessageRepository.shared.createMessage(tenantId: tenantId, chatId: chatId, message: pbMsg, members: members) { [weak self] result in
+                    guard let self = self else { return }
+                    switch result {
+                    case .failure(let err):
+                        DispatchQueue.main.async {
+                            completion?(.failure(err))
+                        }
+                    case .success:
+                        DispatchQueue.main.async {
+                            var list = self.messages[chatId] ?? []
+                            if !list.contains(where: { $0.id == decryptedMsg.id }) {
+                                list.append(decryptedMsg)
+                                self.messages[chatId] = list
+                            }
+                            let lastText = trimmedText.isEmpty ? "[\(L10n.Chat.imageMessage)]" : "[\(L10n.Chat.imageMessage)] \(trimmedText)"
+                            if let chatIdx = self.chats.firstIndex(where: { $0.chatID == chatId }) {
+                                let oldChat = self.chats[chatIdx]
+                                self.chats[chatIdx] = FriendsChatUIModel(
+                                    chat: oldChat.chat,
+                                    title: oldChat.title,
+                                    lastMessage: lastText,
+                                    lastMessageAt: pbMsg.createdDate,
+                                    unreadCount: oldChat.unreadCount
+                                )
+                            }
+                            completion?(.success(()))
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    private func resizeImageForUpload(image: UIImage, maxDimension: CGFloat) -> UIImage {
+        let size = image.size
+        let maxSide = max(size.width, size.height)
+        guard maxSide > maxDimension else { return image }
+        
+        let ratio = maxDimension / maxSide
+        let newSize = CGSize(width: size.width * ratio, height: size.height * ratio)
+        
+        UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
+        image.draw(in: CGRect(origin: .zero, size: newSize))
+        let resized = UIGraphicsGetImageFromCurrentImageContext() ?? image
+        UIGraphicsEndImageContext()
+        return resized
     }
     
     // MARK: - Profile Update (E02: Display Name Change & Hybrid Sync)
@@ -2179,7 +2612,7 @@ public class ChatService: ObservableObject {
         }
     }
     
-    // MARK: - Message Reactions Management (7種 & 低通信量集計)
+    // MARK: - Message Reactions Management (8種・クイックアクション7種 & 低通信量集計)
     
     /// リアクションのトグル（付加 / 切り替え / 解除）
     func toggleReaction(chatId: String, messageId: String, reactionType: FriendsReactionType) {

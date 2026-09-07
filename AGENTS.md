@@ -36,7 +36,7 @@
 - 詳細仕様: [doc/09-guidelines/09-01-id-naming-conventions.md](doc/09-guidelines/09-01-id-naming-conventions.md)
 
 ### 6. セキュリティ & 暗号鍵管理原則 (Security & Cryptography)
-- **鍵生成と保管**: 初回ログイン/ユーザー作成時に Curve25519 (X25519) 鍵ペアを生成。秘密鍵 ($SK_u$) は端末の **iOS Keychain** (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`) に厳重保管し、平文で外部送信してはならない。
+- **鍵生成と保管**: 初回ログイン/ユーザー作成時に Curve25519 (X25519) 鍵ペアを生成。秘密鍵 ($SK_u$) は端末の **iOS Keychain** (`kSecAttrAccessibleAfterFirstUnlock`, `kSecAttrSynchronizable = true` による E2EE iCloud キーチェーン同期) に厳重保管し、平文で外部送信してはならない。
 - **公開鍵の配置**: 公開鍵 ($PK_u$) のみ Base64 形式で Firestore (`/tenants/{tenantId}/users/{userId}` および `/users/{uid}`) に公開する。
 - 詳細仕様: [doc/07-detailed-usecases/07-02-user-registration-login.md](doc/07-detailed-usecases/07-02-user-registration-login.md), [doc/07-detailed-usecases/07-03-message-encryption.md](doc/07-detailed-usecases/07-03-message-encryption.md)
 
@@ -74,9 +74,12 @@
 | **通知・プッシュ** | [doc/07-detailed-usecases/07-07-push-notification.md](./doc/07-detailed-usecases/07-07-push-notification.md)<br>[doc/10-detailed-design/10-04-background-notification-setup.md](./doc/10-detailed-design/10-04-background-notification-setup.md) | アプリ内トースト通知、FCM/APNs バックグラウンドプッシュ通知導入準備仕様 |
 | **プロフィール更新** | [doc/07-detailed-usecases/07-09-user-profile-update.md](./doc/07-detailed-usecases/07-09-user-profile-update.md) | 表示名変更の暗号化保存プロトコル・低コストハイブリッド友達同期 |
 | **既読管理** | [doc/07-detailed-usecases/07-10-read-receipt-management.md](./doc/07-detailed-usecases/07-10-read-receipt-management.md) | 水位線カーソル方式によるE2EEチャット既読管理・リアルタイム同期仕様 |
-| **リアクション** | [doc/07-detailed-usecases/07-11-message-reactions.md](./doc/07-detailed-usecases/07-11-message-reactions.md) | メッセージリアクション（7種）、低通信量集計、長押し詳細表示仕様 |
+| **リアクション** | [doc/07-detailed-usecases/07-11-message-reactions.md](./doc/07-detailed-usecases/07-11-message-reactions.md) | メッセージリアクション（8種、クイックアクション7種）、低通信量集計、長押し詳細表示仕様 |
 | **グループチャット** | [doc/07-detailed-usecases/07-12-group-chat.md](./doc/07-detailed-usecases/07-12-group-chat.md) | グループチャット（かいぎ）一覧・作成・詳細・KeyBucket仕様 |
 | **グループ管理・削除** | [doc/07-detailed-usecases/07-13-group-role-and-deletion.md](./doc/07-detailed-usecases/07-13-group-role-and-deletion.md) | メンバー属性role、立候補型オーナー昇格、退室管理、グループ削除仕様 |
+| **アカウント削除・退会** | [doc/07-detailed-usecases/07-14-account-deletion.md](./doc/07-detailed-usecases/07-14-account-deletion.md) | アカウント削除・論理削除・暗号化データ消去仕様 |
+| **ブロック・通報** | [doc/07-detailed-usecases/07-15-block-and-report.md](./doc/07-detailed-usecases/07-15-block-and-report.md) | ユーザーブロック・解除・通報処理仕様 |
+| **写真・ファイル添付** | [doc/07-detailed-usecases/07-16-chat-file-attachment.md](./doc/07-detailed-usecases/07-16-chat-file-attachment.md) | 写真・ファイル添付（カメラ/写真選択）、E2EE封筒暗号化、Cloudflare R2連携・キャッシュ仕様 |
 | **画面設計** | [doc/08-screen-design.md](./doc/08-screen-design.md) | 画面一覧、UIレイアウト、画面遷移 |
 | **開発標準・規約** | [doc/09-guidelines/README.md](./doc/09-guidelines/README.md) | 命名規約・多言語化規約インデックス |
 | **命名規約** | [doc/09-guidelines/09-01-id-naming-conventions.md](./doc/09-guidelines/09-01-id-naming-conventions.md) | ID プレフィックスおよびキー命名ルール |
@@ -89,6 +92,7 @@
 | **R2ストレージ準備** | [doc/10-detailed-design/10-06-r2-storage-setup.md](./doc/10-detailed-design/10-06-r2-storage-setup.md) | Cloudflare R2 バケット作成・カスタムドメイン・CORS・APIトークン発行・事前準備手順書 |
 | **ロガー基盤** | [doc/10-detailed-design/10-07-logging-system.md](./doc/10-detailed-design/10-07-logging-system.md) | OSLog連携、動的ログレベル制御（DEBUG/INFO/WARN/ERROR）仕様 |
 | **Workers基盤準備** | [doc/10-detailed-design/10-08-cloudflare-workers-setup.md](./doc/10-detailed-design/10-08-cloudflare-workers-setup.md) | Cloudflare Workers サーバー基盤・サービスアカウント・事前準備・運用手順書 |
+| **認証基盤準備** | [doc/10-detailed-design/10-09-social-auth-setup.md](./doc/10-detailed-design/10-09-social-auth-setup.md) | Apple / Google / Eメール認証事前準備・Firebase / Apple Developer 運用手順書 |
 
 ---
 *This document is optimized for AI context injection.*

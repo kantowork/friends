@@ -275,6 +275,7 @@ extension FriendsReactionType: Identifiable {
         case .heart: return "❤️"
         case .ok: return "🆗"
         case .smile: return "😊"
+        case .laugh: return "🤣"
         case .sad: return "😢"
         case .surprised: return "😱"
         case .thinking: return "🤔"
@@ -288,6 +289,7 @@ extension FriendsReactionType: Identifiable {
         case .heart: return "heart"
         case .ok: return "ok"
         case .smile: return "smile"
+        case .laugh: return "laugh"
         case .sad: return "sad"
         case .surprised: return "surprised"
         case .thinking: return "thinking"
@@ -301,6 +303,7 @@ extension FriendsReactionType: Identifiable {
         case .heart: return L10n.Reaction.heart
         case .ok: return L10n.Reaction.ok
         case .smile: return L10n.Reaction.smile
+        case .laugh: return L10n.Reaction.laugh
         case .sad: return L10n.Reaction.sad
         case .surprised: return L10n.Reaction.surprised
         case .thinking: return L10n.Reaction.thinking
@@ -314,6 +317,7 @@ extension FriendsReactionType: Identifiable {
         case "heart": return .heart
         case "ok": return .ok
         case "smile": return .smile
+        case "laugh": return .laugh
         case "sad": return .sad
         case "surprised": return .surprised
         case "thinking": return .thinking
@@ -321,14 +325,14 @@ extension FriendsReactionType: Identifiable {
         }
     }
     
-    /// メッセージ長押し時に直下に表示するクイックアクションリアクション（6種）
+    /// メッセージ長押し時に直下に表示するクイックアクションリアクション（7種）
     /// ※「…」（その他の絵文字一覧展開）は今後の実装フェーズで提供予定
     public static var quickActionTypes: [FriendsReactionType] {
-        [.thumbsUp, .heart, .ok, .smile, .sad, .surprised]
+        [.thumbsUp, .heart, .ok, .smile, .laugh, .sad, .surprised]
     }
     
     public static var allActiveTypes: [FriendsReactionType] {
-        [.thumbsUp, .heart, .ok, .smile, .sad, .surprised, .thinking]
+        [.thumbsUp, .heart, .ok, .smile, .laugh, .sad, .surprised, .thinking]
     }
 }
 
@@ -369,6 +373,51 @@ extension FriendsMessageReaction: Identifiable {
     }
 }
 
+// MARK: - Message Attachments & Content Payload
+
+public struct MessageAttachment: Codable, Equatable, Identifiable {
+    public let attachmentId: String
+    public let storagePath: String
+    public let fileKey: String // Base64 encoded 256-bit symmetric key
+    public let nonce: String   // Base64 encoded 12-byte nonce
+    public let mimeType: String
+    public let width: Int
+    public let height: Int
+    public let size: Int
+    
+    public var id: String { attachmentId }
+    
+    public init(
+        attachmentId: String,
+        storagePath: String,
+        fileKey: String,
+        nonce: String,
+        mimeType: String = "image/jpeg",
+        width: Int = 0,
+        height: Int = 0,
+        size: Int = 0
+    ) {
+        self.attachmentId = attachmentId
+        self.storagePath = storagePath
+        self.fileKey = fileKey
+        self.nonce = nonce
+        self.mimeType = mimeType
+        self.width = width
+        self.height = height
+        self.size = size
+    }
+}
+
+public struct MessageContentPayload: Codable, Equatable {
+    public let text: String
+    public let attachments: [MessageAttachment]
+    
+    public init(text: String, attachments: [MessageAttachment] = []) {
+        self.text = text
+        self.attachments = attachments
+    }
+}
+
 // MARK: - Local Message Decryption Wrapper
 
 struct DecryptedMessage: Identifiable, Equatable {
@@ -378,6 +427,7 @@ struct DecryptedMessage: Identifiable, Equatable {
     let isDecrypted: Bool
     let reactions: [FriendsMessageReaction]
     let myReaction: FriendsReactionType?
+    let attachments: [MessageAttachment]
     
     var id: String { message.messageID }
     var chatID: String { message.chatID }
@@ -386,6 +436,7 @@ struct DecryptedMessage: Identifiable, Equatable {
     var isFromMe: Bool { false }
     var decryptedText: String { plainText }
     var reactionCounts: [String: Int32] { message.reactionCounts }
+    var hasAttachments: Bool { !attachments.isEmpty }
     
     init(
         message: FriendsMessage,
@@ -394,14 +445,25 @@ struct DecryptedMessage: Identifiable, Equatable {
         decryptedText: String? = nil,
         isDecrypted: Bool = true,
         reactions: [FriendsMessageReaction] = [],
-        myReaction: FriendsReactionType? = nil
+        myReaction: FriendsReactionType? = nil,
+        attachments: [MessageAttachment] = []
     ) {
         self.message = message
         self.senderName = senderName
-        self.plainText = decryptedText ?? plainText
         self.isDecrypted = isDecrypted
         self.reactions = reactions
         self.myReaction = myReaction
+        
+        let candidateText = decryptedText ?? plainText
+        // JSON ペイロード (MessageContentPayload) のパース試行
+        if let data = candidateText.data(using: .utf8),
+           let payload = try? JSONDecoder().decode(MessageContentPayload.self, from: data) {
+            self.plainText = payload.text
+            self.attachments = !attachments.isEmpty ? attachments : payload.attachments
+        } else {
+            self.plainText = candidateText
+            self.attachments = attachments
+        }
     }
 }
 

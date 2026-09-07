@@ -40,13 +40,18 @@ targets:
         product: Base58Swift
       - package: SwiftMnemonic
         product: SwiftMnemonic
+    entitlements:
+      path: Sources/Friends.entitlements
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: work.kanto.friends
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_CFBundleDisplayName: "Friends"
-        INFOPLIST_KEY_NSCameraUsageDescription: "テナントや友達の二次元コードをスキャンするためにカメラを使用します。"
+        INFOPLIST_KEY_NSCameraUsageDescription: "Camera is used to scan QR codes for tenants and friends, and capture photos to attach in chats."
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "Photo library is used to attach photos to chat messages."
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         SWIFT_VERSION: "5.0"
         OTHER_LDFLAGS: ["$(inherited)", "-ObjC"]
 

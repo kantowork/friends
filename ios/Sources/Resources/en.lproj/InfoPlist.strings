@@ -1,0 +1,3 @@
+/* InfoPlist.strings (English) */
+"CFBundleDisplayName" = "Friends";
+"NSCameraUsageDescription" = "Camera is used to scan QR codes for tenants and friends.";

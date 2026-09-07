@@ -232,6 +232,18 @@
   - 送信処理完了時（`createMessage` 成功時）にローカルの `messages[chatId]` に即座に平文キャッシュを追加し、リスナーの反映遅延に関わらず送信者端末で送信メッセージが即座に表示される（同一IDによる重複防止付き）。
 - **概要**: E2EE 暗号化本文と監査用メタデータを Firestore に追記。親チャット未作成時は親ドキュメントを `members` とともにアトミックに初期化・更新。
 
+#### FP-01: チャット添付ファイル暗号化アップロード (Cloudflare R2 連携)
+- **操作種別**: Write (Cloudflare R2)
+- **対象パス**: R2 Storage: `https://<R2_CUSTOM_DOMAIN>/tenants/{tenantId}/chats/{chatId}/attachments/{attachmentId}.enc`
+- **関数名**: `AttachmentRepository.uploadAttachment(encryptedData:storagePath:completion:)`
+- **概要**: 選択された写真（最大10枚）を端末内でリサイズ・JPEG圧縮し、生成した一意のランダム鍵 $K_{file}$（AES-256-GCM）で暗号化。暗号化バイナリを AWS SigV4 PUT で R2 バケットに直接アップロード。$K_{file}$ とメタデータはセッション鍵で暗号化してメッセージペイロード内に格納。
+
+#### FP-02: チャット添付ファイルダウンロード・復号 (2層キャッシュ連携)
+- **操作種別**: Read (2層キャッシュ優先 + Cloudflare R2 CDN GET)
+- **対象パス**: R2 Storage: `https://<R2_CUSTOM_DOMAIN>/tenants/{tenantId}/chats/{chatId}/attachments/{attachmentId}.enc`
+- **関数名**: `AttachmentRepository.fetchAttachmentImage(storagePath:fileKey:nonce:completion:)`
+- **概要**: メモリキャッシュおよびローカルディスクキャッシュを確認後、未存在時のみ R2 CDN から暗号化バイナリを高速 GET 取得。$K_{file}$ で復号し、メモリ/ディスクにキャッシュして `UIImage` を返却。
+
 ---
 
 ### 3.5.1 グループチャット (Group Chat) アクセスパターン
