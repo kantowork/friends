@@ -4,6 +4,10 @@
 
 - **モーダル画面**: 画面IDの末尾に `m` が付く画面（例: `A03m`, `E05m`）は、親画面の上に重ねて表示されるモーダルダイアログ/シート画面を示します。
 - **現段階（Phase 1）未実装機能**: 音声・ビデオ通話機能および位置共有機能は、Phase 1 では未実装（Phase 2 以降で追加検討）のため、本画面設計には含めていません。
+- **アクセシビリティ & Dynamic Type (OS文字サイズ連動) 原則**:
+  - すべての画面において、OSの設定（「画面表示と明るさ > 文字サイズを変更」および「アクセシビリティ > さらに大きな文字」）に応じた文字サイズの拡大・縮小（Dynamic Type）に対応する。
+  - 固定サイズ（`.system(size: XX)`）は原則禁止とし、SwiftUI セマンティックスタイル（`.largeTitle`, `.title`, `.title2`, `.title3`, `.headline`, `.subheadline`, `.body`, `.callout`, `.footnote`, `.caption`, `.caption2`）またはセマンティクス修飾子（`.font(.system(.body, design: .rounded))` 等）を使用する。
+  - ボタンやカードの高さは固定 `height` ではなく `minHeight` を指定し、極大文字サイズ時でもテキストの見切れや不自然な改行・はみ出しを防ぐ。
 
 ## 画面一覧
 
@@ -119,21 +123,49 @@ flowchart TD
 
 ## 主要画面 UI・レイアウト詳細設計
 
+### A01 スプラッシュ画面 (`SplashView`)
+
+- **コンテンツ構成**:
+  1. **背景**: アプリアイコン連動グラデーション（#00C7B1 -> #00A2E8 -> #0066CC）
+  2. **アプリアイコン**: 公式吹き出しシェイプ（`SpeechBubbleShape`）
+  3. **タイトル**: `Friends` (`L10n.Auth.title`、`.font(.system(.largeTitle, design: .rounded).weight(.bold))`、OS文字サイズ連動)
+  4. **プログレスインジケーター**: `ProgressView`（白ティント、ローディングアニメーション）
+
+---
+
 ### A02 ログイン画面 (`LoginView`)
 
 - **コンテンツ構成**:
   1. **アプリアイコン & ブランディング**:
-     - 画面上部に心地よい余白（約60pt）を設け、中央に縦並び配置（公式アプリアイコン `FriendsIcon` 76x76 円形クリップ・ドロップシャドウ、その下にタイトル `Friends` 30pt bold (`L10n.Auth.title`)）。
+     - 画面上部に心地よい余白（約60pt）を設け、中央に縦並び配置（公式アプリアイコン `FriendsIcon` 76x76 円形クリップ・ドロップシャドウ、その下にタイトル `Friends` (`L10n.Auth.title`、`.font(.system(.largeTitle, design: .rounded).weight(.heavy))`、OS文字サイズ連動)）。
   2. **テナント選択カード**:
-     - 選択中のテナント名・テナントコード、変更ボタン（`A03m` モーダル表示、上下パディング 12pt の設計）。ヘッダー直下に配置。
+     - 選択中のテナント名（`.subheadline.bold()`）・テナントコード（`.caption2`）、変更ボタン（`qrcode.viewfinder` アイコン + `.caption`、`A03m` モーダル表示、上下パディング 12pt の設計）。ヘッダー直下に配置。
   3. **認証操作エリア**:
-     - **匿名ログインボタン**: 最上部に配置 (`L10n.Auth.guestBtn`、高さ 50pt、タップで即時匿名認証・鍵初期化開始)。
-     - **復活の呪文ログインボタン**: 1行配置 (`L10n.Auth.recoveryBtn`、タップで `A04` 復元シート表示)。
-     - **端末データ・鍵の完全リセットボタン**: 1行配置 (`L10n.Auth.resetDeviceBtn`、タップで Keychain・ローカルデータ完全消去の確認アラート表示)。
+     - **匿名ログインボタン**: 最上部に配置 (`L10n.Auth.guestBtn`、`.font(.body.weight(.bold))`、`minHeight: 50pt`、タップで即時匿名認証・鍵初期化開始)。文字サイズ拡大時もボタンが自然に縦伸長。
+     - **復活の呪文ログインボタン**: 1行配置 (`L10n.Auth.recoveryBtn`、`.font(.caption.weight(.medium))`、タップで `A04` 復元シート表示)。
+     - **端末データ・鍵の完全リセットボタン**: 1行配置 (`L10n.Auth.resetDeviceBtn`、`.font(.caption2.weight(.medium))`、タップで Keychain・ローカルデータ完全消去の確認アラート表示)。
   4. **利用規約・プライバシーポリシー表示 (最下部)**:
-     - 同意案内文 (`L10n.Legal.termsAgreeNotice`)
-     - 利用規約リンク (`L10n.Legal.termsTitle`、タップで `TermsOfServiceView` モーダル表示)
-     - プライバシーポリシーリンク (`L10n.Legal.privacyTitle`、タップで `PrivacyPolicyView` モーダル表示)
+     - 同意案内文 (`L10n.Legal.termsAgreeNotice`、`.font(.caption2)`)
+     - 利用規約リンク (`L10n.Legal.termsTitle`、`.font(.caption2.weight(.medium))`、タップで `TermsOfServiceView` モーダル表示)
+     - プライバシーポリシーリンク (`L10n.Legal.privacyTitle`、`.font(.caption2.weight(.medium))`、タップで `PrivacyPolicyView` モーダル表示)
+  5. **復活の呪文復元モーダル (`RecoveryLoginSheetView`)**:
+     - 鍵アイコン、タイトル（`.title2`）、説明（`.caption`）、入力テキストエリア（等幅 `.body`）、復元ボタン（`minHeight: 50pt`）、ScrollView によるスクロール担保。
+
+---
+
+### A03m テナント選択画面 (`TenantSelectionView`)
+
+- **画面種別**: ハーフモーダル / フルモーダルシート
+- **コンテンツ構成**:
+  1. **入力方式切替**: セグメンテッドピッカー（「二次元コード」「URL」「直接入力」）
+  2. **タブコンテンツ**:
+     - 二次元コード: カメラプレビュー（実機）/ シミュレーター代替表示
+     - URL入力: URLテキストフィールド（等幅 `.subheadline`）、検証ボタン（`minHeight: 50pt`）
+     - 直接入力: JSONテキストエディタ（等幅 `.caption`）、検証ボタン（`minHeight: 50pt`）
+  3. **検証結果カード**:
+     - テナント名（`.headline`）、コード（`.subheadline`）、デフォルトバッジ（`.caption2`）、確定ボタン（`minHeight: 50pt`）
+  4. **スクロール対応**:
+     - 文字サイズ拡大時にも画面下部のはみ出しを防ぐため `ScrollView` 構造を適用。
 
 ---
 
@@ -143,13 +175,13 @@ flowchart TD
 - **ナビゲーションバー**:
   - タイトル: `ホーム`
   - 右上ツールバー:
-    - **歯車アイコン**: `gearshape.fill`（タップで `B02` 設定画面へ Push 遷移）。
+    - **歯車アイコン**: `gearshape.fill`（`.font(.body)`、タップで `B02` 設定画面へ Push 遷移）。
     - ※ テナント切り替えアイコン（プロフィール風アイコン＋他テナント未読バッジ）は機能として実装・保持し、将来の有効化導線として整理。
 - **コンテンツ構成**:
   1. **クイックアクション (画面最上部)**:
-     - `友達を追加` ボタン（タップで `C03` 友達追加シート表示。セカンダリボタンスタイル採用）
+     - `友達を追加` ボタン（タップで `C03` 友達追加シート表示。セカンダリボタンスタイル採用、`minHeight: 44pt`、テキスト `.font(.subheadline.bold())`）。
   2. **お知らせセクション**:
-     - お知らせ一覧 / 未読お知らせ（未読なし時はプレースホルダー表示）
+     - お知らせ一覧 / 未読お知らせ（未読なし時はプレースホルダー表示、ベルアイコン `.font(.system(.largeTitle))`、テキスト `.font(.subheadline)`）。
 
 ---
 
@@ -260,10 +292,16 @@ flowchart TD
 - **タブ名**: `ともだち` (アイコン: チャット吹き出し `bubble.left.and.bubble.right.fill`)
 - **ナビゲーションバー**:
   - タイトル: `ともだち`
-  - 右上: `友達を追加` ボタン（タップで `C03` 友達追加画面へ遷移）
+  - 右上: `友達を追加` アイコンボタン（`person.badge.plus`、`.font(.body.weight(.medium))`、タップで `C03` 友達追加画面へ遷移）
 - **リスト構成・操作**:
   - チャット・友達一覧（最新メッセージ順）
+  - **空状態**: プレースホルダーアイコン（`person.2.slash`、`.font(.system(.largeTitle))`）、案内テキスト（`.font(.subheadline)`）
+  - **チャットセル (`ChatRowView`)**:
+    - 表示名（`.font(.headline)`）、最新メッセージ（`.font(.subheadline)`）、やり取りなし案内（`L10n.Chat.noMessages`、`.font(.caption)`）
+    - タイムスタンプ・未読バッジ（`.font(.caption2)`、バッジパディング自動スケーリング）
+    - Dynamic Type 拡大時もタイトル・本文に `.minimumScaleFactor(0.85)` を適用して文字の可読性を確保
   - **友達のカスタム表示名変更**: セルを長押し（コンテキストメニュー）またはスワイプした際に「表示名の変更」（`pencil`）を表示。タップでダイアログが表示され、自身の秘密鍵（$MK_u$）で暗号化される自分だけのカスタム呼び名を設定可能（ダイアログ案内:「相手には見えません。あなた専用に表示名を設定します。」）。
+
 ---
 
 ### C02 チャット詳細画面 (`ChatDetailView`)
@@ -318,14 +356,14 @@ flowchart TD
 - **タブ名**: `かいぎ` (アイコン: 3人グループ `person.3.fill`)
 - **ナビゲーションバー**:
   - タイトル: `かいぎ` (`L10n.Group.listTitle`)
-  - 右上: `+` アイコンボタン（タップで `D03` かいぎ作成画面をシート表示）
+  - 右上: `+` アイコンボタン（`plus`、`.font(.body.weight(.bold))`、タップで `D03` かいぎ作成画面をシート表示）
 - **コンテンツ構成**:
   1. **参加中グループ一覧 (`List` / `InsetGrouped`)**:
-     - 各行: グループアバター（カスタム画像またはグラデーション背景 + `person.3.fill`）、グループ名 (`displayTitle`)、参加人数バッジ (`(N)`）、最新メッセージ本文プレビュー、最終メッセージ時刻、未読バッジ
+     - 各行 (`GroupChatRowView`): グループアバター（カスタム画像またはグラデーション背景 + `person.3.fill`）、グループ名 (`displayTitle`、`.font(.headline)`、`.minimumScaleFactor(0.85)`)、参加人数バッジ (`(N)`、`.font(.caption)`)、最新メッセージ本文プレビュー（`.font(.subheadline)`、`.minimumScaleFactor(0.85)`）、最終メッセージ時刻（`.font(.caption2)`）、未読バッジ（`.font(.caption2)`）
      - 行タップで該当の `C02` チャット詳細画面へ遷移
   2. **引っ張って更新 (`.refreshable` / Pull-to-Refresh)**:
      - 「ともだち」一覧（C01）と同様に、リストを下に引っ張ることで最新のグループ一覧、最新メッセージ、未読件数、および参加メンバー全プロファイルをバックグラウンドで強制同期。
-  3. **空状態表示**: 参加中のかいぎが存在しない場合、ガイダンスアイコンおよび案内文を表示。
+  3. **空状態表示**: 参加中のかいぎが存在しない場合、ガイダンスアイコン（`person.3.sequence.fill`、`.font(.system(.largeTitle))`）および案内文（`.font(.subheadline)`）を表示。
 
 ---
 
