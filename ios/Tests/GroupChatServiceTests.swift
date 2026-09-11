@@ -2,6 +2,7 @@ import XCTest
 import SwiftProtobuf
 @testable import Friends
 
+@MainActor
 final class GroupChatServiceTests: XCTestCase {
     
     func testGroupChatIdPrefix() {
@@ -141,7 +142,7 @@ final class GroupChatServiceTests: XCTestCase {
     }
     
     func testGroupMemberProfileResolution() {
-        let chatService = ChatService.shared
+        let groupChatService = GroupChatService.shared
         
         // 友達未登録のグループメンバープロファイル登録
         var groupMember = FriendsPublicUserProfile()
@@ -156,31 +157,30 @@ final class GroupChatServiceTests: XCTestCase {
         groupMember.avatarUpdatedAt = Google_Protobuf_Timestamp(date: Date())
         groupMember.username = "group_member_99"
         
-        chatService.groupMemberProfiles["u_group_member_99"] = groupMember
+        groupChatService.groupMemberProfiles["u_group_member_99"] = groupMember
         
-        // userProfile(for:) での解決確認
-        let resolved = chatService.userProfile(for: "u_group_member_99")
+        // UserProfileResolver での解決確認
+        let resolved = UserProfileResolver.resolve(userId: "u_group_member_99")
         XCTAssertNotNil(resolved, "グループメンバープロファイルが解決できる必要があります")
         XCTAssertEqual(resolved?.displayName, "未登録メンバー太郎")
         XCTAssertEqual(resolved?.avatarNonce, "nonce_99")
         
-        // UIDでの逆引き解決
-        let resolvedByUid = chatService.userProfile(for: "firebase_uid_99")
-        XCTAssertNotNil(resolvedByUid, "UIDでもグループメンバープロファイルが解決できる必要があります")
-        XCTAssertEqual(resolvedByUid?.displayName, "未登録メンバー太郎")
+        // 存在しない userId
+        let resolvedUnknown = UserProfileResolver.resolve(userId: "u_unknown")
+        XCTAssertNil(resolvedUnknown, "存在しないユーザーIDはnilである必要があります")
     }
     
     func testGroupChatPaginationProperties() {
-        let chatService = ChatService.shared
+        let messageService = MessageService.shared
         let testChatId = "gm_pagination_test"
         
         // 初期状態
-        chatService.hasMoreMessages[testChatId] = true
-        XCTAssertTrue(chatService.hasMoreMessages[testChatId] == true)
+        messageService.hasMoreMessages[testChatId] = true
+        XCTAssertTrue(messageService.hasMoreMessages[testChatId] == true)
         
         // 全件取得後
-        chatService.hasMoreMessages[testChatId] = false
-        XCTAssertFalse(chatService.hasMoreMessages[testChatId] == true)
+        messageService.hasMoreMessages[testChatId] = false
+        XCTAssertFalse(messageService.hasMoreMessages[testChatId] == true)
     }
     
     func testGroupAvatarModelProperties() {

@@ -183,7 +183,7 @@ struct FriendsChatUIModel: Identifiable, Equatable, Hashable {
     
     var displayTitle: String {
         if !title.isEmpty { return title }
-        return chatType == .group ? "かいぎ" : "1:1トーク"
+        return chatType == .group ? L10n.Group.defaultTitle : L10n.Chat.dmDefaultTitle
     }
     
     var lastMessageDate: Date { lastMessageAt }
@@ -437,6 +437,16 @@ struct DecryptedMessage: Identifiable, Equatable {
     var decryptedText: String { plainText }
     var reactionCounts: [String: Int32] { message.reactionCounts }
     var hasAttachments: Bool { !attachments.isEmpty }
+    
+    /// 一覧やトースト通知で表示するためのサマリーテキスト（テキストがあればテキスト、空で写真添付があれば「写真を送信しました」）
+    var summaryText: String {
+        if !plainText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return plainText
+        } else if hasAttachments {
+            return L10n.Chat.imageMessageSent
+        }
+        return ""
+    }
     
     init(
         message: FriendsMessage,

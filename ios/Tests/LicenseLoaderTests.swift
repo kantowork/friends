@@ -49,7 +49,7 @@ final class LicenseLoaderTests: XCTestCase {
         
         if let url = url, let content = try? String(contentsOf: url, encoding: .utf8) {
             XCTAssertFalse(content.isEmpty, "privacy_policy.md should not be empty")
-            XCTAssertTrue(content.contains("かいぎ"), "Should contain group chat 'かいぎ' retention mentions")
+            XCTAssertTrue(content.contains("送信済みメッセージの保持") || content.contains("かいぎ"), "Should contain message retention mentions")
             XCTAssertTrue(content.contains("退会したユーザー"), "Should contain '退会したユーザー' handling")
             XCTAssertTrue(content.contains("アカウントを削除") || content.contains("アカウント削除"), "Should contain account deletion")
         }

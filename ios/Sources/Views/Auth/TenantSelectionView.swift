@@ -43,7 +43,7 @@ final class TenantSelectionViewModel: ObservableObject {
     @Published var verificationState: VerificationState = .idle
     @Published var isConfirmed = false
 
-    private let chatService = ChatService.shared
+    private let authService = AuthService.shared
 
     // MARK: - Parse & Verify
 
@@ -117,18 +117,21 @@ final class TenantSelectionViewModel: ObservableObject {
     func confirmTenant(dismiss: DismissAction) {
         guard case .success(let tenant) = verificationState else { return }
         isConfirmed = true
-        TenantManager.shared.addOrUpdateTenant(tenant: tenant)
-        if chatService.authStatus == .authenticated {
-            chatService.switchToTenant(tenantId: tenant.tenantID) { _ in }
+        TenantManager.shared.addOrUpdateTenant(tenant: tenant, workerApiUrl: parsedWorkerApiUrl)
+        if authService.authStatus == .authenticated {
+            authService.switchToTenant(tenantId: tenant.tenantID) { _ in }
         }
         dismiss()
     }
 
     func reset() {
         verificationState = .idle
+        parsedWorkerApiUrl = nil
     }
 
     // MARK: - Private
+
+    private var parsedWorkerApiUrl: String? = nil
 
     private func extractTenantId(from input: String) -> String? {
         // 1. FRIENDS_TENANT: base64
@@ -154,11 +157,11 @@ final class TenantSelectionViewModel: ObservableObject {
 
     private func parseAndSaveTenantPayload(_ json: [String: Any]) {
         guard let tid = json["tenantId"] as? String else { return }
-        if let masterKey = json["tenantMasterKey"] as? String ?? json["masterKey"] as? String {
+        if let masterKey = json["tenantMasterKey"] as? String {
             CryptoKeyManager.shared.saveTenantMasterKey(tenantId: tid, masterKeyBase64: masterKey)
         }
         if let workerUrl = json["workerApiUrl"] as? String {
-            RecoveryConfig.saveWorkersBaseURL(workerUrl)
+            self.parsedWorkerApiUrl = workerUrl
         }
         if let r2 = json["r2Config"] as? [String: Any] {
             R2Config.saveConfig(
@@ -173,7 +176,7 @@ final class TenantSelectionViewModel: ObservableObject {
 
     private func verify(tenantId: String) {
         verificationState = .loading
-        chatService.verifyAndApplyTenant(tenantId: tenantId) { [weak self] result in
+        authService.verifyAndApplyTenant(tenantId: tenantId) { [weak self] result in
             DispatchQueue.main.async {
                 switch result {
                 case .success(let tenant):
@@ -194,36 +197,39 @@ struct TenantSelectionView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Segmented Control
-                Picker("", selection: $viewModel.selectedTab) {
-                    ForEach(TenantSelectionViewModel.InputTab.allCases, id: \.self) { tab in
-                        Text(tab.label).tag(tab)
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 0) {
+                    // Segmented Control
+                    Picker("", selection: $viewModel.selectedTab) {
+                        ForEach(TenantSelectionViewModel.InputTab.allCases, id: \.self) { tab in
+                            Text(tab.label).tag(tab)
+                        }
                     }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
 
-                // Tab Content
-                Group {
-                    switch viewModel.selectedTab {
-                    case .twoDimensionalCode:
-                        TwoDimensionalCodeScanTab(viewModel: viewModel)
-                    case .url:
-                        URLInputTab(viewModel: viewModel)
-                    case .text:
-                        TextInputTab(viewModel: viewModel)
+                    // Tab Content
+                    Group {
+                        switch viewModel.selectedTab {
+                        case .twoDimensionalCode:
+                            TwoDimensionalCodeScanTab(viewModel: viewModel)
+                        case .url:
+                            URLInputTab(viewModel: viewModel)
+                        case .text:
+                            TextInputTab(viewModel: viewModel)
+                        }
                     }
+                    .animation(.easeInOut(duration: 0.2), value: viewModel.selectedTab)
+
+                    Spacer(minLength: 20)
+
+                    // Verification Result + Confirm Button
+                    verificationResultSection
+                        .padding(.horizontal, 20)
+                        .padding(.top, 16)
+                        .padding(.bottom, 32)
                 }
-                .animation(.easeInOut(duration: 0.2), value: viewModel.selectedTab)
-
-                Spacer()
-
-                // Verification Result + Confirm Button
-                verificationResultSection
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 32)
             }
             .navigationTitle(L10n.Tenant.selectionTitle)
             .navigationBarTitleDisplayMode(.inline)
@@ -303,7 +309,7 @@ private struct TenantConfirmationCard: View {
                         .fill(Color.green.opacity(0.15))
                         .frame(width: 48, height: 48)
                     Image(systemName: "checkmark.seal.fill")
-                        .font(.system(size: 22))
+                        .font(.title2)
                         .foregroundColor(.green)
                 }
 
@@ -318,10 +324,10 @@ private struct TenantConfirmationCard: View {
                         Text(L10n.Tenant.defaultBadge)
                             .font(.caption2)
                             .bold()
-                            .foregroundColor(.blue)
+                            .foregroundColor(.appAccent)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 2)
-                            .background(Color.blue.opacity(0.1))
+                            .background(Color.appAccent.opacity(0.1))
                             .clipShape(Capsule())
                     }
                 }
@@ -346,7 +352,8 @@ private struct TenantConfirmationCard: View {
                         .fontWeight(.bold)
                 }
                 .frame(maxWidth: .infinity)
-                .frame(height: 50)
+                .frame(minHeight: 50)
+                .padding(.vertical, 4)
                 .background(Color.green)
                 .foregroundColor(.white)
                 .cornerRadius(13)
@@ -370,12 +377,37 @@ private struct TwoDimensionalCodeScanTab: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            // Camera Preview or Simulator Fallback
-            #if targetEnvironment(simulator)
-            SimulatorTwoDimensionalCodeFallback(viewModel: viewModel)
-            #else
-            TwoDimensionalCodeCameraPreview(viewModel: viewModel)
-            #endif
+            ZStack {
+                // Background: Camera Preview (Real Device) or Camera Stand-in (Simulator)
+                #if targetEnvironment(simulator)
+                SimulatorTwoDimensionalCodeFallback(viewModel: viewModel)
+                #else
+                TwoDimensionalCodeCameraPreview(viewModel: viewModel)
+                #endif
+
+                // Scan frame guide overlay (both simulator and real device)
+                ScanFrameOverlay()
+
+                // Instruction badge
+                VStack {
+                    Spacer()
+                    Text(L10n.Tenant.cameraInstruction)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(Color.black.opacity(0.6))
+                        .clipShape(Capsule())
+                        .padding(.bottom, 12)
+                }
+            }
+            .frame(height: 260)
+            .clipShape(RoundedRectangle(cornerRadius: 18))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18)
+                    .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+            )
         }
         .padding(.horizontal, 20)
         .padding(.top, 16)
@@ -389,90 +421,118 @@ private struct TwoDimensionalCodeCameraPreview: View {
     @StateObject private var scanner = TwoDimensionalCodeScanner()
 
     var body: some View {
-        VStack(spacing: 12) {
-            ZStack {
-                // Camera feed
-                TwoDimensionalCodeCameraRepresentable(scanner: scanner)
-                    .frame(height: 260)
-                    .clipShape(RoundedRectangle(cornerRadius: 18))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 18)
-                            .stroke(Color.primary.opacity(0.1), lineWidth: 1)
-                    )
-
-                // Scan frame overlay
-                ScanFrameOverlay()
-
-                // Scanning animation label
-                VStack {
-                    Spacer()
-                    Text(L10n.Tenant.cameraInstruction)
-                        .font(.caption)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.black.opacity(0.55))
-                        .clipShape(Capsule())
-                        .padding(.bottom, 12)
-                }
-            }
+        TwoDimensionalCodeCameraRepresentable(scanner: scanner)
             .frame(height: 260)
-        }
-        .onChange(of: scanner.scannedCode) { code in
-            guard let code else { return }
-            scanner.stop()
-            viewModel.verifyFromText(code)
-        }
-        .onAppear { scanner.start() }
-        .onDisappear { scanner.stop() }
+            .onChange(of: scanner.scannedCode) { code in
+                guard let code else { return }
+                scanner.stop()
+                viewModel.verifyFromText(code)
+            }
+            .onAppear { scanner.start() }
+            .onDisappear { scanner.stop() }
     }
 }
 
-// MARK: - Scan Frame Overlay
+// MARK: - Scan Frame Overlay (カメラ内側のガイド枠)
 
 private struct ScanFrameOverlay: View {
     @State private var scanning = false
-    let cornerLength: CGFloat = 28
-    let cornerWidth: CGFloat = 4
+    let frameSize: CGFloat = 180
+    let cornerRadius: CGFloat = 16
 
     var body: some View {
         ZStack {
-            // Dimmed outer area
-            Color.black.opacity(0.35)
-                .mask(
-                    Rectangle()
-                        .fill(Color.white)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.black)
-                                .frame(width: 180, height: 180)
-                        )
-                        .compositingGroup()
-                        .luminanceToAlpha()
-                        .blendMode(.destinationOut)
-                )
+            // 1. 周囲を薄暗くするマスク（偶奇規則で中央の枠内だけくり抜き）
+            ScanFrameHoleShape(holeSize: CGSize(width: frameSize, height: frameSize), cornerRadius: cornerRadius)
+                .fill(Color.black.opacity(0.35), style: FillStyle(eoFill: true))
 
-            // Corner brackets
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.white, lineWidth: 2)
-                .frame(width: 180, height: 180)
+            // 2. 内側の角丸枠線
+            RoundedRectangle(cornerRadius: cornerRadius)
+                .stroke(Color.white.opacity(0.35), lineWidth: 1.5)
+                .frame(width: frameSize, height: frameSize)
 
-            // Scan line
+            // 3. 四隅のL字コーナーブラケット
+            ScanCornerBrackets(length: 24, radius: cornerRadius)
+                .stroke(Color.white, style: StrokeStyle(lineWidth: 3.5, lineCap: .round, lineJoin: .round))
+                .frame(width: frameSize, height: frameSize)
+
+            // 4. スキャンライン（アニメーションする光のバー）
             Rectangle()
                 .fill(
                     LinearGradient(
-                        colors: [.clear, .blue.opacity(0.8), .clear],
-                        startPoint: .leading, endPoint: .trailing
+                        colors: [.clear, Color.appAccent.opacity(0.85), .clear],
+                        startPoint: .leading,
+                        endPoint: .trailing
                     )
                 )
-                .frame(width: 160, height: 2)
-                .offset(y: scanning ? 80 : -80)
+                .frame(width: frameSize - 20, height: 2.5)
+                .offset(y: scanning ? (frameSize / 2 - 14) : (-frameSize / 2 + 14))
                 .animation(
                     .easeInOut(duration: 1.6).repeatForever(autoreverses: true),
                     value: scanning
                 )
         }
-        .onAppear { scanning = true }
+        .frame(height: 260)
+        .onAppear {
+            scanning = true
+        }
+    }
+}
+
+/// 中央の読み取り領域をくり抜くシェイプ
+private struct ScanFrameHoleShape: Shape {
+    let holeSize: CGSize
+    let cornerRadius: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.addRect(rect)
+        let holeRect = CGRect(
+            x: rect.midX - holeSize.width / 2,
+            y: rect.midY - holeSize.height / 2,
+            width: holeSize.width,
+            height: holeSize.height
+        )
+        path.addRoundedRect(in: holeRect, cornerSize: CGSize(width: cornerRadius, height: cornerRadius))
+        return path
+    }
+}
+
+/// 四隅のコーナーブラケット用シェイプ
+private struct ScanCornerBrackets: Shape {
+    let length: CGFloat
+    let radius: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let cl = length
+        let r = radius
+
+        // 左上 (Top-Left)
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY + cl))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + r))
+        path.addArc(center: CGPoint(x: rect.minX + r, y: rect.minY + r), radius: r, startAngle: .degrees(180), endAngle: .degrees(270), clockwise: false)
+        path.addLine(to: CGPoint(x: rect.minX + cl, y: rect.minY))
+
+        // 右上 (Top-Right)
+        path.move(to: CGPoint(x: rect.maxX - cl, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX - r, y: rect.minY))
+        path.addArc(center: CGPoint(x: rect.maxX - r, y: rect.minY + r), radius: r, startAngle: .degrees(270), endAngle: .degrees(0), clockwise: false)
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + cl))
+
+        // 右下 (Bottom-Right)
+        path.move(to: CGPoint(x: rect.maxX, y: rect.maxY - cl))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - r))
+        path.addArc(center: CGPoint(x: rect.maxX - r, y: rect.maxY - r), radius: r, startAngle: .degrees(0), endAngle: .degrees(90), clockwise: false)
+        path.addLine(to: CGPoint(x: rect.maxX - cl, y: rect.maxY))
+
+        // 左下 (Bottom-Left)
+        path.move(to: CGPoint(x: rect.minX + cl, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX + r, y: rect.maxY))
+        path.addArc(center: CGPoint(x: rect.minX + r, y: rect.maxY - r), radius: r, startAngle: .degrees(90), endAngle: .degrees(180), clockwise: false)
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY - cl))
+
+        return path
     }
 }
 
@@ -557,16 +617,16 @@ private struct SimulatorTwoDimensionalCodeFallback: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 18)
-                .fill(Color(uiColor: .secondarySystemGroupedBackground))
+            Color.black
                 .frame(height: 260)
 
-            VStack(spacing: 12) {
-                Image(systemName: "camera.slash.fill")
-                    .font(.system(size: 40))
-                    .foregroundColor(.secondary.opacity(0.6))
+            VStack(spacing: 8) {
+                Image(systemName: "camera.fill")
+                    .font(.system(size: 32))
+                    .foregroundColor(.white.opacity(0.3))
             }
         }
+        .frame(height: 260)
     }
 }
 
@@ -587,13 +647,13 @@ private struct TextInputTab: View {
                 .font(.system(.caption, design: .monospaced))
                 .focused($isFocused)
                 .padding(10)
-                .frame(height: 160)
+                .frame(minHeight: 140)
                 .scrollContentBackground(.hidden)
                 .background(Color(uiColor: .secondarySystemGroupedBackground))
                 .cornerRadius(12)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(isFocused ? Color.blue.opacity(0.4) : Color.primary.opacity(0.08), lineWidth: 1.5)
+                        .stroke(isFocused ? Color.appAccent.opacity(0.4) : Color.primary.opacity(0.08), lineWidth: 1.5)
                 )
 
             Button {
@@ -610,11 +670,12 @@ private struct TextInputTab: View {
                         .fontWeight(.bold)
                 }
                 .frame(maxWidth: .infinity)
-                .frame(height: 50)
+                .frame(minHeight: 50)
+                .padding(.vertical, 4)
                 .background(
                     viewModel.jsonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? Color.blue.opacity(0.4)
-                        : Color.blue
+                        ? Color.appAccent.opacity(0.4)
+                        : Color.appAccent
                 )
                 .foregroundColor(.white)
                 .cornerRadius(13)
@@ -652,7 +713,7 @@ private struct URLInputTab: View {
                 .cornerRadius(12)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(isFocused ? Color.blue.opacity(0.4) : Color.primary.opacity(0.08), lineWidth: 1.5)
+                        .stroke(isFocused ? Color.appAccent.opacity(0.4) : Color.primary.opacity(0.08), lineWidth: 1.5)
                 )
 
             Button {
@@ -669,11 +730,12 @@ private struct URLInputTab: View {
                         .fontWeight(.bold)
                 }
                 .frame(maxWidth: .infinity)
-                .frame(height: 50)
+                .frame(minHeight: 50)
+                .padding(.vertical, 4)
                 .background(
                     viewModel.urlInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? Color.blue.opacity(0.4)
-                        : Color.blue
+                        ? Color.appAccent.opacity(0.4)
+                        : Color.appAccent
                 )
                 .foregroundColor(.white)
                 .cornerRadius(13)

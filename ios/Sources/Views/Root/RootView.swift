@@ -1,7 +1,7 @@
 import SwiftUI
 
 public struct RootView: View {
-    @ObservedObject var chatService = ChatService.shared
+    @ObservedObject var authService = AuthService.shared
     @ObservedObject var toastManager = ToastNotificationManager.shared
     
     public init() {}
@@ -9,7 +9,7 @@ public struct RootView: View {
     public var body: some View {
         ZStack(alignment: .top) {
             Group {
-                switch chatService.authStatus {
+                switch authService.authStatus {
                 case .unknown:
                     SplashView()
                         .transition(.opacity)
@@ -23,7 +23,7 @@ public struct RootView: View {
                         .transition(.opacity.combined(with: .scale(scale: 0.98)))
                 }
             }
-            .animation(.default, value: chatService.authStatus)
+            .animation(.default, value: authService.authStatus)
             
             // アプリ内トースト通知オーバーレイ (フォアグラウンド)
             if let toast = toastManager.currentToast {

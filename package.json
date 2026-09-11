@@ -8,11 +8,13 @@
     "tenant:init": "node ./scripts/add_tenant.mjs --preset",
     "tenant:create": "node ./scripts/add_tenant.mjs",
     "deploy:sims": "./scripts/deploy_simulators.sh",
-    "deploy:rules": "firebase deploy --config infra/firebase.json --only firestore:rules,firestore:indexes",
+    "deploy:firestore": "firebase deploy --config infra/firebase.json --only firestore:rules,firestore:indexes",
+    "deploy:workers": "npm --prefix server/workers run deploy",
+    "dev:workers": "npm --prefix server/workers run dev",
     "clean:messages": "node ./scripts/clean_messages.mjs",
     "generate:icon": "swift -module-cache-path .build/clang-cache ./scripts/generate_app_icon.swift",
     "generate:licenses": "node ./scripts/generate_licenses.mjs",
-    "sync:legal": "node ./scripts/sync_legal.mjs",
+    "sync:legal": "npm run generate:licenses && node ./scripts/sync_legal.mjs",
     "prepare:resources": "npm run generate:icon && npm run generate:licenses && npm run sync:legal"
   },
   "devDependencies": {

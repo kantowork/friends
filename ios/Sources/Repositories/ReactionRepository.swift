@@ -30,7 +30,7 @@ final class ReactionRepository {
                     let data = doc.data()
                     let reactionId = data["reactionId"] as? String ?? doc.documentID
                     let uId = data["userId"] as? String ?? ""
-                    let uName = data["userName"] as? String ?? "ユーザー"
+                    let uName = data["userName"] as? String ?? L10n.Common.defaultUser
                     let reactionTypeStr = data["reactionType"] as? String ?? ""
                     let rType = FriendsReactionType.fromKey(reactionTypeStr)
                     let createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
@@ -169,7 +169,7 @@ final class ReactionRepository {
                     let data = doc.data()
                     let reactionId = data["reactionId"] as? String ?? doc.documentID
                     let uId = data["userId"] as? String ?? ""
-                    let uName = data["userName"] as? String ?? "ユーザー"
+                    let uName = data["userName"] as? String ?? L10n.Common.defaultUser
                     let reactionTypeStr = data["reactionType"] as? String ?? ""
                     let rType = FriendsReactionType.fromKey(reactionTypeStr)
                     let createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()

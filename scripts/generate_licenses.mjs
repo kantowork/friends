@@ -2,7 +2,7 @@
 
 /**
  * generate_licenses.mjs
- * 
+ *
  * Swift Package Manager (SPM) の Package.resolved および DerivedData のチェックアウトフォルダから、
  * アプリが使用しているすべてのオープンソースライブラリのライセンス情報を抽出し、
  * shared/legal/licenses.md および ios/Sources/Resources/legal/licenses.md に自動集約・出力するスクリプト。
@@ -105,46 +105,18 @@ function findLicenseInDir(dirPath) {
   return null;
 }
 
-// パッケージの表示名マッピング
-const friendlyNames = {
-  'firebase-ios-sdk': 'Firebase iOS SDK',
-  'swift-protobuf': 'SwiftProtobuf',
-  'swift-crypto': 'Apple Swift Crypto',
-  'swift-asn1': 'Apple Swift ASN.1',
-  'swift-mnemonic': 'SwiftMnemonic',
-  'swift-base58': 'SwiftBase58',
-  'base58swift': 'Base58Swift',
-  'ulid.swift': 'ULID.swift',
-  'bigint': 'BigInt',
-  'promises': 'Google Promises',
-  'googleutilities': 'Google Utilities',
-  'googledatatransport': 'Google Data Transport',
-  'googleappmeasurement': 'Google App Measurement',
-  'google-ads-on-device-conversion-ios-sdk': 'Google Ads On-Device Conversion',
-  'app-check': 'Firebase App Check',
-  'interop-ios-for-google-sdks': 'Google SDK Interop for iOS',
-  'gtm-session-fetcher': 'Google Toolbox for Mac Session Fetcher',
-  'grpc-binary': 'gRPC Binary',
-  'abseil-cpp-binary': 'Abseil C++ Binary',
-  'nanopb': 'nanopb',
-  'leveldb': 'LevelDB'
-};
-
 const results = [];
 
 for (const pin of pins) {
-  const identity = pin.identity;
-  const location = pin.location || '';
-  const version = pin.state?.version || pin.state?.revision?.substring(0, 7) || 'latest';
-  const name = friendlyNames[identity.toLowerCase()] || identity;
-
+  const name = pin.identity;
+  const location = pin.location;
   let licenseText = null;
 
   if (checkoutsDir) {
     const candidates = [
-      path.join(checkoutsDir, identity),
+      path.join(checkoutsDir, name),
       path.join(checkoutsDir, path.basename(location, '.git')),
-      path.join(checkoutsDir, identity.toLowerCase())
+      path.join(checkoutsDir, name.toLowerCase())
     ];
 
     for (const c of candidates) {
@@ -158,10 +130,7 @@ for (const pin of pins) {
   }
 
   results.push({
-    id: identity,
     name: name,
-    version: version,
-    url: location,
     license: licenseText.trim()
   });
 }
@@ -179,26 +148,14 @@ let mdContent = `# オープンソースライセンス (Open Source Licenses)
 
 results.forEach((item, index) => {
   mdContent += `
-## ${index + 1}. ${item.name}
-- **バージョン**: ${item.version}
-- **リポジトリ**: ${item.url}
-
+**${item.name}**
 \`\`\`
 ${item.license}
 \`\`\`
-
----
 `;
 });
 
-// 5. 出力先 (shared/legal/licenses.md および ios/Sources/Resources/legal/licenses.md)
-const sharedOutputDir = path.join(rootDir, 'shared', 'legal');
-if (!fs.existsSync(sharedOutputDir)) {
-  fs.mkdirSync(sharedOutputDir, { recursive: true });
-}
-const sharedOutputPath = path.join(sharedOutputDir, 'licenses.md');
-fs.writeFileSync(sharedOutputPath, mdContent, 'utf8');
-
+// 5. 出力先 (ios/Sources/Resources/legal/licenses.md)
 const iosOutputDir = path.join(rootDir, 'ios', 'Sources', 'Resources', 'legal');
 if (!fs.existsSync(iosOutputDir)) {
   fs.mkdirSync(iosOutputDir, { recursive: true });
@@ -207,5 +164,4 @@ const iosOutputPath = path.join(iosOutputDir, 'licenses.md');
 fs.writeFileSync(iosOutputPath, mdContent, 'utf8');
 
 console.log(`✅ ${results.length} 件のライセンス情報をパッケージ情報から出力しました:`);
-console.log(`  - ${sharedOutputPath}`);
 console.log(`  - ${iosOutputPath}`);

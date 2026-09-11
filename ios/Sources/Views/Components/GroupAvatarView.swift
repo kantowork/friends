@@ -9,7 +9,7 @@ public struct GroupAvatarView: View {
     let avatarUpdatedAt: Date?
     let size: CGFloat
     
-    @ObservedObject private var chatService = ChatService.shared
+    @ObservedObject private var authService = AuthService.shared
     @State private var loadedImage: UIImage? = nil
     
     public init(
@@ -82,7 +82,7 @@ public struct GroupAvatarView: View {
             return
         }
         
-        guard let tenantId = chatService.currentTenant?.tenantID else { return }
+        guard let tenantId = authService.currentTenant?.tenantID else { return }
         
         AvatarRepository.shared.getGroupAvatar(
             tenantId: tenantId,

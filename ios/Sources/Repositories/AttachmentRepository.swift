@@ -59,7 +59,7 @@ final class AttachmentRepository {
               !R2Config.bucketName.isEmpty,
               !R2Config.accessKeyId.isEmpty,
               !R2Config.secretAccessKey.isEmpty else {
-            completion(.failure(NSError(domain: "AttachmentError", code: 500, userInfo: [NSLocalizedDescriptionKey: "R2 ストレージ設定が不完全です。"])))
+            completion(.failure(NSError(domain: "AttachmentError", code: 500, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Storage.configIncomplete])))
             return
         }
         
@@ -80,7 +80,7 @@ final class AttachmentRepository {
         let payloadHash = sha256Hex(data: encryptedData)
         guard let requestUrl = URL(string: "\(R2Config.endpointURL)/\(bucket)/\(storagePath)"),
               let host = requestUrl.host else {
-            completion(.failure(NSError(domain: "AttachmentError", code: 400, userInfo: [NSLocalizedDescriptionKey: "不正なストレージエンドポイントです。"])))
+            completion(.failure(NSError(domain: "AttachmentError", code: 400, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Storage.invalidEndpoint])))
             return
         }
         
@@ -120,7 +120,7 @@ final class AttachmentRepository {
                 completion(.success(()))
             } else {
                 let status = (response as? HTTPURLResponse)?.statusCode ?? 500
-                completion(.failure(NSError(domain: "AttachmentError", code: status, userInfo: [NSLocalizedDescriptionKey: "R2 への画像アップロードに失敗しました (HTTP \(status))"])))
+                completion(.failure(NSError(domain: "AttachmentError", code: status, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Storage.uploadFailed(status)])))
             }
         }
         task.resume()
@@ -169,7 +169,7 @@ final class AttachmentRepository {
         // 3. Cloudflare R2 CDN から暗号化バイナリを取得
         guard !R2Config.publicBaseURL.isEmpty,
               let cdnUrl = URL(string: "\(R2Config.publicBaseURL)/\(attachment.storagePath)") else {
-            completion(.failure(NSError(domain: "AttachmentError", code: 500, userInfo: [NSLocalizedDescriptionKey: "R2 CDN URL の設定が無効です。"])))
+            completion(.failure(NSError(domain: "AttachmentError", code: 500, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Storage.cdnUrlInvalid])))
             return
         }
         
@@ -185,13 +185,13 @@ final class AttachmentRepository {
             }
             guard let httpRes = response as? HTTPURLResponse, (200...299).contains(httpRes.statusCode),
                   let encData = data, !encData.isEmpty else {
-                completion(.failure(NSError(domain: "AttachmentError", code: 404, userInfo: [NSLocalizedDescriptionKey: "CDN から暗号化ファイルを取得できませんでした。"])))
+                completion(.failure(NSError(domain: "AttachmentError", code: 404, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Storage.cdnFetchFailed])))
                 return
             }
             
             // 4. K_file で復号
             guard let keyData = Data(base64Encoded: attachment.fileKey) else {
-                completion(.failure(NSError(domain: "AttachmentError", code: 400, userInfo: [NSLocalizedDescriptionKey: "無効なファイル暗号化鍵です。"])))
+                completion(.failure(NSError(domain: "AttachmentError", code: 400, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Storage.invalidEncryptionKey])))
                 return
             }
             let symmetricKey = SymmetricKey(data: keyData)
@@ -199,7 +199,7 @@ final class AttachmentRepository {
             do {
                 let decryptedData = try CryptoKeyManager.shared.decryptFile(encryptedData: encData, key: symmetricKey)
                 guard let image = UIImage(data: decryptedData) else {
-                    completion(.failure(NSError(domain: "AttachmentError", code: 500, userInfo: [NSLocalizedDescriptionKey: "画像のデコードに失敗しました。"])))
+                    completion(.failure(NSError(domain: "AttachmentError", code: 500, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Storage.imageDecodeFailed])))
                     return
                 }
                 

@@ -22,7 +22,7 @@ enum PresetTenantConfig {
     }
     
     static var tenantName: String {
-        config?["TENANT_NAME"] as? String ?? "デフォルト"
+        config?["TENANT_NAME"] as? String ?? L10n.Tenant.defaultTenantName
     }
     
     static var tenantMasterKey: String {
@@ -31,6 +31,13 @@ enum PresetTenantConfig {
     
     static var isDefaultTenant: Bool {
         config?["IS_DEFAULT_TENANT"] as? Bool ?? true
+    }
+    
+    static var workerApiUrl: String? {
+        guard let raw = config?["WORKER_API_URL"] as? String, !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+        return raw.trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
     static var defaultTenant: FriendsTenant {

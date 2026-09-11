@@ -1,7 +1,8 @@
 import SwiftUI
 
 public struct SettingsView: View {
-    @ObservedObject var chatService = ChatService.shared
+    @ObservedObject var authService = AuthService.shared
+    @AppStorage(ChatFontSize.defaultKey) private var chatFontSizeRaw: String = ChatFontSize.default.rawValue
     @State private var showingEditProfile = false
     @State private var showingRecoveryPhrase = false
     @State private var showingSecurityResetAlert = false
@@ -22,7 +23,7 @@ public struct SettingsView: View {
                     showingEditProfile = true
                 } label: {
                     HStack(spacing: 16) {
-                        if let user = chatService.currentUser {
+                        if let user = authService.currentUser {
                             UserAvatarView(
                                 userId: user.userID,
                                 displayName: user.displayName,
@@ -33,21 +34,21 @@ public struct SettingsView: View {
                             .id("\(user.userID)_\(user.avatarNonce)_\(user.avatarUpdatedDate?.timeIntervalSince1970 ?? 0)")
                         } else {
                             Circle()
-                                .fill(Color.blue.opacity(0.15))
+                                .fill(Color.appAccent.opacity(0.15))
                                 .frame(width: 56, height: 56)
                                 .overlay(
                                     Image(systemName: "person.fill")
                                         .font(.title2)
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(.appAccent)
                                 )
                         }
                         
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(chatService.currentUser?.displayName ?? L10n.Settings.profileDefaultUser)
+                            Text(authService.currentUser?.displayName ?? L10n.Settings.profileDefaultUser)
                                 .font(.title3)
                                 .bold()
                                 .foregroundColor(.primary)
-                            Text("@\(chatService.currentUser?.effectiveUsername ?? "-")")
+                            Text("@\(authService.currentUser?.effectiveUsername ?? "-")")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                         }
@@ -92,6 +93,23 @@ public struct SettingsView: View {
                 }
             }
             
+            // Display Section (メッセージ文字サイズ)
+            Section(L10n.Settings.sectionDisplay) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(L10n.Settings.chatFontSizeLabel)
+                        .font(.subheadline)
+                        .foregroundColor(.primary)
+                    
+                    Picker(L10n.Settings.chatFontSizeLabel, selection: $chatFontSizeRaw) {
+                        ForEach(ChatFontSize.allCases, id: \.rawValue) { size in
+                            Text(size.localizedLabel).tag(size.rawValue)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+                .padding(.vertical, 4)
+            }
+            
             // About Section
             Section {
                 NavigationLink {
@@ -130,7 +148,7 @@ public struct SettingsView: View {
         .alert(L10n.Settings.securityResetConfirmTitle, isPresented: $showingSecurityResetAlert) {
             Button(L10n.Common.cancel, role: .cancel) {}
             Button(L10n.Settings.securityResetExecute, role: .destructive) {
-                chatService.performSecurityReset { result in
+                authService.performSecurityReset { result in
                     DispatchQueue.main.async {
                         if case .success = result {
                             resetSuccessAlert = true
@@ -149,7 +167,7 @@ public struct SettingsView: View {
         .alert(L10n.Settings.logoutConfirmTitle, isPresented: $showingSignOutAlert) {
             Button(L10n.Common.cancel, role: .cancel) {}
             Button(L10n.Settings.logout, role: .destructive) {
-                chatService.signOut()
+                authService.signOut()
             }
         } message: {
             Text(L10n.Settings.logoutConfirmMsg)
@@ -158,7 +176,7 @@ public struct SettingsView: View {
             Button(L10n.Common.cancel, role: .cancel) {}
             Button(L10n.Settings.accountDeleteExecute, role: .destructive) {
                 isDeletingAccount = true
-                chatService.deleteAccount { result in
+                authService.deleteAccount { result in
                     DispatchQueue.main.async {
                         isDeletingAccount = false
                         if case .failure(let error) = result {
@@ -191,77 +209,75 @@ struct RecoveryPhraseSheetView: View {
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
-                VStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.shield.fill")
-                        .font(.largeTitle)
-                        .foregroundColor(.orange)
-                    
-                    Text(L10n.Settings.recoveryTitle)
-                        .font(.title2)
-                        .bold()
-                    
-                    Text(L10n.Settings.recoveryDesc)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 24)
-                }
-                .padding(.top, 16)
-                
-                if let err = errorMessage {
-                    Text(err)
-                        .font(.caption)
-                        .foregroundColor(.red)
-                        .padding(.horizontal, 24)
-                }
-                
-                if words.isEmpty || isRegenerating {
+            ScrollView {
+                VStack(spacing: 24) {
                     VStack(spacing: 12) {
-                        ProgressView()
-                        Text(isRegenerating ? L10n.Common.loading : L10n.Common.loading)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxHeight: .infinity)
-                } else {
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                        ForEach(Array(words.enumerated()), id: \.offset) { index, word in
-                            HStack {
-                                Text("\(index + 1).")
-                                    .font(.caption)
-                                    .bold()
-                                    .foregroundColor(.secondary)
-                                    .frame(width: 24, alignment: .trailing)
-                                Text(word)
-                                    .font(.system(.body, design: .monospaced))
-                                    .bold()
-                                Spacer()
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 10)
-                            .background(Color(uiColor: .secondarySystemBackground))
-                            .cornerRadius(10)
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    
-                    Button {
-                        copyWordsToClipboard()
-                    } label: {
-                        Label(isCopied ? L10n.Settings.recoveryCopied : L10n.Settings.recoveryCopyButton, systemImage: isCopied ? "checkmark" : "doc.on.doc")
+                        Image(systemName: "exclamationmark.shield.fill")
+                            .font(.largeTitle)
+                            .foregroundColor(.orange)
+                        
+                        Text(L10n.Settings.recoveryDesc)
                             .font(.subheadline)
-                            .bold()
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(Color(uiColor: .secondarySystemBackground))
-                            .foregroundColor(isCopied ? .green : .blue)
-                            .cornerRadius(10)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, 24)
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    
+                    if let err = errorMessage {
+                        Text(err)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                            .padding(.horizontal, 24)
+                    }
+                    
+                    if words.isEmpty || isRegenerating {
+                        VStack(spacing: 12) {
+                            ProgressView()
+                            Text(isRegenerating ? L10n.Common.loading : L10n.Common.loading)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(minHeight: 200)
+                    } else {
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                            ForEach(Array(words.enumerated()), id: \.offset) { index, word in
+                                HStack {
+                                    Text("\(index + 1).")
+                                        .font(.caption)
+                                        .bold()
+                                        .foregroundColor(.secondary)
+                                        .frame(width: 24, alignment: .trailing)
+                                    Text(word)
+                                        .font(.system(.body, design: .monospaced))
+                                        .bold()
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 10)
+                                .background(Color(uiColor: .secondarySystemBackground))
+                                .cornerRadius(10)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        
+                        Button {
+                            copyWordsToClipboard()
+                        } label: {
+                            Label(isCopied ? L10n.Settings.recoveryCopied : L10n.Settings.recoveryCopyButton, systemImage: isCopied ? "checkmark" : "doc.on.doc")
+                                .font(.subheadline)
+                                .bold()
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color(uiColor: .secondarySystemBackground))
+                                .foregroundColor(isCopied ? .green : .appAccent)
+                                .cornerRadius(10)
+                        }
+                        .padding(.horizontal, 20)
+                    }
                 }
-                
-                Spacer()
+                .padding(.bottom, 24)
             }
             .navigationTitle(L10n.Settings.recoveryTitle)
             .navigationBarTitleDisplayMode(.inline)
@@ -282,6 +298,7 @@ struct RecoveryPhraseSheetView: View {
                         } else {
                             Image(systemName: "arrow.clockwise")
                                 .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.secondary)
                         }
                     }
                     .disabled(isRegenerating || words.isEmpty)
@@ -305,7 +322,7 @@ struct RecoveryPhraseSheetView: View {
     private func executeRegenerate() {
         isRegenerating = true
         errorMessage = nil
-        ChatService.shared.regenerateRecoveryPhrase { result in
+        AuthService.shared.regenerateRecoveryPhrase { result in
             DispatchQueue.main.async {
                 self.isRegenerating = false
                 switch result {
@@ -320,7 +337,7 @@ struct RecoveryPhraseSheetView: View {
     }
     
     private func loadOrCreateRecoveryPhrase() {
-        guard let uid = ChatService.shared.currentUser?.uid else { return }
+        guard let uid = AuthService.shared.currentUser?.uid else { return }
         if let savedWords = CryptoKeyManager.shared.getMnemonicPhrase(uid: uid), !savedWords.isEmpty {
             self.words = savedWords
             return
@@ -328,7 +345,7 @@ struct RecoveryPhraseSheetView: View {
         
         // Keychain にまだ未保存の場合、秘密鍵を取得して新規生成 & バックアップ
         if let privKey = CryptoKeyManager.shared.getPrivateKey(uid: uid) {
-            ChatService.shared.backupPrivateKeyWithRecoveryPhrase(uid: uid, privateKey: privKey) { result in
+            AuthService.shared.backupPrivateKeyWithRecoveryPhrase(uid: uid, privateKey: privKey) { result in
                 DispatchQueue.main.async {
                     if case .success(let generated) = result {
                         self.words = generated

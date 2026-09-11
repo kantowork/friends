@@ -234,26 +234,35 @@ final class RecoveryPhraseTests: XCTestCase {
     
     // MARK: - Cloudflare Workers Recovery Integration Tests
     
-    func testRecoveryConfigBaseURL() {
+    func testWorkerConfigBaseURL() {
         // テスト前にクリーンアップ
-        RecoveryConfig.clearWorkersBaseURL()
+        WorkerConfig.testOverrideURL = nil
         
-        // 1. 動的保存
+        // 1. テストオーバーライドが最優先されること
         let testUrl = "https://friends-test-tenant.workers.dev"
-        RecoveryConfig.saveWorkersBaseURL(testUrl)
-        XCTAssertEqual(RecoveryConfig.workersBaseURL?.absoluteString, testUrl)
+        WorkerConfig.testOverrideURL = testUrl
+        XCTAssertEqual(WorkerConfig.baseURL?.absoluteString, testUrl)
         
-        // 2. クリア
-        RecoveryConfig.clearWorkersBaseURL()
+        // 2. クリア後はテナント（プリセット設定）の URL が解決されること
+        WorkerConfig.testOverrideURL = nil
         if ProcessInfo.processInfo.environment["FRIENDS_WORKERS_URL"] == nil {
-            XCTAssertNil(RecoveryConfig.workersBaseURL)
+            if let presetUrl = PresetTenantConfig.workerApiUrl {
+                XCTAssertEqual(WorkerConfig.baseURL?.absoluteString, presetUrl)
+            } else {
+                XCTAssertNil(WorkerConfig.baseURL)
+            }
         }
         
-        // 3. 不正な文字列（スキームなし）は保存されないこと
-        RecoveryConfig.saveWorkersBaseURL("invalid_url_without_scheme")
+        // 3. 不正な文字列（スキームなし）は無効として扱われ、プリセット設定またはnilになること
+        WorkerConfig.testOverrideURL = "invalid_url_without_scheme"
         if ProcessInfo.processInfo.environment["FRIENDS_WORKERS_URL"] == nil {
-            XCTAssertNil(RecoveryConfig.workersBaseURL)
+            if let presetUrl = PresetTenantConfig.workerApiUrl {
+                XCTAssertEqual(WorkerConfig.baseURL?.absoluteString, presetUrl)
+            } else {
+                XCTAssertNil(WorkerConfig.baseURL)
+            }
         }
+        WorkerConfig.testOverrideURL = nil
         
         // 4. ローカライズキーの確認
         XCTAssertFalse(L10n.Error.Recovery.tenantNotConfigured.isEmpty)
@@ -300,6 +309,15 @@ final class RecoveryPhraseTests: XCTestCase {
         )
         XCTAssertEqual(restoredPrivateKey.rawRepresentation, originalPrivateKey.rawRepresentation)
         XCTAssertEqual(restoredPrivateKey.publicKey.rawRepresentation, originalPrivateKey.publicKey.rawRepresentation)
+    }
+    
+    func testRecoveryErrorLocalizationKeys() {
+        XCTAssertFalse(L10n.Error.Recovery.dataNotFound.isEmpty)
+        XCTAssertFalse(L10n.Error.Recovery.decryptionFailed.isEmpty)
+        XCTAssertFalse(L10n.Error.Recovery.tenantNotConfigured.isEmpty)
+        XCTAssertFalse(L10n.Error.Recovery.serverConfigMissing.isEmpty)
+        XCTAssertFalse(L10n.Error.Recovery.serverError.isEmpty)
+        XCTAssertFalse(L10n.Error.Recovery.invalidFormat.isEmpty)
     }
 }
 

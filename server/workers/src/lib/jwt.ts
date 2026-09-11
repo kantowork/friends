@@ -88,44 +88,26 @@ export async function createFirebaseCustomToken(
   return await signJwtRS256(header, payload, privateKeyPem);
 }
 
-// Google OAuth2 アクセストークンの取得 (Firestore REST API 認可用)
-export async function getGoogleOAuth2AccessToken(
-  clientEmail: string,
-  privateKeyPem: string,
-  scopes: string[] = ["https://www.googleapis.com/auth/datastore"]
+// Firebase Custom Token を Firebase ID Token に交換 (Firestore REST API 認可用)
+export async function exchangeCustomTokenToIdToken(
+  customToken: string,
+  firebaseApiKey: string
 ): Promise<string> {
-  const now = Math.floor(Date.now() / 1000);
-  const header = {
-    alg: "RS256",
-    typ: "JWT",
-  };
-
-  const payload = {
-    iss: clientEmail,
-    scope: scopes.join(" "),
-    aud: "https://oauth2.googleapis.com/token",
-    iat: now,
-    exp: now + 3600,
-  };
-
-  const assertion = await signJwtRS256(header, payload, privateKeyPem);
-
-  const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+  const url = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${firebaseApiKey}`;
+  const res = await fetch(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-      assertion: assertion,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      token: customToken,
+      returnSecureToken: true,
     }),
   });
 
-  if (!tokenResponse.ok) {
-    const errorText = await tokenResponse.text();
-    throw new Error(`Failed to exchange Google OAuth2 token: ${tokenResponse.status} ${errorText}`);
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Failed to exchange custom token for id token: ${res.status} ${errText}`);
   }
 
-  const tokenData = (await tokenResponse.json()) as { access_token: string };
-  return tokenData.access_token;
+  const data = (await res.json()) as { idToken: string };
+  return data.idToken;
 }

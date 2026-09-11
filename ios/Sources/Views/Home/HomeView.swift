@@ -4,7 +4,6 @@ import SwiftUI
 // クイックアクセス・お知らせを提供するホーム画面
 
 public struct HomeView: View {
-    @ObservedObject var chatService = ChatService.shared
     @ObservedObject var tenantManager = TenantManager.shared
     @State private var showingAddFriendSheet = false
     @State private var showingTenantSwitchSheet = false
@@ -34,7 +33,7 @@ public struct HomeView: View {
                         SettingsView()
                     } label: {
                         Image(systemName: "gearshape.fill")
-                            .font(.system(size: 16))
+                            .font(.body)
                             .foregroundColor(.primary)
                     }
                 }
@@ -72,13 +71,14 @@ public struct HomeView: View {
                             .bold()
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
+                    .frame(minHeight: 44)
+                    .padding(.vertical, 10)
                     .background(Color(uiColor: .secondarySystemGroupedBackground))
-                    .foregroundColor(.blue)
+                    .foregroundColor(.appAccent)
                     .cornerRadius(12)
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.blue.opacity(0.25), lineWidth: 1)
+                            .stroke(Color.appAccent.opacity(0.25), lineWidth: 1)
                     )
                 }
                 .buttonStyle(.plain)
@@ -95,7 +95,7 @@ public struct HomeView: View {
             
             VStack(spacing: 12) {
                 Image(systemName: "bell.slash")
-                    .font(.system(size: 32))
+                    .font(.system(.largeTitle))
                     .foregroundColor(.secondary.opacity(0.6))
                     .padding(.top, 16)
                 

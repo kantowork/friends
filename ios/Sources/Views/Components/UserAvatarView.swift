@@ -10,7 +10,7 @@ public struct UserAvatarView: View {
     let avatarUpdatedAt: Date?
     let size: CGFloat
     
-    @ObservedObject private var chatService = ChatService.shared
+    @ObservedObject private var authService = AuthService.shared
     @State private var loadedImage: UIImage? = nil
     
     public init(
@@ -68,9 +68,8 @@ public struct UserAvatarView: View {
         if avatarNonce.isEmpty && avatarUpdatedAt == nil {
             return nil
         }
-        return loadedImage ?? chatService.getCachedAvatar(userId: userId, updatedAt: avatarUpdatedAt)
+        return loadedImage ?? authService.getCachedAvatar(userId: userId, updatedAt: avatarUpdatedAt)
     }
-
 
     
     private var initialLetter: String {
@@ -98,14 +97,14 @@ public struct UserAvatarView: View {
     
     private func loadImageIfNeeded() {
         // キャッシュに存在するか確認
-        if let cached = chatService.getCachedAvatar(userId: userId, updatedAt: avatarUpdatedAt) {
+        if let cached = authService.getCachedAvatar(userId: userId, updatedAt: avatarUpdatedAt) {
             self.loadedImage = cached
             return
         }
         
         guard !avatarNonce.isEmpty else { return }
         
-        chatService.loadAvatarImage(userId: userId, avatarNonce: avatarNonce, updatedAt: avatarUpdatedAt) { result in
+        authService.loadAvatarImage(userId: userId, avatarNonce: avatarNonce, updatedAt: avatarUpdatedAt) { result in
             DispatchQueue.main.async {
                 if case .success(let image) = result {
                     self.loadedImage = image

@@ -416,3 +416,20 @@
   3. **既読レシート (`receipts` サブコレクション)**: 全ユーザーの既読水位線カーソル
   4. **チャット/グループ本体 (`chats` コレクション)**: DMおよびグループチャット（かいぎ）の全ドキュメント（再帰的完全削除 `recursiveDelete`）
 - **利用場面**: テスト環境のメッセージ・グループデータ初期化、E2EE暗号化テスト後のリセットなど。
+
+---
+
+## 6. サービス層アーキテクチャと責務マッピング (Service Layer Responsibilities)
+
+単一責任の原則（SRP）および Swift 6 並行処理の安全性を確保するため、サービス層は以下の独立した専門クラス群に分離して運用します：
+
+| サービス名 | 主な責務・管理する状態 (`@Published`) | 利用する Repository |
+|:---|:---|:---|
+| **`AuthService`** | 匿名認証、ログイン、新規登録、ログアウト、アカウント削除、ふっかつのじゅもん（Mnemonic）復元・秘密鍵バックアップ。<br>状態: `currentUser`, `currentTenant`, `authStatus` | `TenantRepository`, `UserRepository` |
+| **`DirectChatService`** | 友達リスト管理、招待コード検証・友達追加、友達削除、1:1 E2EE 暗号鍵導出（X25519）、ハイブリッド友達プロファイル差分同期。<br>状態: `friends`, `directChats` | `FriendRepository`, `ChatRepository`, `UserRepository` |
+| **`GroupChatService`** | かいぎ（グループ）リスト管理、かいぎ作成・削除・退室、タイトル更新、メンバー追加・退出、ロール管理（オーナー・管理者）、KeyBucket 鍵導出、グループアバター管理。<br>状態: `groupChats`, `groupMemberProfiles` | `ChatRepository`, `KeyBucketRepository`, `AvatarRepository`, `UserRepository` |
+| **`MessageService`** | チャットルーム内メッセージ送受信（E2EE暗号化・復号）、メッセージ購読・ページネーション、暗号化添付ファイル送受信、既読水位線管理、リアクション送受信。<br>状態: `messages`, `readReceipts`, `userReactions`, `hasMoreMessages` | `MessageRepository`, `AttachmentRepository`, `ReadReceiptRepository`, `ReactionRepository` |
+| **`BlockManager`** | ユーザーブロック・ブロック解除、ブロックリスト管理（一本化）。<br>状態: `blockedUserIds` | `UserRepository` |
+| **`UserProfileResolver`** | 認証ユーザー、友達キャッシュ、グループメンバーキャッシュを横断してプロファイル（表示名・アバター）を解決するヘルパー。<br>設計原則: `uid` は Firebase Auth / 自端末認証のみに使用し、対外的なエンティティ識別・プロファイル解決には規定の `userId` (`u_...`) のみを使用する。 | - (メモリキャッシュ横断解決) |
+
+

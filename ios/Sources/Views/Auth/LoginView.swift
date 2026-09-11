@@ -1,13 +1,16 @@
 import SwiftUI
 
 public struct LoginView: View {
-    @ObservedObject var chatService = ChatService.shared
+    @ObservedObject var authService = AuthService.shared
     
     @State private var showingRecoverySheet = false
     @State private var showingTenantAddSheet = false
     @State private var showingResetConfirmAlert = false
     @State private var showingTerms = false
     @State private var showingPrivacy = false
+    
+    @State private var displayName: String = ""
+    @FocusState private var isDisplayNameFocused: Bool
     
     @State private var isLoggingIn = false
     @State private var errorMessage: String? = nil
@@ -25,6 +28,9 @@ public struct LoginView: View {
                     VStack(spacing: 16) {
                         // テナント選択カード
                         tenantSelectorCard
+                        
+                        // 表示名入力カード
+                        displayNameInputCard
                         
                         if let error = errorMessage {
                             Text(error)
@@ -61,7 +67,7 @@ public struct LoginView: View {
             .alert(L10n.Auth.resetDeviceConfirmTitle, isPresented: $showingResetConfirmAlert) {
                 Button(L10n.Common.cancel, role: .cancel) {}
                 Button(L10n.Common.delete, role: .destructive) {
-                    chatService.resetDeviceAndKeychain()
+                    authService.resetDeviceAndKeychain()
                 }
             } message: {
                 Text(L10n.Auth.resetDeviceConfirmMsg)
@@ -82,7 +88,7 @@ public struct LoginView: View {
                 .shadow(color: Color.black.opacity(0.12), radius: 6, x: 0, y: 3)
             
             Text(L10n.Auth.title)
-                .font(.system(size: 30, weight: .heavy, design: .rounded))
+                .font(.system(.largeTitle, design: .rounded).weight(.heavy))
                 .foregroundColor(.primary)
         }
         .padding(.top, 60)
@@ -96,12 +102,12 @@ public struct LoginView: View {
         } label: {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(chatService.currentTenant?.tenantName ?? PresetTenantConfig.tenantName)
+                    Text(authService.currentTenant?.tenantName ?? PresetTenantConfig.tenantName)
                         .font(.subheadline)
                         .fontWeight(.bold)
                         .foregroundColor(.primary)
                     
-                    Text(chatService.currentTenant?.tenantCode ?? PresetTenantConfig.tenantCode)
+                    Text(authService.currentTenant?.tenantCode ?? PresetTenantConfig.tenantCode)
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
@@ -110,12 +116,12 @@ public struct LoginView: View {
                 
                 HStack(spacing: 4) {
                     Image(systemName: "qrcode.viewfinder")
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.subheadline.weight(.medium))
                     Text(L10n.Auth.tenantChange)
                         .font(.caption)
                         .fontWeight(.semibold)
                 }
-                .foregroundColor(.blue)
+                .foregroundColor(.secondary)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -127,6 +133,52 @@ public struct LoginView: View {
             )
         }
         .buttonStyle(.plain)
+    }
+    
+    @ViewBuilder
+    private var displayNameInputCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L10n.Auth.displayNameLabel)
+                .font(.caption)
+                .fontWeight(.bold)
+                .foregroundColor(.secondary)
+            
+            HStack(spacing: 10) {
+                Image(systemName: "person.crop.circle")
+                    .font(.body)
+                    .foregroundColor(isDisplayNameFocused ? .appAccent : .secondary)
+                
+                TextField(L10n.Auth.displayNamePlaceholder, text: $displayName)
+                    .font(.body)
+                    .focused($isDisplayNameFocused)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .submitLabel(.done)
+                    .onSubmit {
+                        if !isLoggingIn {
+                            performAnonymousLogin()
+                        }
+                    }
+                
+                if !displayName.isEmpty {
+                    Button {
+                        displayName = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary.opacity(0.7))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color(uiColor: .secondarySystemGroupedBackground))
+            .cornerRadius(14)
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(isDisplayNameFocused ? Color.appAccent : Color.primary.opacity(0.1), lineWidth: isDisplayNameFocused ? 1.5 : 1)
+            )
+        }
     }
     
     @ViewBuilder
@@ -149,14 +201,15 @@ public struct LoginView: View {
                         .fontWeight(.bold)
                 }
                 .frame(maxWidth: .infinity)
-                .frame(height: 50)
-                .background(Color.blue)
+                .frame(minHeight: 50)
+                .padding(.vertical, 4)
+                .background(Color.appAccent)
                 .foregroundColor(.white)
                 .cornerRadius(13)
             }
             .disabled(isLoggingIn)
             
-            // 復活の呪文ログイン
+            // ふっかつのじゅもん
             Button {
                 showingRecoverySheet = true
             } label: {
@@ -171,18 +224,18 @@ public struct LoginView: View {
             }
             .padding(.top, 4)
             
-            // 端末データ・鍵の完全リセット
+            // この端末から鍵を完全に消す
             Button(role: .destructive) {
                 showingResetConfirmAlert = true
             } label: {
                 HStack(spacing: 5) {
                     Image(systemName: "trash.circle.fill")
-                        .font(.caption2)
+                        .font(.caption)
                     Text(L10n.Auth.resetDeviceBtn)
-                        .font(.caption2)
+                        .font(.caption)
                         .fontWeight(.medium)
                 }
-                .foregroundColor(.secondary.opacity(0.8))
+                .foregroundColor(.secondary)
             }
             .padding(.top, 2)
         }
@@ -190,7 +243,7 @@ public struct LoginView: View {
     
     @ViewBuilder
     private var termsAndPrivacyNotice: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 6) {
             Text(L10n.Legal.termsAgreeNotice)
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
@@ -203,7 +256,7 @@ public struct LoginView: View {
                     Text(L10n.Legal.termsTitle)
                         .font(.system(size: 11, weight: .medium))
                         .underline()
-                        .foregroundColor(.blue)
+                        .foregroundColor(.appAccent)
                 }
                 
                 Text("•")
@@ -216,10 +269,11 @@ public struct LoginView: View {
                     Text(L10n.Legal.privacyTitle)
                         .font(.system(size: 11, weight: .medium))
                         .underline()
-                        .foregroundColor(.blue)
+                        .foregroundColor(.appAccent)
                 }
             }
         }
+        .dynamicTypeSize(...DynamicTypeSize.small)
         .padding(.top, 8)
         .padding(.bottom, 8)
     }
@@ -229,8 +283,12 @@ public struct LoginView: View {
     private func performAnonymousLogin() {
         isLoggingIn = true
         errorMessage = nil
+        isDisplayNameFocused = false
         
-        chatService.signInAnonymously(displayName: "ゲストユーザー") { result in
+        let trimmed = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let nameToUse = trimmed.isEmpty ? L10n.Common.guestUser : trimmed
+        
+        authService.signInAnonymously(displayName: nameToUse) { result in
             DispatchQueue.main.async {
                 isLoggingIn = false
                 switch result {
@@ -248,75 +306,74 @@ public struct LoginView: View {
 
 struct RecoveryLoginSheetView: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject var chatService = ChatService.shared
+    @ObservedObject var authService = AuthService.shared
     @State private var phraseInput: String = ""
     @State private var isRestoring = false
     @State private var errorText: String? = nil
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
-                VStack(spacing: 8) {
-                    Image(systemName: "key.viewfinder")
-                        .font(.system(size: 48))
-                        .foregroundColor(.blue)
-                    
-                    Text(L10n.Settings.recoveryTitle)
-                        .font(.title2)
-                        .bold()
-                    
-                    Text(L10n.Settings.recoveryDesc)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 16)
-                }
-                .padding(.top, 16)
-                
-                VStack(alignment: .leading, spacing: 8) {
-                    TextEditor(text: $phraseInput)
-                        .font(.system(.body, design: .monospaced))
-                        .padding(12)
-                        .background(Color(uiColor: .secondarySystemBackground))
-                        .cornerRadius(12)
-                        .frame(height: 120)
-                    
-                    if let error = errorText {
-                        Text(error)
-                            .font(.caption)
-                            .foregroundColor(.red)
+            ScrollView {
+                VStack(spacing: 24) {
+                    VStack(spacing: 12) {
+                        Image(systemName: "key.viewfinder")
+                            .font(.system(.largeTitle))
+                            .foregroundColor(.secondary)
+                        
+                        Text(L10n.Settings.recoveryDesc)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, 20)
                     }
-                }
-                .padding(.horizontal, 20)
-                
-                Button {
-                    restoreAccount()
-                } label: {
-                    HStack {
-                        if isRestoring {
-                            ProgressView()
-                                .tint(.white)
-                                .padding(.trailing, 8)
+                    .padding(.top, 16)
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        TextEditor(text: $phraseInput)
+                            .font(.system(.body, design: .monospaced))
+                            .padding(12)
+                            .background(Color(uiColor: .secondarySystemBackground))
+                            .cornerRadius(12)
+                            .frame(minHeight: 120)
+                        
+                        if let error = errorText {
+                            Text(error)
+                                .font(.caption)
+                                .foregroundColor(.red)
                         }
-                        Text(L10n.Auth.recoveryRestoreButton)
-                            .bold()
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(phraseInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.blue.opacity(0.5) : Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
+                    .padding(.horizontal, 20)
+                    
+                    Button {
+                        restoreAccount()
+                    } label: {
+                        HStack {
+                            if isRestoring {
+                                ProgressView()
+                                    .tint(.white)
+                                    .padding(.trailing, 8)
+                            }
+                            Text(L10n.Auth.recoveryRestoreButton)
+                                .font(.body.weight(.bold))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: 50)
+                        .padding(.vertical, 4)
+                        .background(phraseInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.appAccent.opacity(0.5) : Color.appAccent)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                    }
+                    .padding(.horizontal, 20)
+                    .disabled(phraseInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isRestoring)
                 }
-                .padding(.horizontal, 20)
-                .disabled(phraseInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isRestoring)
-                
-                Spacer()
+                .padding(.bottom, 24)
             }
             .navigationTitle(L10n.Settings.recoveryTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(L10n.Common.cancel) {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(L10n.Common.close) {
                         dismiss()
                     }
                 }
@@ -334,7 +391,7 @@ struct RecoveryLoginSheetView: View {
         isRestoring = true
         errorText = nil
         
-        chatService.restoreWithRecoveryPhrase(words: words) { result in
+        authService.restoreWithRecoveryPhrase(words: words) { result in
             DispatchQueue.main.async {
                 isRestoring = false
                 switch result {

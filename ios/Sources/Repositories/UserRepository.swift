@@ -128,35 +128,52 @@ final class UserRepository {
             "updatedAt": FieldValue.serverTimestamp()
         ]
         
-        let batch = db.batch()
-        let tenantUserRef = db.collection("tenants").document(tenantId).collection("users").document(user.userID)
-        batch.setData(userData, forDocument: tenantUserRef, merge: true)
-        
-        // ユーザー名インデックス (/tenants/{tenantId}/usernames/{username})
         let usernameRef = db.collection("tenants").document(tenantId).collection("usernames").document(cleanUsername)
-        batch.setData([
-            "userId": user.userID,
-            "uid": user.uid,
-            "tenantId": tenantId,
-            "createdBy": user.userID,
-            "createdAt": FieldValue.serverTimestamp(),
-            "updatedBy": user.userID,
-            "updatedAt": FieldValue.serverTimestamp()
-        ], forDocument: usernameRef, merge: true)
         
-        let globalUserRef = db.collection("users").document(user.uid)
-        batch.setData([
-            "uid": user.uid,
-            "publicKey": user.publicKey,
-            "defaultTenantId": tenantId,
-            "updatedAt": FieldValue.serverTimestamp()
-        ], forDocument: globalUserRef, merge: true)
-        
-        batch.commit { error in
+        // 新規登録時またはプロファイル更新時、ユーザー名が他者に取られていないか確認
+        usernameRef.getDocument { [weak self] usernameDoc, error in
+            guard let self = self else { return }
             if let error = error {
                 completion(.failure(error))
-            } else {
-                completion(.success(()))
+                return
+            }
+            if let doc = usernameDoc, doc.exists, let existingUid = doc.data()?["uid"] as? String, existingUid != user.uid {
+                let err = NSError(domain: "UserError", code: 409, userInfo: [NSLocalizedDescriptionKey: L10n.Error.User.usernameTaken])
+                completion(.failure(err))
+                return
+            }
+            
+            let batch = self.db.batch()
+            let tenantUserRef = self.db.collection("tenants").document(tenantId).collection("users").document(user.userID)
+            batch.setData(userData, forDocument: tenantUserRef, merge: true)
+            
+            // ユーザー名インデックス (/tenants/{tenantId}/usernames/{username})
+            // セキュリティルール allow update: if false に適合するため、merge: false で新規作成
+            let usernameData: [String: Any] = [
+                "userId": user.userID,
+                "uid": user.uid,
+                "tenantId": tenantId,
+                "createdBy": user.userID,
+                "createdAt": FieldValue.serverTimestamp(),
+                "updatedBy": user.userID,
+                "updatedAt": FieldValue.serverTimestamp()
+            ]
+            batch.setData(usernameData, forDocument: usernameRef, merge: false)
+            
+            let globalUserRef = self.db.collection("users").document(user.uid)
+            batch.setData([
+                "uid": user.uid,
+                "publicKey": user.publicKey,
+                "defaultTenantId": tenantId,
+                "updatedAt": FieldValue.serverTimestamp()
+            ], forDocument: globalUserRef, merge: true)
+            
+            batch.commit { error in
+                if let error = error {
+                    completion(.failure(error))
+                } else {
+                    completion(.success(()))
+                }
             }
         }
     }
@@ -193,20 +210,21 @@ final class UserRepository {
         let oldUsernameRef = db.collection("tenants").document(tenantId).collection("usernames").document(cleanOld)
         let userRef = db.collection("tenants").document(tenantId).collection("users").document(userId)
         
-        // 重複チェックおよび旧インデックスの存在確認
+        // 重複チェック: 新ユーザー名ドキュメントが存在するか確認
         newUsernameRef.getDocument { [weak self] newSnap, error in
             guard let self = self else { return }
             if let error = error {
                 completion(.failure(error))
                 return
             }
-            if let snapshot = newSnap, snapshot.exists, let ownerUid = snapshot.data()?["uid"] as? String, ownerUid != uid {
-                let err = NSError(domain: "UserError", code: 409, userInfo: [NSLocalizedDescriptionKey: "このユーザー名は既に使用されています。"])
+            // 既に存在していれば誰のものであっても（自分であっても別の名前として存在していれば）重複エラーとする
+            if let snapshot = newSnap, snapshot.exists {
+                let err = NSError(domain: "UserError", code: 409, userInfo: [NSLocalizedDescriptionKey: L10n.Error.User.usernameTaken])
                 completion(.failure(err))
                 return
             }
             
-            // 旧インデックスの存在確認
+            // 旧インデックスの存在確認と所有者確認
             let handleBatchWrite = { (deleteOld: Bool) in
                 let batch = self.db.batch()
                 let usernameData: [String: Any] = [
@@ -218,7 +236,8 @@ final class UserRepository {
                     "updatedBy": userId,
                     "updatedAt": FieldValue.serverTimestamp()
                 ]
-                batch.setData(usernameData, forDocument: newUsernameRef, merge: true)
+                // 新規追加 (allow create のみ許可、merge: false)
+                batch.setData(usernameData, forDocument: newUsernameRef, merge: false)
                 
                 batch.updateData([
                     "username": cleanNew,

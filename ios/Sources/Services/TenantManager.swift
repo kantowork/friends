@@ -51,7 +51,6 @@ final class TenantManager: ObservableObject {
                 UserDefaults.standard.set(encoded, forKey: userDefaultsKeyTenants)
             }
         }
-        
         let savedActiveId = UserDefaults.standard.string(forKey: userDefaultsKeyActiveTenantId) ?? ""
         let resolvedActiveId: String
         if !savedActiveId.isEmpty && tenants.contains(where: { $0.tenantID == savedActiveId }) {
@@ -198,7 +197,7 @@ final class TenantManager: ObservableObject {
         guard let authUid = Auth.auth().currentUser?.uid else { return }
         
         for tenant in registeredTenants {
-            // アクティブテナントの未読数は ChatService が常時リアルタイム同期しているためスキップ
+            // アクティブテナントの未読数は MessageService が常時リアルタイム同期しているためスキップ
             if tenant.tenantID == activeTenantId {
                 continue
             }

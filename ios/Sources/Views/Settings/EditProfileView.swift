@@ -7,7 +7,8 @@ import PhotosUI
 
 public struct EditProfileView: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject var chatService = ChatService.shared
+    @ObservedObject var authService = AuthService.shared
+    @ObservedObject var directChatService = DirectChatService.shared
     
     @State private var displayNameText: String = ""
     @State private var usernameText: String = ""
@@ -22,14 +23,24 @@ public struct EditProfileView: View {
     
     @FocusState private var isUsernameFocused: Bool
     
+    private var isUsernameTooShort: Bool {
+        let raw = usernameText.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "@", with: "")
+        return !raw.isEmpty && raw.count < 3
+    }
+    
+    private var isUsernameTooLong: Bool {
+        let raw = usernameText.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "@", with: "")
+        return raw.count > 20
+    }
+    
     private var isSaveDisabled: Bool {
         if isSaving { return true }
         let trimmedName = displayNameText.trimmingCharacters(in: .whitespacesAndNewlines)
         let rawUsername = usernameText.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "@", with: "").lowercased()
-        if trimmedName.isEmpty || rawUsername.isEmpty { return true }
+        if trimmedName.isEmpty || rawUsername.isEmpty || isUsernameTooShort || isUsernameTooLong { return true }
         
-        let hasNameChanged = trimmedName != (chatService.currentUser?.displayName ?? "")
-        let hasUsernameChanged = rawUsername != (chatService.currentUser?.effectiveUsername.lowercased() ?? "")
+        let hasNameChanged = trimmedName != (authService.currentUser?.displayName ?? "")
+        let hasUsernameChanged = rawUsername != (authService.currentUser?.effectiveUsername.lowercased() ?? "")
         let hasAvatarChanged = (previewAvatarImage != nil) || isAvatarRemoved
         
         return !hasNameChanged && !hasUsernameChanged && !hasAvatarChanged
@@ -43,90 +54,72 @@ public struct EditProfileView: View {
                 // Section 1: プロフィール情報 (アバター + アカウント、名前、ID)
                 Section {
                     // 1. アバターアイコン & アカウント (username)
-                    HStack(spacing: 16) {
-                        // 左: アバターサークル + 右下カメラバッジ
-                        ZStack(alignment: .bottomTrailing) {
-                            if let preview = previewAvatarImage {
-                                Image(uiImage: preview)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 64, height: 64)
-                                    .clipShape(Circle())
-                                    .overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1.5))
-                            } else if isAvatarRemoved {
-                                // 削除プレビュー時
-                                Circle()
-                                    .fill(LinearGradient(colors: [Color.blue.opacity(0.8), Color.indigo.opacity(0.9)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                                    .frame(width: 64, height: 64)
-                                    .overlay(
-                                        Text(initialLetter(displayNameText))
-                                            .font(.system(size: 26, weight: .bold, design: .rounded))
-                                            .foregroundColor(.white)
-                                    )
-                            } else if let user = chatService.currentUser {
-                                UserAvatarView(
-                                    userId: user.userID,
-                                    displayName: user.displayName,
-                                    avatarNonce: user.avatarNonce,
-                                    avatarUpdatedAt: user.avatarUpdatedDate,
-                                    size: 64
-                                )
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(alignment: .center, spacing: 16) {
+                            // 左: アバターサークル (64x64 固定、縮小・移動不可)
+                            avatarBadgeView
+                                .fixedSize()
+                                .layoutPriority(1)
+                            
+                            // 右側: @xxxxxx アカウント入力 (フォントサイズ大・文字数増大時は文字の途中で自然に改行)
+                            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                                Text("@")
+                                    .font(.system(.body, design: .monospaced))
+                                    .foregroundColor(.secondary)
+                                
+                                TextField(L10n.Settings.profileUsernamePlaceholder, text: $usernameText, axis: .vertical)
+                                    .font(.system(.body, design: .monospaced))
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled()
+                                    .keyboardType(.asciiCapable)
+                                    .lineLimit(1...5)
+                                    .focused($isUsernameFocused)
                             }
-                            
-                            // 編集バッジ
-                            Circle()
-                                .fill(Color.blue)
-                                .frame(width: 22, height: 22)
-                                .overlay(
-                                    Image(systemName: "camera.fill")
-                                        .font(.system(size: 10, weight: .semibold))
-                                        .foregroundColor(.white)
-                                )
-                                .shadow(color: Color.black.opacity(0.15), radius: 3, x: 0, y: 1)
-                        }
-                        .onTapGesture {
-                            showingAvatarActionSheet = true
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                isUsernameFocused = true
+                            }
                         }
                         
-                        Spacer(minLength: 12)
-                        
-                        // 右側: @xxxxxx アカウント入力 (ユーザーネームのすぐ左に@を密着配置し、右寄せ)
-                        HStack(spacing: 2) {
-                            Text("@")
-                                .font(.system(.body, design: .monospaced))
-                                .foregroundColor(.secondary)
-                            
-                            TextField(L10n.Settings.profileUsernamePlaceholder, text: $usernameText)
-                                .font(.system(.body, design: .monospaced))
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled()
-                                .keyboardType(.asciiCapable)
-                                .fixedSize(horizontal: true, vertical: false)
-                                .focused($isUsernameFocused)
-                        }
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            isUsernameFocused = true
+                        // 文字数制限の警告表示
+                        if isUsernameTooLong {
+                            Text(L10n.Settings.profileUsernameTooLong)
+                                .font(.caption)
+                                .foregroundColor(.red)
+                                .padding(.leading, 80)
+                                .transition(.opacity)
+                        } else if isUsernameTooShort {
+                            Text(L10n.Settings.profileUsernameTooShort)
+                                .font(.caption)
+                                .foregroundColor(.red)
+                                .padding(.leading, 80)
+                                .transition(.opacity)
                         }
                     }
                     .padding(.vertical, 4)
                     
                     // 2. 名前 (displayName)
-                    HStack {
+                    HStack(alignment: .firstTextBaseline) {
                         Text(L10n.Settings.profileDisplayName)
-                        Spacer()
-                        TextField(L10n.Settings.editProfilePlaceholder, text: $displayNameText)
+                            .fixedSize(horizontal: true, vertical: false)
+                        Spacer(minLength: 12)
+                        TextField(L10n.Settings.editProfilePlaceholder, text: $displayNameText, axis: .vertical)
                             .multilineTextAlignment(.trailing)
+                            .lineLimit(1...4)
                             .autocorrectionDisabled()
                     }
                     
                     // 3. ID (userId)
-                    HStack {
+                    HStack(alignment: .firstTextBaseline) {
                         Text(L10n.Settings.profileUserId)
-                        Spacer()
-                        Text(chatService.currentUser?.userID ?? "-")
+                            .fixedSize(horizontal: true, vertical: false)
+                        Spacer(minLength: 12)
+                        Text(breakableText(authService.currentUser?.userID ?? "-"))
                             .font(.system(.body, design: .monospaced))
                             .foregroundColor(.secondary)
+                            .multilineTextAlignment(.trailing)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 } header: {
                     Text(L10n.Settings.sectionProfile)
@@ -135,30 +128,38 @@ public struct EditProfileView: View {
                 // Section 2: テナント情報 (コード・テナント名・ID)
                 Section(L10n.Settings.sectionTenant) {
                     // 1. コード (tenantCode)
-                    HStack {
+                    HStack(alignment: .firstTextBaseline) {
                         Text(L10n.Settings.tenantCode)
-                        Spacer()
-                        Text(chatService.currentTenant?.tenantCode ?? "-")
+                            .fixedSize(horizontal: true, vertical: false)
+                        Spacer(minLength: 12)
+                        Text(breakableText(authService.currentTenant?.tenantCode ?? "-"))
                             .font(.system(.body, design: .monospaced))
                             .foregroundColor(.secondary)
+                            .multilineTextAlignment(.trailing)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     
                     // 2. テナント名 (tenantName)
-                    HStack {
+                    HStack(alignment: .firstTextBaseline) {
                         Text(L10n.Settings.tenantName)
-                        Spacer()
-                        Text(chatService.currentTenant?.tenantName ?? L10n.Settings.tenantUnconnected)
+                            .fixedSize(horizontal: true, vertical: false)
+                        Spacer(minLength: 12)
+                        Text(authService.currentTenant?.tenantName ?? L10n.Settings.tenantUnconnected)
                             .font(.system(.body))
                             .foregroundColor(.secondary)
+                            .multilineTextAlignment(.trailing)
                     }
                     
                     // 3. ID (tenantId)
-                    HStack {
+                    HStack(alignment: .firstTextBaseline) {
                         Text(L10n.Settings.tenantId)
-                        Spacer()
-                        Text(chatService.currentTenant?.tenantID ?? "-")
+                            .fixedSize(horizontal: true, vertical: false)
+                        Spacer(minLength: 12)
+                        Text(breakableText(authService.currentTenant?.tenantID ?? "-"))
                             .font(.system(.body, design: .monospaced))
                             .foregroundColor(.secondary)
+                            .multilineTextAlignment(.trailing)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 
@@ -188,7 +189,7 @@ public struct EditProfileView: View {
                             .font(.system(size: 14, weight: .bold))
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(.blue)
+                    .tint(.appAccent)
                     .disabled(isSaveDisabled)
                 }
             }
@@ -201,8 +202,8 @@ public struct EditProfileView: View {
                 Text(L10n.Settings.profileUsernameConfirmMsg)
             }
             .onAppear {
-                displayNameText = chatService.currentUser?.displayName ?? ""
-                usernameText = chatService.currentUser?.effectiveUsername ?? ""
+                displayNameText = authService.currentUser?.displayName ?? ""
+                usernameText = authService.currentUser?.effectiveUsername ?? ""
             }
             .confirmationDialog(L10n.Settings.avatarChange, isPresented: $showingAvatarActionSheet, titleVisibility: .visible) {
                 Button(L10n.Settings.avatarChoosePhoto) {
@@ -212,7 +213,7 @@ public struct EditProfileView: View {
                 Button(L10n.Settings.avatarPresetTitle) {
                     showingPresetSheet = true
                 }
-                if chatService.currentUser?.hasAvatarUpdatedAt == true || previewAvatarImage != nil {
+                if authService.currentUser?.hasAvatarUpdatedAt == true || previewAvatarImage != nil {
                     Button(L10n.Settings.avatarRemove, role: .destructive) {
                         previewAvatarImage = nil
                         isAvatarRemoved = true
@@ -246,6 +247,56 @@ public struct EditProfileView: View {
         }
     }
     
+    // MARK: - Subviews
+    
+    @ViewBuilder
+    private var avatarBadgeView: some View {
+        ZStack(alignment: .bottomTrailing) {
+            if let preview = previewAvatarImage {
+                Image(uiImage: preview)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 64, height: 64)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1.5))
+            } else if isAvatarRemoved {
+                // 削除プレビュー時
+                Circle()
+                    .fill(LinearGradient(colors: [Color.appAccent.opacity(0.8), Color.indigo.opacity(0.9)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: 64, height: 64)
+                    .overlay(
+                        Text(initialLetter(displayNameText))
+                            .font(.system(size: 26, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                    )
+            } else if let user = authService.currentUser {
+                UserAvatarView(
+                    userId: user.userID,
+                    displayName: user.displayName,
+                    avatarNonce: user.avatarNonce,
+                    avatarUpdatedAt: user.avatarUpdatedDate,
+                    size: 64
+                )
+            }
+            
+            // 編集バッジ
+            Circle()
+                .fill(Color.appAccent)
+                .frame(width: 22, height: 22)
+                .overlay(
+                    Image(systemName: "camera.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.white)
+                )
+                .shadow(color: Color.black.opacity(0.15), radius: 3, x: 0, y: 1)
+        }
+        .frame(width: 64, height: 64)
+        .contentShape(Circle())
+        .onTapGesture {
+            showingAvatarActionSheet = true
+        }
+    }
+    
     @State private var showingPhotoPicker = false
     
     private func triggerPhotoPicker() {
@@ -257,8 +308,22 @@ public struct EditProfileView: View {
         return trimmed.first.map { String($0).uppercased() } ?? "?"
     }
     
+    private func breakableText(_ text: String) -> String {
+        text.map { String($0) }.joined(separator: "\u{200B}")
+    }
+    
     private func onSaveTapped() {
         let rawUsername = usernameText.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "@", with: "").lowercased()
+        
+        if rawUsername.count < 3 {
+            errorMessage = L10n.Settings.profileUsernameTooShort
+            return
+        }
+        
+        if rawUsername.count > 20 {
+            errorMessage = L10n.Settings.profileUsernameTooLong
+            return
+        }
         
         // username バリデーション (3〜20文字、英数字とアンダースコア)
         let usernameRegex = "^[a-zA-Z0-9_]{3,20}$"
@@ -267,7 +332,7 @@ public struct EditProfileView: View {
             return
         }
         
-        let currentEffective = chatService.currentUser?.effectiveUsername.lowercased() ?? ""
+        let currentEffective = authService.currentUser?.effectiveUsername.lowercased() ?? ""
         if rawUsername != currentEffective {
             // ユーザー名が変更される場合は警告・確認ダイアログを表示
             showingUsernameConfirmAlert = true
@@ -282,28 +347,35 @@ public struct EditProfileView: View {
         
         let trimmedName = displayNameText.trimmingCharacters(in: .whitespacesAndNewlines)
         let rawUsername = usernameText.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "@", with: "").lowercased()
+        let currentEffective = authService.currentUser?.effectiveUsername.lowercased() ?? ""
         
+        // 1. ユーザー名 (username) の更新（変更がある場合は最優先で直列実行）
+        if rawUsername != currentEffective {
+            directChatService.updateUsername(newUsername: rawUsername) { result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .failure(let error):
+                        self.isSaving = false
+                        self.errorMessage = error.localizedDescription
+                        return
+                    case .success:
+                        self.proceedSaveOtherProfileFields(trimmedName: trimmedName)
+                    }
+                }
+            }
+        } else {
+            proceedSaveOtherProfileFields(trimmedName: trimmedName)
+        }
+    }
+    
+    private func proceedSaveOtherProfileFields(trimmedName: String) {
         let group = DispatchGroup()
         var operationError: Error?
         
-        // 1. 表示名の更新（変更がある場合）
-        if trimmedName != chatService.currentUser?.displayName {
+        // 2. 表示名の更新（変更がある場合）
+        if trimmedName != authService.currentUser?.displayName {
             group.enter()
-            chatService.patchDisplayName(newName: trimmedName) { result in
-                DispatchQueue.main.async {
-                    if case .failure(let error) = result {
-                        operationError = error
-                    }
-                    group.leave()
-                }
-            }
-        }
-        
-        // 2. ユーザー名 (username) の更新（変更がある場合）
-        let currentEffective = chatService.currentUser?.effectiveUsername.lowercased() ?? ""
-        if rawUsername != currentEffective {
-            group.enter()
-            chatService.updateUsername(newUsername: rawUsername) { result in
+            authService.patchDisplayName(newName: trimmedName) { result in
                 DispatchQueue.main.async {
                     if case .failure(let error) = result {
                         operationError = error
@@ -316,7 +388,7 @@ public struct EditProfileView: View {
         // 3. アバター画像の更新または削除
         if let newImage = previewAvatarImage {
             group.enter()
-            chatService.uploadAvatar(image: newImage) { result in
+            authService.uploadAvatar(image: newImage) { result in
                 DispatchQueue.main.async {
                     if case .failure(let error) = result {
                         operationError = error
@@ -326,7 +398,7 @@ public struct EditProfileView: View {
             }
         } else if isAvatarRemoved {
             group.enter()
-            chatService.deleteAvatar { result in
+            authService.deleteAvatar { result in
                 DispatchQueue.main.async {
                     if case .failure(let error) = result {
                         operationError = error
@@ -341,7 +413,7 @@ public struct EditProfileView: View {
             if let error = operationError {
                 self.errorMessage = error.localizedDescription
             } else {
-                self.chatService.listFriendsProfiles(force: true) {
+                self.directChatService.listFriendsProfiles(force: true) {
                     // 同期完了
                 }
                 self.dismiss()

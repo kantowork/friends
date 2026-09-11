@@ -6,7 +6,8 @@ import SwiftUI
 // リスト: 参加中グループチャット一覧（メッセージ最新順ソート、未読バッジ表示）
 
 public struct GroupListView: View {
-    @ObservedObject var chatService = ChatService.shared
+    @ObservedObject var groupChatService = GroupChatService.shared
+    @ObservedObject var messageService = MessageService.shared
     @State private var showingCreateGroupSheet = false
     @Binding var navigationPath: NavigationPath
     
@@ -16,10 +17,10 @@ public struct GroupListView: View {
     
     /// グループチャット一覧（最新メッセージ時刻降順）
     private var groupListItems: [FriendsChatUIModel] {
-        return chatService.groupChats.map { groupChat in
-            let calculatedUnread = chatService.unreadCount(for: groupChat.chatID)
-            let latestDecrypted = chatService.messages[groupChat.chatID]?.last
-            let effectiveLastMessage = latestDecrypted?.decryptedText ?? groupChat.lastMessage
+        return groupChatService.groupChats.map { groupChat in
+            let calculatedUnread = messageService.unreadCount(for: groupChat.chatID)
+            let latestDecrypted = messageService.messages[groupChat.chatID]?.last
+            let effectiveLastMessage = latestDecrypted?.summaryText ?? groupChat.lastMessage
             let effectiveLastMessageAt = latestDecrypted?.createdDate ?? groupChat.lastMessageAt
             
             return FriendsChatUIModel(
@@ -44,7 +45,7 @@ public struct GroupListView: View {
                     if groupListItems.isEmpty {
                         VStack(spacing: 12) {
                             Image(systemName: "person.3.sequence.fill")
-                                .font(.system(size: 42))
+                                .font(.system(.largeTitle))
                                 .foregroundColor(.secondary.opacity(0.6))
                                 .padding(.top, 28)
                             Text(L10n.Group.listEmpty)
@@ -68,7 +69,7 @@ public struct GroupListView: View {
             .navigationTitle(L10n.Group.listTitle)
             .refreshable {
                 await withCheckedContinuation { continuation in
-                    chatService.listGroupChats {
+                    groupChatService.listGroupChats {
                         continuation.resume()
                     }
                 }
@@ -82,7 +83,6 @@ public struct GroupListView: View {
                         showingCreateGroupSheet = true
                     } label: {
                         Image(systemName: "plus")
-                            .font(.system(size: 16, weight: .bold))
                     }
                 }
             }
@@ -109,6 +109,8 @@ struct GroupChatRowView: View {
                 avatarUpdatedAt: chat.avatarUpdatedAt,
                 size: 48
             )
+            .fixedSize()
+            .layoutPriority(1)
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
@@ -116,8 +118,9 @@ struct GroupChatRowView: View {
                         .font(.headline)
                         .foregroundColor(.primary)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                     
-                    Text("(\(chat.chat.members.count))")
+                    Text(L10n.Group.memberCountFormat(chat.chat.members.count))
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
@@ -131,10 +134,11 @@ struct GroupChatRowView: View {
                 }
                 
                 HStack {
-                    Text(chat.lastMessage.isEmpty ? "グループが作成されました" : chat.lastMessage)
+                    Text(chat.lastMessage.isEmpty ? L10n.Group.groupCreated : chat.lastMessage)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                     
                     Spacer()
                     
@@ -146,7 +150,7 @@ struct GroupChatRowView: View {
                             .foregroundColor(.white)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 3)
-                            .background(Color.blue)
+                            .background(Color.appAccent)
                             .clipShape(Capsule())
                     }
                 }

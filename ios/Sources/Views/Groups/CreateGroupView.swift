@@ -5,7 +5,8 @@ import SwiftUI
 
 struct CreateGroupView: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject var chatService = ChatService.shared
+    @ObservedObject var directChatService = DirectChatService.shared
+    @ObservedObject var groupChatService = GroupChatService.shared
     
     @State private var groupName: String = ""
     @State private var selectedFriendUserIds: Set<String> = []
@@ -29,13 +30,13 @@ struct CreateGroupView: View {
                 
                 // Section 2: メンバー選択
                 Section(header: Text(L10n.Group.selectMembers(selectedFriendUserIds.count))) {
-                    if chatService.friends.isEmpty {
+                    if directChatService.friends.isEmpty {
                         Text(L10n.Group.noFriends)
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .padding(.vertical, 8)
                     } else {
-                        ForEach(chatService.friends) { friend in
+                        ForEach(directChatService.friends) { friend in
                             Button {
                                 if selectedFriendUserIds.contains(friend.userID) {
                                     selectedFriendUserIds.remove(friend.userID)
@@ -48,7 +49,7 @@ struct CreateGroupView: View {
                                     ZStack {
                                         Circle()
                                             .fill(LinearGradient(
-                                                colors: [Color.blue.opacity(0.7), Color.purple.opacity(0.7)],
+                                                colors: [Color.appAccent.opacity(0.7), Color.purple.opacity(0.7)],
                                                 startPoint: .topLeading,
                                                 endPoint: .bottomTrailing
                                             ))
@@ -67,7 +68,7 @@ struct CreateGroupView: View {
                                     // チェックマーク
                                     if selectedFriendUserIds.contains(friend.userID) {
                                         Image(systemName: "checkmark.circle.fill")
-                                            .foregroundColor(.blue)
+                                            .foregroundColor(.appAccent)
                                             .font(.system(size: 22))
                                     } else {
                                         Image(systemName: "circle")
@@ -99,7 +100,7 @@ struct CreateGroupView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.primary)
+                            .foregroundColor(.secondary)
                     }
                     .disabled(isSubmitting)
                 }
@@ -108,7 +109,7 @@ struct CreateGroupView: View {
                         submitCreateGroup()
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(.blue)
+                    .tint(.appAccent)
                     .disabled(groupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSubmitting)
                     .fontWeight(.bold)
                 }
@@ -123,7 +124,7 @@ struct CreateGroupView: View {
         isSubmitting = true
         errorMessage = nil
         
-        chatService.createGroup(title: cleanName, memberUserIds: Array(selectedFriendUserIds)) { result in
+        groupChatService.createGroup(title: cleanName, memberUserIds: Array(selectedFriendUserIds)) { result in
             DispatchQueue.main.async {
                 self.isSubmitting = false
                 switch result {

@@ -7,7 +7,8 @@ import AVFoundation
 
 struct AddFriendView: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject var chatService = ChatService.shared
+    @ObservedObject var directChatService = DirectChatService.shared
+    @ObservedObject var authService = AuthService.shared
     
     enum TabSelection: Int, CaseIterable {
         case twoDimensionalCode = 0
@@ -151,10 +152,12 @@ struct AddFriendView: View {
                                 .foregroundColor(.secondary)
                                 .fixedSize(horizontal: true, vertical: false)
                             
-                            Text(myDisplayUserId)
+                            Text(breakableText(myDisplayUserId))
                                 .font(.system(.body, design: .monospaced))
                                 .bold()
                                 .foregroundColor(.primary)
+                                .multilineTextAlignment(.leading)
+                                .fixedSize(horizontal: false, vertical: true)
                             
                             Spacer()
                             
@@ -163,7 +166,7 @@ struct AddFriendView: View {
                             } label: {
                                 Image(systemName: isCopiedUserId ? "checkmark" : "doc.on.doc")
                                     .font(.system(size: 15, weight: .medium))
-                                    .foregroundColor(isCopiedUserId ? .green : .blue)
+                                    .foregroundColor(isCopiedUserId ? .green : .appAccent)
                                     .frame(width: 32, height: 32)
                                     .background(Color(uiColor: .tertiarySystemGroupedBackground))
                                     .clipShape(Circle())
@@ -269,7 +272,7 @@ struct AddFriendView: View {
                             Spacer()
                         }
                         .frame(height: 50)
-                        .background(isInputReady ? Color.blue : Color.blue.opacity(0.4))
+                        .background(isInputReady ? Color.appAccent : Color.appAccent.opacity(0.4))
                         .foregroundColor(.white)
                         .cornerRadius(12)
                     }
@@ -286,11 +289,11 @@ struct AddFriendView: View {
     // MARK: - Computed Properties & Helpers
     
     private var myDisplayUserId: String {
-        chatService.currentUser?.effectiveUsername ?? "guest"
+        authService.currentUser?.effectiveUsername ?? "guest"
     }
     
     private var currentPasscode: String {
-        guard let user = chatService.currentUser, let tenant = chatService.currentTenant else {
+        guard let user = authService.currentUser, let tenant = authService.currentTenant else {
             return "000"
         }
         return FriendPasscodeGenerator.generatePasscode(uid: user.uid, tenantId: tenant.tenantID, date: timerNow)
@@ -304,7 +307,7 @@ struct AddFriendView: View {
     private func update2DCodeIfNeeded(date: Date) {
         let step = FriendPasscodeGenerator.currentStep(date: date)
         guard step != lastGeneratedStep || cached2DCodeImage == nil else { return }
-        guard let user = chatService.currentUser, let tenant = chatService.currentTenant else { return }
+        guard let user = authService.currentUser, let tenant = authService.currentTenant else { return }
         
         let passcodeForStep = FriendPasscodeGenerator.code(forStep: step, uid: user.uid, tenantId: tenant.tenantID)
         let stepTimestamp = step * Int64(FriendPasscodeGenerator.stepInterval)
@@ -371,7 +374,7 @@ struct AddFriendView: View {
         }
         
         // 2. Otherwise treat as Username / UserID
-        chatService.addFriendByUsername(targetUsername: cleanInput, passcode: cleanPasscode) { result in
+        directChatService.addFriendByUsername(targetUsername: cleanInput, passcode: cleanPasscode) { result in
             DispatchQueue.main.async {
                 self.isSubmitting = false
                 switch result {
@@ -389,7 +392,7 @@ struct AddFriendView: View {
         isSubmitting = true
         errorMessage = nil
         
-        chatService.createFriend(from: payload, explicitPasscode: explicitPasscode) { result in
+        directChatService.createFriend(from: payload, explicitPasscode: explicitPasscode) { result in
             DispatchQueue.main.async {
                 self.isSubmitting = false
                 switch result {
@@ -401,6 +404,10 @@ struct AddFriendView: View {
                 }
             }
         }
+    }
+    
+    private func breakableText(_ text: String) -> String {
+        text.map { String($0) }.joined(separator: "\u{200B}")
     }
 }
 

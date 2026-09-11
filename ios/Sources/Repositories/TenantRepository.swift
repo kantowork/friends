@@ -45,7 +45,7 @@ final class TenantRepository {
                 return
             }
             guard let doc = snapshot, doc.exists else {
-                let err = NSError(domain: "TenantError", code: 404, userInfo: [NSLocalizedDescriptionKey: "指定されたテナントが見つかりません。"])
+                let err = NSError(domain: "TenantError", code: 404, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Tenant.notFound])
                 completion(.failure(err))
                 return
             }
@@ -73,10 +73,10 @@ final class TenantRepository {
             } else if doc.documentID == PresetTenantConfig.tenantId && !PresetTenantConfig.tenantName.isEmpty {
                 resolvedName = PresetTenantConfig.tenantName
             } else {
-                resolvedName = !tenantCode.isEmpty ? "@\(tenantCode)" : "組織 (\(doc.documentID))"
+                resolvedName = !tenantCode.isEmpty ? "@\(tenantCode)" : "\(L10n.Tenant.defaultOrgName) (\(doc.documentID))"
             }
         } else if resolvedName.isEmpty {
-            resolvedName = (doc.documentID == PresetTenantConfig.tenantId) ? PresetTenantConfig.tenantName : "組織"
+            resolvedName = (doc.documentID == PresetTenantConfig.tenantId) ? PresetTenantConfig.tenantName : L10n.Tenant.defaultOrgName
         }
         
         return FriendsTenant(

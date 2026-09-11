@@ -6,7 +6,7 @@ import SwiftUI
 struct TenantSwitcherView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var tenantManager = TenantManager.shared
-    @ObservedObject private var chatService = ChatService.shared
+    @ObservedObject private var authService = AuthService.shared
     
     @State private var showingAddTenantSheet = false
     @State private var tenantToDelete: StoredTenant? = nil
@@ -52,12 +52,12 @@ struct TenantSwitcherView: View {
                         HStack(spacing: 12) {
                             Image(systemName: "plus.circle.fill")
                                 .font(.title3)
-                                .foregroundColor(.blue)
+                                .foregroundColor(.appAccent)
                             
                             Text(L10n.Tenant.switchAddBtn)
                                 .font(.body)
                                 .fontWeight(.semibold)
-                                .foregroundColor(.blue)
+                                .foregroundColor(.appAccent)
                         }
                         .padding(.vertical, 4)
                     }
@@ -122,17 +122,18 @@ struct TenantSwitcherView: View {
         HStack(spacing: 12) {
             // アイコン
             Circle()
-                .fill(isCurrent ? Color.blue.opacity(0.15) : Color.gray.opacity(0.15))
+                .fill(isCurrent ? Color.appAccent.opacity(0.15) : Color.gray.opacity(0.15))
                 .frame(width: 40, height: 40)
+                .fixedSize()
                 .overlay(
                     Image(systemName: "building.2.crop.circle.fill")
                         .font(.system(size: 20))
-                        .foregroundColor(isCurrent ? .blue : .secondary)
+                        .foregroundColor(isCurrent ? .appAccent : .secondary)
                 )
             
             // テナント名 & コード
             VStack(alignment: .leading, spacing: 2) {
-                Text(tenant.tenantName.isEmpty ? "テナント (\(tenant.tenantCode))" : tenant.tenantName)
+                Text(tenant.tenantName.isEmpty ? L10n.Tenant.defaultNameFormat(tenant.tenantCode) : tenant.tenantName)
                     .font(.body)
                     .fontWeight(isCurrent ? .bold : .medium)
                     .foregroundColor(.primary)
@@ -149,18 +150,18 @@ struct TenantSwitcherView: View {
                 HStack(spacing: 6) {
                     Text(L10n.Tenant.switchCurrentBadge)
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.blue)
+                        .foregroundColor(.appAccent)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
-                        .background(Color.blue.opacity(0.12))
+                        .background(Color.appAccent.opacity(0.12))
                         .clipShape(Capsule())
                         .overlay(
                             Capsule()
-                                .stroke(Color.blue.opacity(0.35), lineWidth: 1)
+                                .stroke(Color.appAccent.opacity(0.35), lineWidth: 1)
                         )
                     
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.blue)
+                        .foregroundColor(.appAccent)
                         .font(.system(size: 18))
                 }
             } else {
@@ -186,7 +187,7 @@ struct TenantSwitcherView: View {
         isSwitching = true
         errorMessage = nil
         
-        chatService.switchToTenant(tenantId: tenant.tenantID) { result in
+        authService.switchToTenant(tenantId: tenant.tenantID) { result in
             DispatchQueue.main.async {
                 self.isSwitching = false
                 switch result {

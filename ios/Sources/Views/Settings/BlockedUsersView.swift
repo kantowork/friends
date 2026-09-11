@@ -4,7 +4,7 @@ import SwiftUI
 /// ブロックしたユーザーの一覧確認およびブロック解除画面
 public struct BlockedUsersView: View {
     @ObservedObject var blockManager = BlockManager.shared
-    @ObservedObject var chatService = ChatService.shared
+    @ObservedObject var directChatService = DirectChatService.shared
     @Environment(\.dismiss) private var dismiss
     
     @State private var unblockingUserId: String? = nil
@@ -37,7 +37,7 @@ public struct BlockedUsersView: View {
             } else {
                 Section {
                     ForEach(blockedUsersList, id: \.self) { userId in
-                        let profile = chatService.userProfile(for: userId)
+                        let profile = UserProfileResolver.resolve(userId: userId)
                         HStack(spacing: 12) {
                             UserAvatarView(
                                 userId: userId,
@@ -46,15 +46,18 @@ public struct BlockedUsersView: View {
                                 avatarUpdatedAt: profile?.avatarUpdatedDate,
                                 size: 40
                             )
+                            .fixedSize()
                             
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(profile?.displayName ?? userId)
                                     .font(.body)
                                     .foregroundColor(.primary)
+                                    .fixedSize(horizontal: false, vertical: true)
                                 
-                                Text(userId)
+                                Text(breakableText(userId))
                                     .font(.caption)
                                     .foregroundColor(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                             
                             Spacer()
@@ -75,7 +78,7 @@ public struct BlockedUsersView: View {
         .navigationTitle(L10n.Block.listTitle)
         .navigationBarTitleDisplayMode(.inline)
         .alert(
-            L10n.Block.unblockConfirmTitle(chatService.userProfile(for: unblockingUserId ?? "")?.displayName ?? unblockingUserId ?? ""),
+            L10n.Block.unblockConfirmTitle(UserProfileResolver.resolve(userId: unblockingUserId ?? "")?.displayName ?? unblockingUserId ?? ""),
             isPresented: $showingUnblockAlert
         ) {
             Button(L10n.Common.cancel, role: .cancel) {
@@ -90,5 +93,9 @@ public struct BlockedUsersView: View {
         } message: {
             Text(L10n.Block.unblockConfirmMsg)
         }
+    }
+    
+    private func breakableText(_ text: String) -> String {
+        text.map { String($0) }.joined(separator: "\u{200B}")
     }
 }

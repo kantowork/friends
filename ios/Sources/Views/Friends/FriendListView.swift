@@ -6,7 +6,10 @@ import SwiftUI
 // リスト: チャット一覧（メッセージ最新順ソート、未読バッジ表示、ユーザーID表記なし）
 
 public struct FriendListView: View {
-    @ObservedObject var chatService = ChatService.shared
+    @ObservedObject var directChatService = DirectChatService.shared
+    @ObservedObject var messageService = MessageService.shared
+    @ObservedObject var authService = AuthService.shared
+    
     @State private var showingAddFriendSheet = false
     @State private var editingFriend: FriendsPublicUserProfile? = nil
     @State private var newFriendDisplayName: String = ""
@@ -26,44 +29,28 @@ public struct FriendListView: View {
 
     
     private var friendRowItems: [FriendRowItem] {
-        let currentUserId = chatService.currentUser?.userID ?? ""
-        let currentTenantId = chatService.currentTenant?.tenantID ?? ""
+        let currentUserId = authService.currentUser?.userID ?? ""
+        let currentTenantId = authService.currentTenant?.tenantID ?? ""
         
-        return chatService.friends.map { friend in
+        return directChatService.friends.map { friend in
             let dmChatId = "dm_" + [currentUserId, friend.userID].sorted().joined(separator: "_")
-            let calculatedUnread = chatService.unreadCount(for: dmChatId)
+            let calculatedUnread = messageService.unreadCount(for: dmChatId)
+            let latestDecrypted = messageService.messages[dmChatId]?.last
+            let effectiveLastMessage = latestDecrypted?.summaryText ?? ""
+            let effectiveLastMessageAt = latestDecrypted?.createdDate ?? Date.distantPast
             
-            let chatUI: FriendsChatUIModel
-            if let existingChat = chatService.chats.first(where: { $0.chatID == dmChatId }) {
-                let latestDecrypted = chatService.messages[dmChatId]?.last
-                let effectiveLastMessage = latestDecrypted?.decryptedText ?? existingChat.lastMessage
-                let effectiveLastMessageAt = latestDecrypted?.createdDate ?? existingChat.lastMessageAt
-                
-                chatUI = FriendsChatUIModel(
-                    chat: existingChat.chat,
-                    title: friend.displayName,
-                    lastMessage: effectiveLastMessage,
-                    lastMessageAt: effectiveLastMessageAt,
-                    unreadCount: calculatedUnread
-                )
-            } else {
-                let latestDecrypted = chatService.messages[dmChatId]?.last
-                let effectiveLastMessage = latestDecrypted?.decryptedText ?? ""
-                let effectiveLastMessageAt = latestDecrypted?.createdDate ?? Date.distantPast
-                
-                chatUI = FriendsChatUIModel(
-                    chat: FriendsChat(
-                        chatID: dmChatId,
-                        tenantID: currentTenantId,
-                        chatType: .direct,
-                        members: [currentUserId, friend.userID].sorted()
-                    ),
-                    title: friend.displayName,
-                    lastMessage: effectiveLastMessage,
-                    lastMessageAt: effectiveLastMessageAt,
-                    unreadCount: calculatedUnread
-                )
-            }
+            let chatUI = FriendsChatUIModel(
+                chat: FriendsChat(
+                    chatID: dmChatId,
+                    tenantID: currentTenantId,
+                    chatType: .direct,
+                    members: [currentUserId, friend.userID].sorted()
+                ),
+                title: friend.displayName,
+                lastMessage: effectiveLastMessage,
+                lastMessageAt: effectiveLastMessageAt,
+                unreadCount: calculatedUnread
+            )
             return FriendRowItem(friend: friend, chat: chatUI)
         }.sorted { (i1: FriendRowItem, i2: FriendRowItem) -> Bool in
             if i1.chat.lastMessageAt != i2.chat.lastMessageAt {
@@ -80,7 +67,7 @@ public struct FriendListView: View {
                     if friendRowItems.isEmpty {
                         VStack(spacing: 8) {
                             Image(systemName: "person.2.slash")
-                                .font(.system(size: 36))
+                                .font(.system(.largeTitle))
                                 .foregroundColor(.secondary.opacity(0.6))
                                 .padding(.top, 24)
                             Text(L10n.Friend.listEmpty)
@@ -110,7 +97,7 @@ public struct FriendListView: View {
                                 } label: {
                                     Label(L10n.Friend.editNameAction, systemImage: "pencil")
                                 }
-                                .tint(.blue)
+                                .tint(.appAccent)
                             }
                         }
                     }
@@ -123,7 +110,7 @@ public struct FriendListView: View {
             }
             .refreshable {
                 await withCheckedContinuation { continuation in
-                    chatService.listFriendsProfiles(force: true) {
+                    directChatService.listFriendsProfiles(force: true) {
                         continuation.resume()
                     }
                 }
@@ -134,8 +121,7 @@ public struct FriendListView: View {
                         showingAddFriendSheet = true
                     } label: {
                         Image(systemName: "person.badge.plus")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.blue)
+                            .foregroundColor(.appAccent)
                     }
                     .accessibilityLabel(L10n.Friend.addBtn)
                 }
@@ -151,11 +137,11 @@ public struct FriendListView: View {
                 Button(L10n.Common.cancel, role: .cancel) {
                     editingFriend = nil
                 }
-                Button(L10n.Friend.editNameSave) {
+                Button(L10n.Common.save) {
                     if let target = editingFriend {
                         let trimmed = newFriendDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
                         if !trimmed.isEmpty {
-                            chatService.updateFriendDisplayName(friendUserId: target.userID, newDisplayName: trimmed) { _ in
+                            directChatService.updateFriendDisplayName(friendUserId: target.userID, newDisplayName: trimmed) { _ in
                                 editingFriend = nil
                             }
                         } else {
@@ -186,26 +172,29 @@ private struct ChatRowView: View {
                 avatarUpdatedAt: friend?.avatarUpdatedDate,
                 size: 48
             )
+            .fixedSize()
+            .layoutPriority(1)
             
             // 表示名 & 最新メッセージ
-
-
             VStack(alignment: .leading, spacing: 4) {
                 Text(chat.title)
                     .font(.headline)
                     .foregroundColor(.primary)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.85)
                 
                 if !chat.lastMessage.isEmpty {
                     Text(chat.lastMessage)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 } else {
-                    Text("メッセージのやり取りはありません")
+                    Text(L10n.Chat.noMessages)
                         .font(.caption)
                         .foregroundColor(.secondary.opacity(0.8))
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 }
             }
             
@@ -216,7 +205,7 @@ private struct ChatRowView: View {
                 if chat.lastMessageAt != Date.distantPast {
                     Text(formattedTimestamp(chat.lastMessageAt))
                         .font(.caption2)
-                        .foregroundColor(chat.unreadCount > 0 ? .blue : .secondary)
+                        .foregroundColor(chat.unreadCount > 0 ? .appAccent : .secondary)
                 }
                 
                 if chat.unreadCount > 0 {
@@ -226,12 +215,16 @@ private struct ChatRowView: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 7)
                         .padding(.vertical, 3)
-                        .background(Color.blue)
+                        .background(Color.appAccent)
                         .clipShape(Capsule())
                 } else {
-                    // レイアウト維持用Spacerまたは透過プレースホルダー
-                    Spacer()
-                        .frame(height: 18)
+                    // レイアウト維持用透過プレースホルダー (Dynamic Type連動)
+                    Text(" ")
+                        .font(.caption2)
+                        .bold()
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .opacity(0)
                 }
             }
         }
@@ -245,7 +238,7 @@ private struct ChatRowView: View {
             formatter.dateFormat = "HH:mm"
             return formatter.string(from: date)
         } else if calendar.isDateInYesterday(date) {
-            return "昨日"
+            return L10n.Common.yesterday
         } else {
             let formatter = DateFormatter()
             formatter.dateFormat = "M/d"

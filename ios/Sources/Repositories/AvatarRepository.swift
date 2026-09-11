@@ -45,7 +45,7 @@ final class AvatarRepository {
               !R2Config.bucketName.isEmpty,
               !R2Config.accessKeyId.isEmpty,
               !R2Config.secretAccessKey.isEmpty else {
-            completion(.failure(NSError(domain: "AvatarError", code: 500, userInfo: [NSLocalizedDescriptionKey: "R2 ストレージ設定が不完全です。"])))
+            completion(.failure(NSError(domain: "AvatarError", code: 500, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Storage.configIncomplete])))
             return
         }
         
@@ -66,7 +66,7 @@ final class AvatarRepository {
         let payloadHash = sha256Hex(data: encryptedData)
         guard let requestUrl = URL(string: "\(R2Config.endpointURL)/\(bucket)/\(storagePath)"),
               let host = requestUrl.host else {
-            completion(.failure(NSError(domain: "AvatarError", code: 400, userInfo: [NSLocalizedDescriptionKey: "不正なストレージエンドポイントです。"])))
+            completion(.failure(NSError(domain: "AvatarError", code: 400, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Storage.invalidEndpoint])))
             return
         }
         
@@ -106,7 +106,7 @@ final class AvatarRepository {
                 completion(.success(()))
             } else {
                 let status = (response as? HTTPURLResponse)?.statusCode ?? 500
-                completion(.failure(NSError(domain: "AvatarError", code: status, userInfo: [NSLocalizedDescriptionKey: "R2 への画像アップロードに失敗しました (HTTP \(status))"])))
+                completion(.failure(NSError(domain: "AvatarError", code: status, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Storage.uploadFailed(status)])))
             }
         }
         task.resume()
@@ -121,13 +121,13 @@ final class AvatarRepository {
     ) {
         guard let resizedImage = resizeImage(image: image, targetSize: CGSize(width: 256, height: 256)),
               let rawData = resizedImage.jpegData(compressionQuality: 0.75) else {
-            completion(.failure(NSError(domain: "AvatarError", code: 400, userInfo: [NSLocalizedDescriptionKey: "画像の圧縮に失敗しました。"])))
+            completion(.failure(NSError(domain: "AvatarError", code: 400, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Storage.imageCompressFailed])))
             return
         }
         
         // 1. MK_T でバイナリを AES-GCM 暗号化
         guard let enc = try? CryptoKeyManager.shared.encryptWithTenantKey(plainText: rawData.base64EncodedString(), tenantId: tenantId) else {
-            completion(.failure(NSError(domain: "AvatarError", code: 500, userInfo: [NSLocalizedDescriptionKey: "画像の暗号化に失敗しました。"])))
+            completion(.failure(NSError(domain: "AvatarError", code: 500, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Storage.imageEncryptFailed])))
             return
         }
         
@@ -182,14 +182,14 @@ final class AvatarRepository {
         }
         
         guard !avatarNonce.isEmpty else {
-            completion(.failure(NSError(domain: "AvatarError", code: 404, userInfo: [NSLocalizedDescriptionKey: "アバターが設定されていません。"])))
+            completion(.failure(NSError(domain: "AvatarError", code: 404, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Storage.avatarNotSet])))
             return
         }
         
         // 1. R2 公開 CDN URL からの高速 GET 取得
         let storagePath = "tenants/\(tenantId)/users/\(userId)/avatar.enc"
         guard !R2Config.publicBaseURL.isEmpty, let cdnUrl = URL(string: "\(R2Config.publicBaseURL)/\(storagePath)") else {
-            completion(.failure(NSError(domain: "AvatarError", code: 500, userInfo: [NSLocalizedDescriptionKey: "R2 CDN の URL 設定が無効です。"])))
+            completion(.failure(NSError(domain: "AvatarError", code: 500, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Storage.cdnUrlInvalid])))
             return
         }
         
@@ -205,7 +205,7 @@ final class AvatarRepository {
             }
             guard let httpRes = response as? HTTPURLResponse, (200...299).contains(httpRes.statusCode),
                   let data = data, let encString = String(data: data, encoding: .utf8), !encString.isEmpty else {
-                completion(.failure(NSError(domain: "AvatarError", code: 404, userInfo: [NSLocalizedDescriptionKey: "CDN からアバターを取得できませんでした。"])))
+                completion(.failure(NSError(domain: "AvatarError", code: 404, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Storage.cdnFetchFailed])))
                 return
             }
             
@@ -213,7 +213,7 @@ final class AvatarRepository {
                 let decryptedBase64 = try CryptoKeyManager.shared.decryptWithTenantKey(encryptedData: encString, nonce: avatarNonce, tenantId: tenantId)
                 guard let imgData = Data(base64Encoded: decryptedBase64),
                       let img = UIImage(data: imgData) else {
-                    completion(.failure(NSError(domain: "AvatarError", code: 500, userInfo: [NSLocalizedDescriptionKey: "画像のデコードに失敗しました。"])))
+                    completion(.failure(NSError(domain: "AvatarError", code: 500, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Storage.imageDecodeFailed])))
                     return
                 }
                 self.memoryCache.setObject(img, forKey: cacheKey)
@@ -281,13 +281,13 @@ final class AvatarRepository {
     ) {
         guard let resizedImage = resizeImage(image: image, targetSize: CGSize(width: 256, height: 256)),
               let rawData = resizedImage.jpegData(compressionQuality: 0.75) else {
-            completion(.failure(NSError(domain: "AvatarError", code: 400, userInfo: [NSLocalizedDescriptionKey: "画像の圧縮に失敗しました。"])))
+            completion(.failure(NSError(domain: "AvatarError", code: 400, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Storage.imageCompressFailed])))
             return
         }
         
         // 1. MK_T でバイナリを AES-GCM 暗号化
         guard let enc = try? CryptoKeyManager.shared.encryptWithTenantKey(plainText: rawData.base64EncodedString(), tenantId: tenantId) else {
-            completion(.failure(NSError(domain: "AvatarError", code: 500, userInfo: [NSLocalizedDescriptionKey: "画像の暗号化に失敗しました。"])))
+            completion(.failure(NSError(domain: "AvatarError", code: 500, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Storage.imageEncryptFailed])))
             return
         }
         
@@ -342,13 +342,13 @@ final class AvatarRepository {
         }
         
         guard !avatarNonce.isEmpty else {
-            completion(.failure(NSError(domain: "AvatarError", code: 404, userInfo: [NSLocalizedDescriptionKey: L10n.Error.unknown])))
+            completion(.failure(NSError(domain: "AvatarError", code: 404, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Storage.avatarNotSet])))
             return
         }
         
         let storagePath = "tenants/\(tenantId)/chats/\(chatId)/avatar.enc"
         guard !R2Config.publicBaseURL.isEmpty, let cdnUrl = URL(string: "\(R2Config.publicBaseURL)/\(storagePath)") else {
-            completion(.failure(NSError(domain: "AvatarError", code: 500, userInfo: [NSLocalizedDescriptionKey: L10n.Error.unknown])))
+            completion(.failure(NSError(domain: "AvatarError", code: 500, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Storage.cdnUrlInvalid])))
             return
         }
         
@@ -367,7 +367,7 @@ final class AvatarRepository {
                       ),
                       let rawImageData = Data(base64Encoded: decryptedBase64),
                       let image = UIImage(data: rawImageData) else {
-                    completion(.failure(NSError(domain: "AvatarError", code: 500, userInfo: [NSLocalizedDescriptionKey: L10n.Error.unknown])))
+                    completion(.failure(NSError(domain: "AvatarError", code: 500, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Storage.imageDecodeFailed])))
                     return
                 }
                 
@@ -378,7 +378,7 @@ final class AvatarRepository {
                 return
             }
             
-            completion(.failure(error ?? NSError(domain: "AvatarError", code: 404, userInfo: [NSLocalizedDescriptionKey: "CDN から画像を取得できませんでした。"])))
+            completion(.failure(error ?? NSError(domain: "AvatarError", code: 404, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Storage.cdnFetchFailed])))
         }
         cdnTask.resume()
     }

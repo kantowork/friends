@@ -5,7 +5,8 @@ import SwiftUI
 
 struct AddGroupMemberSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject var chatService = ChatService.shared
+    @ObservedObject var directChatService = DirectChatService.shared
+    @ObservedObject var groupChatService = GroupChatService.shared
     
     let chatId: String
     let existingMemberIds: [String]
@@ -37,7 +38,7 @@ struct AddGroupMemberSheet: View {
     /// まだグループに参加していない友達候補リスト
     private var candidateFriends: [FriendsPublicUserProfile] {
         let existingSet = Set(existingMemberIds)
-        return chatService.friends.filter { !existingSet.contains($0.userID) }
+        return directChatService.friends.filter { !existingSet.contains($0.userID) }
     }
     
     var body: some View {
@@ -92,7 +93,7 @@ struct AddGroupMemberSheet: View {
                                     // 選択チェックマーク
                                     Image(systemName: selectedFriendUserIds.contains(friend.userID) ? "checkmark.circle.fill" : "circle")
                                         .font(.system(size: 22))
-                                        .foregroundColor(selectedFriendUserIds.contains(friend.userID) ? .blue : .secondary.opacity(0.4))
+                                        .foregroundColor(selectedFriendUserIds.contains(friend.userID) ? .appAccent : .secondary.opacity(0.4))
                                 }
                                 .contentShape(Rectangle())
                             }
@@ -147,7 +148,7 @@ struct AddGroupMemberSheet: View {
         errorMessage = nil
         let newMemberIds = Array(selectedFriendUserIds)
         
-        chatService.addMembersToGroup(chatId: chatId, newMemberUserIds: newMemberIds) { result in
+        groupChatService.addMembersToGroup(chatId: chatId, newMemberUserIds: newMemberIds) { result in
             DispatchQueue.main.async {
                 self.isSubmitting = false
                 switch result {

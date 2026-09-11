@@ -7,7 +7,9 @@ import PhotosUI
 struct GroupDetailView: View {
     @Environment(\.dismiss) private var dismiss
     let chat: FriendsChatUIModel
-    @ObservedObject var chatService = ChatService.shared
+    @ObservedObject var groupChatService = GroupChatService.shared
+    @ObservedObject var directChatService = DirectChatService.shared
+    @ObservedObject var authService = AuthService.shared
     
     // アラート管理状態
     @State private var showDeleteAlert: Bool = false
@@ -32,12 +34,12 @@ struct GroupDetailView: View {
     
     /// リアルタイムに最新のチャット状態を取得（未検出時は初期プロパティへフォールバック）
     private var currentChat: FriendsChatUIModel {
-        chatService.chats.first(where: { $0.chatID == chat.chatID }) ?? chat
+        groupChatService.groupChats.first(where: { $0.chatID == chat.chatID }) ?? chat
     }
     
     /// 現在のログインユーザー
     private var currentUserId: String {
-        chatService.currentUser?.userID ?? ""
+        authService.currentUser?.userID ?? ""
     }
     
     /// 現在のユーザーがオーナーまたは管理者であるか
@@ -64,12 +66,12 @@ struct GroupDetailView: View {
         let memberIds = currentChat.chat.members
         
         // 自分自身
-        if let current = chatService.currentUser, (memberIds.contains(current.userID) || memberIds.contains(current.uid)) {
+        if let current = authService.currentUser, (memberIds.contains(current.userID) || memberIds.contains(current.uid)) {
             result.append(current)
         }
         
         // 登録されている友達
-        for friend in chatService.friends {
+        for friend in directChatService.friends {
             if (memberIds.contains(friend.userID) || memberIds.contains(friend.uid)) && !result.contains(where: { $0.userID == friend.userID }) {
                 result.append(friend)
             }
@@ -93,7 +95,7 @@ struct GroupDetailView: View {
                         
                         if isCurrentUserOwnerOrAdmin {
                             Circle()
-                                .fill(Color.blue)
+                                .fill(Color.appAccent)
                                 .frame(width: 22, height: 22)
                                 .overlay(
                                     Image(systemName: "camera.fill")
@@ -104,6 +106,8 @@ struct GroupDetailView: View {
                         }
                     }
                     .contentShape(Circle())
+                    .fixedSize()
+                    .layoutPriority(1)
                     .onTapGesture {
                         if isCurrentUserOwnerOrAdmin {
                             showingAvatarActionSheet = true
@@ -114,6 +118,7 @@ struct GroupDetailView: View {
                         Text(currentChat.displayTitle)
                             .font(.title3)
                             .fontWeight(.bold)
+                            .fixedSize(horizontal: false, vertical: true)
                         
                         Text(currentChat.chat.createdDate, style: .date)
                             .font(.caption)
@@ -151,13 +156,13 @@ struct GroupDetailView: View {
             // Section 3: 参加メンバー一覧（メンバー属性 role の表示と操作）
             Section(header: Text(L10n.Group.membersSection(currentChat.chat.members.count))) {
                 if groupMembers.isEmpty {
-                    Text("\(currentChat.chat.members.count) 人のメンバーが参加中")
+                    Text(L10n.Group.memberCountFormat(currentChat.chat.members.count))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 } else {
                     ForEach(groupMembers) { member in
                         let role = currentChat.role(for: member.userID)
-                        let isMe = (member.userID == currentUserId || member.uid == chatService.currentUser?.uid)
+                        let isMe = (member.userID == currentUserId || member.uid == authService.currentUser?.uid)
                         
                         HStack(spacing: 12) {
                             UserAvatarView(
@@ -167,6 +172,7 @@ struct GroupDetailView: View {
                                 avatarUpdatedAt: member.avatarUpdatedDate,
                                 size: 36
                             )
+                            .fixedSize()
                             
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack(spacing: 6) {
@@ -229,7 +235,7 @@ struct GroupDetailView: View {
                                 } label: {
                                     Label(L10n.Group.assignAdmin, systemImage: "shield.fill")
                                 }
-                                .tint(.blue)
+                                .tint(.appAccent)
                             }
                         }
                         .contextMenu {
@@ -313,7 +319,7 @@ struct GroupDetailView: View {
                         editTitleText = currentChat.title
                         showEditTitleAlert = true
                     } label: {
-                        Image(systemName: "pencil")
+                        Image(systemName: "pencil.line")
                             .font(.system(size: 16))
                     }
                     .accessibilityLabel(L10n.Group.editTitle)
@@ -378,8 +384,8 @@ struct GroupDetailView: View {
             }
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(Color.blue.opacity(0.18))
-            .foregroundColor(.blue)
+            .background(Color.indigo.opacity(0.18))
+            .foregroundColor(.indigo)
             .clipShape(Capsule())
             
         case .member, .unspecified, .UNRECOGNIZED:
@@ -392,7 +398,7 @@ struct GroupDetailView: View {
     /// 確認を経たグループ削除の実行 (1回ダイアログ承認後)
     private func executeDeleteGroup() {
         isProcessing = true
-        chatService.deleteGroup(chatId: currentChat.chatID) { result in
+        groupChatService.deleteGroup(chatId: currentChat.chatID) { result in
             DispatchQueue.main.async {
                 self.isProcessing = false
                 switch result {
@@ -408,7 +414,7 @@ struct GroupDetailView: View {
     /// 管理者によるオーナー立候補昇格の実行
     private func executeClaimOwnership() {
         isProcessing = true
-        chatService.claimOwnership(chatId: currentChat.chatID) { result in
+        groupChatService.claimOwnership(chatId: currentChat.chatID) { result in
             DispatchQueue.main.async {
                 self.isProcessing = false
                 if case .failure(let error) = result {
@@ -421,7 +427,7 @@ struct GroupDetailView: View {
     /// 管理者任命
     private func assignAdmin(to userId: String) {
         isProcessing = true
-        chatService.assignAdmin(chatId: currentChat.chatID, targetUserId: userId) { result in
+        groupChatService.assignAdmin(chatId: currentChat.chatID, targetUserId: userId) { result in
             DispatchQueue.main.async {
                 self.isProcessing = false
                 self.targetAssignAdminMember = nil
@@ -435,7 +441,7 @@ struct GroupDetailView: View {
     /// 他メンバーを退出させる
     private func executeRemoveMember(targetUserId: String) {
         isProcessing = true
-        chatService.kickMember(chatId: currentChat.chatID, targetUserId: targetUserId) { result in
+        groupChatService.kickMember(chatId: currentChat.chatID, targetUserId: targetUserId) { result in
             DispatchQueue.main.async {
                 self.isProcessing = false
                 self.targetRemoveMember = nil
@@ -449,7 +455,7 @@ struct GroupDetailView: View {
     /// 自発的退出
     private func leaveGroup() {
         isProcessing = true
-        chatService.kickMember(chatId: currentChat.chatID, targetUserId: currentUserId) { result in
+        groupChatService.leaveGroup(chatId: currentChat.chatID) { result in
             DispatchQueue.main.async {
                 self.isProcessing = false
                 switch result {
@@ -467,7 +473,7 @@ struct GroupDetailView: View {
         let trimmed = editTitleText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         isProcessing = true
-        chatService.updateGroupTitle(chatId: currentChat.chatID, newTitle: trimmed) { result in
+        groupChatService.updateGroupTitle(chatId: currentChat.chatID, newTitle: trimmed) { result in
             DispatchQueue.main.async {
                 self.isProcessing = false
                 if case .failure(let error) = result {
@@ -480,7 +486,7 @@ struct GroupDetailView: View {
     /// グループアバターのアップロード実行
     private func executeUploadAvatar(_ image: UIImage) {
         isProcessing = true
-        chatService.updateGroupAvatar(chatId: currentChat.chatID, image: image) { result in
+        groupChatService.updateGroupAvatar(chatId: currentChat.chatID, image: image) { result in
             DispatchQueue.main.async {
                 self.isProcessing = false
                 if case .failure(let error) = result {
@@ -493,7 +499,7 @@ struct GroupDetailView: View {
     /// グループアバターの削除実行
     private func executeDeleteAvatar() {
         isProcessing = true
-        chatService.deleteGroupAvatar(chatId: currentChat.chatID) { result in
+        groupChatService.deleteGroupAvatar(chatId: currentChat.chatID) { result in
             DispatchQueue.main.async {
                 self.isProcessing = false
                 if case .failure(let error) = result {

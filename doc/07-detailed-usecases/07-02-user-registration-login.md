@@ -18,8 +18,8 @@ sequenceDiagram
     participant FirebaseAuth as "Firebase Auth"
     participant Firestore as "Cloud Firestore"
 
-    User->>UI: 匿名ログイン開始 (signInAnonymously)
-    UI->>AuthController: signInAnonymously()
+    User->>UI: 表示名入力 & 匿名ログイン開始 (signInAnonymously)
+    UI->>AuthController: signInAnonymously(displayName)
     AuthController->>FirebaseAuth: 匿名認証実行
 
     alt 認証成功

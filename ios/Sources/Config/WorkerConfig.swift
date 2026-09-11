@@ -1,38 +1,29 @@
 import Foundation
 
-/// Cloudflare Workers バックエンド設定
+/// Cloudflare Workers バックエンド設定ローダー
 /// - 注: セキュリティおよび構成管理の隔離のため、本番 URL はソースコードに一切ハードコードせず、
-///        管理者が発行した「テナント 二次元コード」のスキャン時にのみ動的に注入・ローカル保存されます。
-public enum RecoveryConfig {
-    private static let userDefaultsKey = "friends_workers_api_url"
-    
+///        管理者が発行した「テナント 二次元コード」のスキャン時（TenantManager）または PresetTenant.plist より読み込まれます。
+public enum WorkerConfig {
+    /// テスト用一時オーバーライド URL
+    public static var testOverrideURL: String? = nil
+
     /// Cloudflare Workers のベース URL
-    /// 1. 環境変数 (CI / ローカルテスト用: FRIENDS_WORKERS_URL)
-    /// 2. テナント 二次元コードスキャン時に動的保存された URL
-    /// 3. 未設定の場合は nil
-    public static var workersBaseURL: URL? {
+    /// 1. テスト用一時オーバーライド
+    /// 2. 環境変数 (CI / ローカルテスト用: FRIENDS_WORKERS_URL)
+    /// 3. 現在アクティブなテナント（またはプリセットデフォルトテナント）の workerApiUrl
+    /// 4. 未設定の場合は nil
+    public static var baseURL: URL? {
+        if let overrideString = testOverrideURL, let url = URL(string: overrideString), url.scheme == "http" || url.scheme == "https" {
+            return url
+        }
         if let envUrlString = ProcessInfo.processInfo.environment["FRIENDS_WORKERS_URL"],
            let url = URL(string: envUrlString) {
             return url
         }
-        if let savedString = UserDefaults.standard.string(forKey: userDefaultsKey),
-           let url = URL(string: savedString) {
+        let workerUrlString = TenantManager.shared.activeTenant?.workerApiUrl ?? PresetTenantConfig.workerApiUrl
+        if let urlString = workerUrlString, let url = URL(string: urlString) {
             return url
         }
         return nil
-    }
-    
-    /// テナント 二次元コードスキャン等で取得した Workers URL を動的に保存
-    public static func saveWorkersBaseURL(_ urlString: String) {
-        let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, let url = URL(string: trimmed), url.scheme == "http" || url.scheme == "https" else {
-            return
-        }
-        UserDefaults.standard.set(trimmed, forKey: userDefaultsKey)
-    }
-    
-    /// 保存された Workers URL を消去
-    public static func clearWorkersBaseURL() {
-        UserDefaults.standard.removeObject(forKey: userDefaultsKey)
     }
 }

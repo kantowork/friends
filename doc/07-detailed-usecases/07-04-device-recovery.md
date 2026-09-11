@@ -82,7 +82,7 @@ sequenceDiagram
     CryptoLib->>CryptoLib: 2. recoveryHash = SHA256(K_recovery_id)
     CryptoLib-->>NewApp: recoveryHash, K_priv_enc
 
-    Note over NewApp: スキャン済みテナント設定から workerApiUrl を取得
+    Note over NewApp: テナント設定（二次元コードスキャンまたはデフォルトプリセット PresetTenantConfig）から workerApiUrl を取得
     NewApp->>Workers: POST {workerApiUrl}/api/v1/auth/recover-anonymous (recoveryHash)
     Note over Workers: Google サービスアカウントで Firestore を検索
     Workers->>Firestore: recoveryHash が一致するドキュメント (/recovery_vault/{recoveryHash}) を取得
@@ -141,3 +141,17 @@ sequenceDiagram
    - Firestore `/users/{uid}/private/data` を上書き保存し、端末 Keychain のフレーズを更新。
    - 画面の12単語表示を即座に更新。旧じゅもんは即時無効化される。
 
+---
+
+## 8. エラーハンドリング & 多言語エラー対応仕様 (i18n)
+
+復旧 API（`/api/v1/auth/recover-anonymous`）呼び出し時、サーバーレス基盤（Workers）およびアプリは以下の構造化エラーコードに基づき、ユーザーの端末言語（日本語 / 英語）に応じた適切なエラーメッセージを表示します。生の英語サーバーメッセージを画面に露出することは禁止します。
+
+| HTTP Status | エラーコード (`code`) | 多言語キー (`L10n.Error.Recovery.*`) | 日本語表示文言 (`ja`) | 英語表示文言 (`en`) |
+|:---:|:---|:---|:---|:---|
+| 404 | `ACCOUNT_NOT_FOUND` | `dataNotFound` | 復元データが見つかりません。 | Recovery data not found. |
+| 400 | `INVALID_FORMAT` | `invalidFormat` | ふっかつのじゅもんの形式が正しくありません。 | The recovery phrase format is invalid. |
+| 500 | `SERVER_CONFIG_MISSING` | `serverConfigMissing` | サーバーの認証設定が未完了です。システム管理者に問い合わせてください。 | Server authentication configuration is missing. Please contact the administrator. |
+| 500〜599 | `INTERNAL_ERROR` 等 | `serverError` | サーバーとの通信または認証処理に問題が発生しました。しばらくしてから再度お試しください。 | An error occurred during server communication or authentication. Please try again later. |
+| - (事前検証) | `TENANT_NOT_CONFIGURED` | `tenantNotConfigured` | テナントが未設定です。先にテナント二次元コードをスキャンしてください。 | Tenant not configured. Please scan your tenant 2D code first. |
+| - (復号失敗) | `DECRYPTION_FAILED` | `decryptionFailed` | 秘密鍵の復号に失敗しました。正しいふっかつのじゅもんを入力してください。 | Failed to decrypt private key. Please check your recovery phrase. |

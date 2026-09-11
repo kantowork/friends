@@ -21,42 +21,45 @@ public enum R2Config {
     
     /// ダウンロード用 CDN 公開ベース URL (例: https://bucket.friends.example.com)
     public static var publicBaseURL: String {
-        if let val = configFromPlist?["R2_PUBLIC_BASE_URL"] as? String, !val.isEmpty {
-            return val
+        if let saved = UserDefaults.standard.string(forKey: keyPublicBaseURL), !saved.isEmpty {
+            return saved
         }
-        return UserDefaults.standard.string(forKey: keyPublicBaseURL) ?? ""
+        return configFromPlist?["R2_PUBLIC_BASE_URL"] as? String ?? ""
     }
     
     /// R2 バケット名 (例: friends-kantowork)
     public static var bucketName: String {
+        if let saved = UserDefaults.standard.string(forKey: keyBucketName), !saved.isEmpty {
+            return saved
+        }
         if let val = configFromPlist?["R2_BUCKET_NAME"] as? String, !val.isEmpty {
             return val
         }
-        return UserDefaults.standard.string(forKey: keyBucketName) ?? "friends-media"
+        return "friends-media"
     }
     
     /// S3 互換 エンドポイント URL (例: https://<ACCOUNT_ID>.r2.cloudflarestorage.com)
     public static var endpointURL: String {
-        if let val = configFromPlist?["R2_ENDPOINT_URL"] as? String, !val.isEmpty {
-            return val
+        if let saved = UserDefaults.standard.string(forKey: keyEndpointURL), !saved.isEmpty {
+            return saved
         }
-        return UserDefaults.standard.string(forKey: keyEndpointURL) ?? ""
+        return configFromPlist?["R2_ENDPOINT_URL"] as? String ?? ""
     }
     
     /// S3 互換 Access Key ID
     public static var accessKeyId: String {
-        if let val = configFromPlist?["R2_ACCESS_KEY_ID"] as? String, !val.isEmpty {
-            return val
+        if let saved = UserDefaults.standard.string(forKey: keyAccessKeyId), !saved.isEmpty {
+            return saved
         }
-        return UserDefaults.standard.string(forKey: keyAccessKeyId) ?? ""
+        return configFromPlist?["R2_ACCESS_KEY_ID"] as? String ?? ""
     }
     
     /// S3 互換 Secret Access Key
     public static var secretAccessKey: String {
-        if let val = configFromPlist?["R2_SECRET_ACCESS_KEY"] as? String, !val.isEmpty {
-            return val
+        if let saved = UserDefaults.standard.string(forKey: keySecretAccessKey), !saved.isEmpty {
+            return saved
         }
-        return UserDefaults.standard.string(forKey: keySecretAccessKey) ?? ""
+        return configFromPlist?["R2_SECRET_ACCESS_KEY"] as? String ?? ""
     }
     
     /// 設定が有効（ベースURLまたはエンドポイントが設定されているか）

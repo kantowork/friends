@@ -30,6 +30,8 @@ Workers 基盤 (`server/workers/`) は、将来的な機能拡張に対応する
 | `/api/v1/notifications/send` | `POST` | *(将来拡張)* FCM/APNs バックグラウンド通知配信制御 | テナント API キー |
 | `/api/v1/audit/metadata` | `GET` | *(将来拡張)* テナント管理者向け集計・監査メタデータ取得 | テナント管理者署名 |
 
+※ エラー発生時は `{ "error": "...", "code": "ERROR_CODE" }` の統一 JSON 形式で返却され、クライアント側でローカライズ表示されます。
+
 ---
 
 ## 3. セットアップ手順（ユーザー事前作業チェックリスト）
@@ -130,8 +132,8 @@ Firebase Auth の Custom Token を発行し、Firestore を安全に検索する
    ```
 2. **クライアントの挙動**:
    - ユーザーが初回または新端末でテナント二次元コードをスキャンした際、アプリは `tenantCode` と `workerApiUrl` をローカル設定（UserDefaults / Keychain）に自動保存します。
-   - 「ふっかつのじゅもん」による完全復元時、アプリは保存された `workerApiUrl` を読み取って Workers API と通信します。
-   - ※ ローカル開発・CIテスト時のみ、環境変数 `FRIENDS_WORKERS_URL` での動的オーバーライドが可能です。
+   - 「ふっかつのじゅもん」による完全復元時、アプリは設定ローダー（`WorkerConfig.baseURL`：スキャン済みテナントまたはデフォルトテナントのプリセット設定 `PresetTenantConfig.workerApiUrl`）を読み取って Workers API と通信します。
+   - ※ ローカル開発・CIテスト時のみ、環境変数 `FRIENDS_WORKERS_URL` または `WorkerConfig.testOverrideURL` での動的オーバーライドが可能です。
 
 ---
 

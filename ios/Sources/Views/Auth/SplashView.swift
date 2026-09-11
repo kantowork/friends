@@ -42,7 +42,7 @@ public struct SplashView: View {
                 .opacity(logoOpacity)
                 
                 Text(L10n.Auth.title)
-                    .font(.system(size: 38, weight: .bold, design: .rounded))
+                    .font(.system(.largeTitle, design: .rounded).weight(.bold))
                     .foregroundColor(.white)
                     .opacity(textOpacity)
                 

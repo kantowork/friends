@@ -178,7 +178,7 @@ final class MessageRepository {
                     "updatedAt": FieldValue.serverTimestamp()
                 ]
                 if chatId.hasPrefix("gm_") {
-                    chatCreateData["title"] = "かいぎ"
+                    chatCreateData["title"] = L10n.Group.defaultTitle
                 }
                 
                 chatRef.setData(chatCreateData) { createError in

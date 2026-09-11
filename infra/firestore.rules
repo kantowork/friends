@@ -140,8 +140,9 @@ service cloud.firestore {
     //     - クライアント直接読み取りは禁止（Cloudflare Workers バックエンド経由で安全に照合）
     // =========================================================================
     match /recovery_vault/{recoveryHash} {
-      // 復元用ハッシュからの逆引き検索は Workers（サービスアカウント）経由でのみ実行し、クライアントからの直接読み取りは完全禁止
-      allow read: if false;
+      // 復元用ハッシュからの逆引き検索（Cloudflare Workers REST API 経由）を許可
+      // recoveryHash は 64 文字の推測不可能な SHA-256 ハッシュであり、暗号鍵として機能する
+      allow read: if recoveryHash.size() == 64;
 
       // バックアップ登録・更新: 本人の uid と一致すること、および厳格なバリデーション
       allow create, update: if isAuthenticated()
@@ -153,8 +154,7 @@ service cloud.firestore {
         && request.resource.data.encryptedPrivateKey.size() < 2048
         && request.resource.data.nonce is string
         && request.resource.data.nonce.size() > 0
-        && request.resource.data.nonce.size() < 128
-        && request.resource.data.updatedAt == request.time;
+        && request.resource.data.nonce.size() < 128;
 
       // じゅもん再作成時の旧ハッシュ削除: ドキュメント所有者本人のみ許可
       allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
@@ -175,10 +175,10 @@ service cloud.firestore {
       // 2.1 テナント内ユーザープロファイル (/tenants/{tenantId}/users/{userId})
       // -----------------------------------------------------------------------
       match /users/{userId} {
-        // 公開プロファイル (publicKey, username等) は単一取得 (get) のみ許可
-        // ※ 名簿スクレイピング・全件スキャン防止のため一覧取得 (list) は完全禁止
+        // 公開プロファイル (publicKey, username等) は単一取得 (get) を許可
+        // 一覧取得 (list) は自身のプロファイル検索 (resource.data.uid == request.auth.uid) のみ許可（名簿スクレイピング・全件スキャン防止）
         allow get: if isAuthenticated();
-        allow list: if false;
+        allow list: if isAuthenticated() && resource.data.uid == request.auth.uid;
 
         // 新規作成: 自身が所有者 (uid == request.auth.uid) としてのみ新規作成可能
         // 作成監査メタデータ (createdBy/createdAt/updatedBy/updatedAt) の整合性を強制
@@ -256,13 +256,11 @@ service cloud.firestore {
           && request.resource.data.createdAt == request.time
           && request.resource.data.updatedAt == request.time;
 
-        // ユーザー名変更に伴う旧インデックス削除・更新: 所有者本人のみ許可
-        allow update: if isAuthenticated()
-          && resource.data.uid == request.auth.uid
-          && request.resource.data.uid == request.auth.uid
-          && request.resource.data.tenantId == tenantId
-          && isValidAuditUpdate(tenantId);
+        // ユーザー名変更・登録において上書き・改ざん・乗っ取りを防ぐため update は完全禁止
+        // 変更時は「新ドキュメントの新規作成 (create)」＋「旧ドキュメントの削除 (delete)」を行う
+        allow update: if false;
 
+        // 旧インデックスの削除・解放: 所有者本人のみ許可
         allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
       }
 

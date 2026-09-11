@@ -59,10 +59,12 @@ Firestore に保存されるすべてのフィールドは、セキュリティ�
    - Firestore SDK のローカルキャッシュ機能（Local Cache）を活用し、オフライン時のメッセージ送信はローカルキューに保持されます。
 4. **ユーザー識別子 (`username`) の一意性インデックスと一覧取得禁止**:
    - `/tenants/{tenantId}/usernames/{username}` コレクションを設け、ドキュメントIDとして小文字化された `username` を配置します。
-   - 作成時は「ドキュメントが存在しないこと（重複禁止）」、更新・削除時は「紐づく `userId` / `uid` が一致すること」をセキュリティルールで強制します。
+   - セキュリティルールにおいて、**新規作成のみを許可 (`allow create`)** し、作成時に `request.resource.data.uid == request.auth.uid` を検証して本人の UID を挿入・固定します。
+   - **既存ドキュメントの更新は完全禁止 (`allow update: if false;`)** とし、ユーザー名の後勝ち上書きや改ざんを物理的に阻止します。
+   - ユーザー名変更時は「新ユーザー名のドキュメント作成（`create`）＋ 旧ユーザー名のドキュメント削除（`delete`）」の排他処理とし、削除時は `resource.data.uid == request.auth.uid` により所有者本人のみ許可します。
    - **名簿スキャン防止**: `allow list: if false;` を強制し、指定ユーザーネームの存在確認および単一取得（`allow get: if isAuthenticated();`）のみを許可します。
-5. **ユーザープロファイルの一覧取得禁止 (`list: false`) と表示名公開撤廃**:
-   - `/tenants/{tenantId}/users/{userId}` に対する `allow list: if false;` を強制し、全件スキャンやスクレイピングを物理的に遮断します。
+5. **ユーザープロファイルの一覧取得制限（自身検索のみ許可）と表示名公開撤廃**:
+   - `/tenants/{tenantId}/users/{userId}` に対する一覧取得は `allow list: if isAuthenticated() && resource.data.uid == request.auth.uid;` とし、自身以外の全件スキャンやスクレイピングを物理的に遮断しつつ、ログイン時や復元時の自身のプロファイル検索（`whereField("uid", isEqualTo: uid)`）を正当に許可します。
    - テナントマスターキー（$MK_T$）による `encryptedDisplayName` の公開プロファイル格納を完全撤廃し、対面（二次元コード直接）または30秒合言葉（TOTP）から導出した鍵（$K_{pass}$）で保護された一時データのみを許容します。
 6. **インデックスの最適化**:
    - メッセージ取得クエリおよび `members` 配列を含むチャット一覧取得クエリ（`CP-01`）に必要な複合インデックス (Composite Indexes) を事前作成します。
@@ -153,11 +155,18 @@ Apple 審査ガイドラインに基づき、利用者が自発的にアカウ�
    - `allow delete: if isTenantUser(tenantId, userId);`
    - 当該テナントの所有者本人のみ物理削除を許可。
 4. **ユーザーネーム予約インデックス (`/tenants/{tenantId}/usernames/{username}`)**:
-   - `allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;`
-   - 予約インデックスを開放。
+   - `allow get: if isAuthenticated();` （単一検索・重複確認のみ許可）
+   - `allow list: if false;` （名簿スキャン防止）
+   - `allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid ...;` （新規作成のみ許可。本人の UID を必須挿入）
+   - `allow update: if false;` （既存ドキュメントの上書き・更新は完全禁止）
+   - `allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;` （所有者本人のみ削除・解放を許可）
 5. **復旧ボルト (`/recovery_vault/{recoveryHash}`)**:
+   - `allow read: if recoveryHash.size() == 64;`
+   - 未ログイン端末から Cloudflare Workers REST API を経由した復元用レコード取得を許可（推測不可能な 64文字 SHA-256 ハッシュを暗号鍵として検証）。
+   - `allow create, update: if isAuthenticated() && request.resource.data.uid == request.auth.uid ...;`
    - `allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;`
-   - 復元用レコードを完全削除。
+   - 復元用レコードの完全削除。
+
 
 
 

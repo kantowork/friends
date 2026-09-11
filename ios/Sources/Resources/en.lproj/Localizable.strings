@@ -1,4 +1,4 @@
-/* 
+/*
   Localizable.strings (English)
   Friends App
 */
@@ -8,29 +8,32 @@
 "common.cancel" = "Cancel";
 "common.close" = "Close";
 "common.copy" = "Copy";
-"common.copied" = "Copied";
-"common.share" = "Share";
 "common.save" = "Save";
 "common.delete" = "Delete";
-"common.confirm" = "Confirm";
 "common.error" = "Error";
 "common.loading" = "Loading…";
 "common.success" = "Success";
+"common.yesterday" = "Yesterday";
+"common.guest_user" = "Guest User";
+"common.default_user" = "User";
+"common.sender" = "Sender";
+"common.myself" = "You";
 
 // MARK: - Auth & Login
 "auth.login.title" = "Friends";
-"auth.login.guest_btn" = "Sign in Anonymously";
-"auth.login.recovery_btn" = "Restore with Recovery Phrase";
-"auth.login.reset_device_btn" = "Permanent Reset";
-"auth.login.reset_device_confirm_title" = "Reset all device data & keys?";
-"auth.login.reset_device_confirm_msg" = "Permanently deletes all encryption keys and local data stored in Keychain.";
+"auth.login.display_name_label" = "Display Name";
+"auth.login.display_name_placeholder" = "Enter nickname or name";
+"auth.login.guest_btn" = "Get Started";
+"auth.login.recovery_btn" = "Recovery Phrase";
+"auth.login.reset_device_btn" = "Erase Keys from This Device";
+"auth.login.reset_device_confirm_title" = "Erase Keys from This Device?";
+"auth.login.reset_device_confirm_msg" = "Erases all data in this app, including encryption keys stored in Keychain.";
 "auth.login.tenant_change" = "Change";
 
 // MARK: - Tenant Selection
 "tenant.selection.title" = "Select Tenant";
 "tenant.selection.header" = "Select Tenant";
-"tenant.selection.subtitle" = "Scan 2D code or enter tenant configuration directly.";
-"tenant.tab.two_dimensional_code" = "2D Code";
+"tenant.tab.two_dimensional_code" = "QR code";
 "tenant.tab.url" = "URL";
 "tenant.tab.text" = "Text";
 "tenant.verify.verifying" = "Verifying tenant…";
@@ -40,7 +43,7 @@
 "tenant.input.url_label" = "Tenant Configuration URL";
 "tenant.input.url_placeholder" = "https://...";
 "tenant.verify.btn" = "Verify";
-"tenant.camera.instruction" = "Align the 2D code within the frame";
+"tenant.camera.instruction" = "Align the QR code within the frame";
 "error.tenant.invalid_format" = "Invalid tenant configuration format. Please provide valid JSON or a valid URL.";
 "error.tenant.fetch_failed" = "Failed to fetch tenant configuration from URL. Please check the URL and network connection.";
 "error.tenant.verification_failed" = "Tenant verification failed: %@";
@@ -53,7 +56,6 @@
 "tenant.switch.leave" = "Leave Tenant";
 "tenant.switch.leave_confirm_title" = "Leave Tenant";
 "tenant.switch.leave_confirm_msg" = "Are you sure you want to leave tenant \"%@\"?\nLocal settings and keys will be deleted.";
-"tenant.badge.other_unread" = "Notifications from other tenants";
 
 // MARK: - Tabs
 "tab.home" = "Home";
@@ -69,17 +71,16 @@
 // MARK: - Groups
 "group.list.title" = "Groups";
 "group.list.empty" = "No groups joined yet.\nTap \"+\" in the top right to create a new group.";
+"group.list.group_created" = "Group created";
 "group.create.title" = "Create Group";
 "group.create.name_label" = "Group Name";
 "group.create.name_placeholder" = "Enter group name";
 "group.create.select_members" = "Select Members (%d selected)";
 "group.create.submit_btn" = "Create";
 "group.create.no_friends" = "No friends to invite. Please add friends first.";
-"group.detail.title" = "Group Details";
 "group.detail.members_section" = "Members (%d)";
 "group.role.owner" = "Owner";
 "group.role.admin" = "Admin";
-"group.role.member" = "Member";
 "group.action.claim_owner" = "Take Over Ownership";
 "group.action.claim_owner_confirm" = "Do you want to take over ownership of this group chat? The current owner will become an admin.";
 "group.action.assign_admin" = "Make Admin";
@@ -92,8 +93,6 @@
 "group.action.edit_title" = "Change Group Name";
 "group.action.edit_title_prompt" = "Change the group name visible to all members.";
 "group.action.add_member" = "Add Members";
-"group.add_member.title" = "Add Members";
-"group.add_member.submit_btn" = "Add";
 "group.add_member.no_candidates" = "No friends available to add";
 "group.add_member.select_count" = "%d selected";
 "group.avatar.change_title" = "Change Group Icon";
@@ -102,27 +101,30 @@
 "group.delete.confirm_message" = "This action cannot be undone. Deleting this group will disable sending and receiving messages, and permanently remove it for all members.";
 "group.delete.confirm_action" = "Delete";
 
-// MARK: - Home
-
 // MARK: - Chats
-"chat.list.title" = "Chats";
-"chat.list.empty" = "No chat history yet.\nExchange 2D codes with friends to start chatting.";
+"chat.list.title" = "Friends";
+"chat.list.empty" = "No chat history yet.\nExchange QR codes with friends to start chatting.";
+"chat.list.no_messages" = "No messages yet";
 "chat.detail.input_placeholder" = "Message…";
 "chat.detail.send" = "Send";
 "chat.detail.new_messages_badge" = "New messages below ↓";
-"chat.detail.scroll_to_latest" = "Jump to latest";
 "chat.detail.empty" = "No messages yet\nSend a message to start chatting";
 "chat.read.status" = "Read";
 "chat.read.count" = "Read %d";
-"chat.detail.attachment_action_title" = "Attach Photo";
-"chat.detail.take_photo" = "Take Photo";
-"chat.detail.choose_from_library" = "Choose from Library";
+"chat.detail.take_photo" = "Open Camera";
+"chat.detail.choose_from_library" = "Choose from Photo Library";
 "chat.detail.camera_not_available" = "Camera is not available on this device.";
 "chat.detail.sending_images" = "Encrypting and sending photos…";
 "chat.detail.upload_failed" = "Failed to upload photos.";
-"chat.detail.image_message" = "Photo";
-"chat.detail.max_images_exceeded" = "You can attach up to 10 photos at a time.";
-
+"chat.detail.image_message_sent" = "Sent a photo";
+"chat.viewer.save_current" = "Save This Photo";
+"chat.viewer.save_all" = "Save Photos (%d)";
+"chat.viewer.save_success" = "Saved to Photos";
+"chat.viewer.save_all_success" = "Saved %d photos";
+"chat.viewer.save_failed" = "Failed to save photo";
+"chat.viewer.previous" = "Previous Photo";
+"chat.viewer.next" = "Next Photo";
+"chat.viewer.page_format" = "%d / %d";
 
 // MARK: - Reactions
 "chat.reaction.details_title" = "Reactions";
@@ -141,14 +143,12 @@
 // MARK: - Friends
 "friend.list.title" = "Friends";
 "friend.list.add_btn" = "Add Friend";
-"friend.list.empty" = "No registered friends yet.\nScan a 2D code to add friends.";
-"friend.list.user_id_prefix" = "ID: %@";
+"friend.list.empty" = "No registered friends yet.\nScan a QR code to add friends.";
 
 // MARK: - Friend Add (C03)
 "friend.add.title" = "Add Friend";
-"friend.add.tab_two_dimensional_code" = "2D Code";
+"friend.add.tab_two_dimensional_code" = "QR code";
 "friend.add.tab_text" = "Text Code";
-"friend.add.camera_simulator_btn" = "Simulate Scanning Friend 2D Code";
 "friend.add.passcode_title" = "Passcode";
 "friend.add.my_info_section" = "My Information";
 "friend.add.user_id_label" = "Username";
@@ -157,33 +157,28 @@
 "friend.add.target_passcode_placeholder" = "Passcode";
 "friend.add.confirm_addition_btn" = "Add Friend";
 "friend.add.success_alert_title" = "Friend Added";
-"friend.add.success_alert_msg" = "%@ has been added to your friends!";
-"friend.add.confirm_sheet_title" = "Confirm Friend Addition";
-"friend.add.confirm_sheet_msg" = "Add \"%@\" (@%@) as a friend?";
-"friend.edit_name.action" = "Change Display Name";
+"friend.add.success_alert_msg" = "%@ has been added to your friends";
 "friend.edit_name.title" = "Change Display Name";
 "friend.edit_name.message" = "This will not be visible to them. Set a display name only for you.";
 "friend.edit_name.placeholder" = "Enter display name";
-"friend.edit_name.save" = "Save";
-"friend.edit_name.success" = "Display name updated";
 
 // MARK: - Settings
 "settings.title" = "Settings";
 "settings.section.profile" = "Profile";
 "settings.section.tenant" = "Tenant";
 "settings.section.security" = "Security";
-"settings.section.about" = "App Information";
-"settings.profile.display_name" = "name";
-"settings.profile.username" = "account";
-"settings.profile.username_placeholder" = "account";
-"settings.profile.username_invalid_format" = "Account must be alphanumeric characters or underscores.";
-"settings.profile.username_confirm_title" = "Confirm Account Name Change";
-"settings.profile.username_confirm_msg" = "Changing your account name will change the handle others use to find and add you. Do you want to save this change?";
+"settings.profile.display_name" = "Name";
+"settings.profile.username_placeholder" = "username";
+"settings.profile.username_invalid_format" = "Username must be alphanumeric characters or underscores.";
+"settings.profile.username_too_short" = "Username must be at least 3 characters.";
+"settings.profile.username_too_long" = "Username must be 20 characters or fewer.";
+"settings.profile.username_confirm_title" = "Confirm Username Change";
+"settings.profile.username_confirm_msg" = "Changing your username will change the handle others use to find and add you. Do you want to save this change?";
 "settings.profile.username_confirm_button" = "Change";
 "settings.profile.user_id" = "ID";
 "settings.profile.default_user" = "User";
-"settings.tenant.name" = "name";
-"settings.tenant.code" = "code";
+"settings.tenant.name" = "Tenant Name";
+"settings.tenant.code" = "Code";
 "settings.tenant.id" = "ID";
 "settings.tenant.unconnected" = "Not Connected";
 "settings.security.reset_title" = "Security Reset";
@@ -201,12 +196,9 @@
 "settings.recovery.regenerate_success" = "Recovery phrase regenerated successfully.";
 "settings.recovery.copy_button" = "Copy Phrase";
 "settings.recovery.copied" = "Recovery phrase copied to clipboard.";
-"settings.recovery.not_found" = "Recovery phrase not found.";
 "settings.logout" = "Sign Out";
 "settings.logout.confirm_title" = "Sign out and reset device?";
 "settings.logout.confirm_msg" = "Sign out of your account and permanently clear all encryption keys and local data from this device.";
-"settings.about.version" = "Version";
-"settings.about.encryption" = "Encryption";
 "settings.profile.edit_title" = "Edit Profile";
 "settings.profile.edit_placeholder" = "Enter display name (max 32 chars)";
 "settings.profile.edit_empty_error" = "Please enter a display name.";
@@ -219,10 +211,6 @@
 "auth.recovery.restore_button" = "Restore Account & Keys";
 "auth.recovery.word_count_error" = "Please enter 12 English words (currently %d words)";
 "auth.recovery.invalid_phrase" = "The recovery phrase is invalid. Please check the spelling and order.";
-"auth.recovery.restored_user_prefix" = "Restored User";
-"settings.recovery.copy_button" = "Copy Phrase";
-"settings.recovery.copied" = "Recovery phrase copied to clipboard.";
-"settings.recovery.not_found" = "Recovery phrase not found.";
 
 // MARK: - Errors
 "error.unknown" = "An unknown error occurred.";
@@ -233,7 +221,10 @@
 "error.friend.self_add" = "You cannot add yourself as a friend.";
 "error.recovery.data_not_found" = "Recovery data not found.";
 "error.recovery.decryption_failed" = "Failed to decrypt private key. Please check your recovery phrase.";
-"error.recovery.tenant_not_configured" = "Tenant not configured. Please scan your tenant 2D code first.";
+"error.recovery.tenant_not_configured" = "Tenant not configured. Please scan your tenant QR code first.";
+"error.recovery.server_config_missing" = "Server authentication configuration is missing. Please contact the administrator.";
+"error.recovery.server_error" = "An error occurred during server communication or authentication. Please try again later.";
+"error.recovery.invalid_format" = "The recovery phrase format is invalid.";
 "error.user.not_found" = "User profile not found.";
 
 // MARK: - Toast Notification
@@ -243,22 +234,16 @@
 "app_info.title" = "App Information";
 "app_info.version" = "Version";
 "app_info.encryption" = "Encryption";
-"app_info.encryption_detail" = "AES-256-GCM / X25519 (ECDH)";
 "app_info.encryption_detail_1" = "AES-256-GCM";
 "app_info.encryption_detail_2" = "X25519 (ECDH)";
 "app_info.encryption_desc" = "Messaging is secured by AES-256-GCM E2EE with session keys derived from Curve25519 ECDH and HKDF-SHA256. Tenant data is encrypted with AES-256-GCM.";
 "app_info.licenses" = "Open Source Licenses";
-"app_info.license_list_title" = "Open Source Licenses";
-"app_info.license_search_placeholder" = "Search libraries";
-"app_info.license_repository" = "Repository";
-"app_info.license_view_source" = "View Source Code";
-"app_info.license_empty" = "No libraries found.";
 
 // MARK: - Account Deletion
 "settings.account_delete" = "Delete Account Permanently";
 "settings.account_delete_confirm_title" = "Delete Account Permanently?";
 "settings.account_delete_confirm_msg" = "This action cannot be undone. All your chat history, friends, settings, and encryption key backups will be permanently deleted.";
-"settings.account_delete_execute" = "Delete Account";
+"settings.account_delete_execute" = "Delete";
 "settings.account_delete_success" = "Your account has been permanently deleted.";
 
 // MARK: - Safety & Block
@@ -280,4 +265,40 @@
 "legal.terms_title" = "Terms of Service (EULA)";
 "legal.privacy_title" = "Privacy Policy";
 "legal.terms_agree_notice" = "By creating an account or using this service, you agree to our Terms of Service and Privacy Policy.";
+"legal.document_load_error" = "Failed to load legal document.";
+"legal.document_file_name" = "File: %@.md";
 
+// MARK: - Group Details
+"group.member_count_format" = "(%d)";
+"group.default_title" = "Group";
+
+// MARK: - Tenant Extra
+"tenant.default_name_format" = "Tenant (%@)";
+"tenant.default_org_name" = "Tenant";
+"error.tenant.not_found" = "Specified tenant not found.";
+
+// MARK: - User Extra
+"error.user.username_taken" = "This username is already taken.";
+
+// MARK: - Chat Font Size Settings
+"settings.section.display" = "Display";
+"settings.chat_font_size.label" = "Message Font Size";
+"settings.chat_font_size.xs" = "XS";
+"settings.chat_font_size.s" = "S";
+"settings.chat_font_size.m" = "M";
+"settings.chat_font_size.l" = "L";
+"settings.chat_font_size.xl" = "XL";
+
+// MARK: - Storage & Media Errors
+"error.storage.config_incomplete" = "Storage configuration is incomplete.";
+"error.storage.invalid_endpoint" = "Invalid storage endpoint.";
+"error.storage.upload_failed" = "Failed to upload image to storage (HTTP %d)";
+"error.storage.image_compress_failed" = "Failed to compress image.";
+"error.storage.image_encrypt_failed" = "Failed to encrypt image.";
+"error.storage.avatar_not_set" = "Avatar is not configured.";
+"error.storage.cdn_url_invalid" = "Storage delivery URL configuration is invalid.";
+"error.storage.cdn_fetch_failed" = "Failed to fetch image from storage.";
+"error.storage.image_decode_failed" = "Failed to decode image.";
+"error.storage.invalid_encryption_key" = "Invalid file encryption key.";
+"chat.dm_default_title" = "Direct Message";
+"tenant.default_tenant_name" = "Default";

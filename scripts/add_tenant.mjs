@@ -125,6 +125,8 @@ if (isDefaultTenant) {
 \t<string>${tenantMasterKey}</string>
 \t<key>IS_DEFAULT_TENANT</key>
 \t<true/>
+\t<key>WORKER_API_URL</key>
+\t<string>${workerApiUrl || ""}</string>
 </dict>
 </plist>
 `;

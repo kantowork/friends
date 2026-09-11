@@ -8,29 +8,32 @@
 "common.cancel" = "キャンセル";
 "common.close" = "閉じる";
 "common.copy" = "コピー";
-"common.copied" = "コピーしました";
-"common.share" = "共有";
 "common.save" = "保存";
 "common.delete" = "削除";
-"common.confirm" = "確認";
 "common.error" = "エラー";
 "common.loading" = "読み込み中…";
 "common.success" = "完了";
+"common.yesterday" = "昨日";
+"common.guest_user" = "ゲストユーザー";
+"common.default_user" = "ユーザー";
+"common.sender" = "送信者";
+"common.myself" = "自分";
 
 // MARK: - Auth & Login
 "auth.login.title" = "Friends";
-"auth.login.guest_btn" = "匿名ログイン";
-"auth.login.recovery_btn" = "「ふっかつのじゅもん」で復元";
-"auth.login.reset_device_btn" = "端末データ・鍵の完全リセット";
-"auth.login.reset_device_confirm_title" = "端末データを完全に初期化しますか？";
-"auth.login.reset_device_confirm_msg" = "Keychainに保存された暗号鍵やローカル情報をすべて消去し、初期状態に戻します。";
+"auth.login.display_name_label" = "表示名";
+"auth.login.display_name_placeholder" = "ニックネームを入力";
+"auth.login.guest_btn" = "はじめる";
+"auth.login.recovery_btn" = "ふっかつのじゅもん";
+"auth.login.reset_device_btn" = "この端末から鍵を完全に消す";
+"auth.login.reset_device_confirm_title" = "この端末から鍵を完全に消しますか？";
+"auth.login.reset_device_confirm_msg" = "Keychainに保存された暗号鍵を含む、このアプリのデータをすべて消去します。";
 "auth.login.tenant_change" = "変更";
 
 // MARK: - Tenant Selection
 "tenant.selection.title" = "テナント選択";
 "tenant.selection.header" = "テナントを選択";
-"tenant.selection.subtitle" = "二次元コードをスキャンするか、\nテナント設定情報を直接入力してください。";
-"tenant.tab.two_dimensional_code" = "二次元コード";
+"tenant.tab.two_dimensional_code" = "2次元コード";
 "tenant.tab.url" = "URL";
 "tenant.tab.text" = "テキスト";
 "tenant.verify.verifying" = "テナントを検証中…";
@@ -40,7 +43,7 @@
 "tenant.input.url_label" = "テナント設定URL";
 "tenant.input.url_placeholder" = "https://...";
 "tenant.verify.btn" = "検証する";
-"tenant.camera.instruction" = "二次元コードをフレーム内に合わせてください";
+"tenant.camera.instruction" = "2次元コードをフレーム内に合わせてください";
 "error.tenant.invalid_format" = "テナント設定の形式が正しくありません。完全なJSONまたは有効なURLを指定してください。";
 "error.tenant.fetch_failed" = "URLからテナント設定を取得できませんでした。URLとネットワーク接続を確認してください。";
 "error.tenant.verification_failed" = "テナント検証に失敗しました: %@";
@@ -53,7 +56,6 @@
 "tenant.switch.leave" = "テナントから抜ける";
 "tenant.switch.leave_confirm_title" = "テナントからの離脱";
 "tenant.switch.leave_confirm_msg" = "テナント「%@」から抜けますか？\n端末内の設定とキーが削除されます。";
-"tenant.badge.other_unread" = "他テナントの新着通知";
 
 // MARK: - Tabs
 "tab.home" = "ホーム";
@@ -62,67 +64,67 @@
 
 // MARK: - Home
 "home.quick_action.title" = "クイックアクション";
-"home.quick_action.add_friend" = "友達を追加";
+"home.quick_action.add_friend" = "ともだちを追加";
 "home.notification.title" = "お知らせ";
 "home.notification.empty" = "新しいお知らせはありません";
 
 // MARK: - Groups (かいぎ)
 "group.list.title" = "かいぎ";
 "group.list.empty" = "参加しているかいぎはありません\n右上の「＋」ボタンから新しいかいぎを作成しましょう";
+"group.list.group_created" = "かいぎを作成しました";
 "group.create.title" = "かいぎを作成";
 "group.create.name_label" = "かいぎ名";
 "group.create.name_placeholder" = "かいぎ名を入力";
 "group.create.select_members" = "メンバーを選択 (%d人選択中)";
 "group.create.submit_btn" = "作成";
-"group.create.no_friends" = "招待できる友達がいません。先に友達を追加してください。";
-"group.detail.title" = "かいぎ情報";
+"group.create.no_friends" = "招待できるともだちがいません。先にともだちを追加してください。";
 "group.detail.members_section" = "参加メンバー (%d人)";
 "group.role.owner" = "オーナー";
 "group.role.admin" = "管理者";
-"group.role.member" = "メンバー";
 "group.action.claim_owner" = "オーナーを引き継ぐ";
 "group.action.claim_owner_confirm" = "このかいぎのオーナー権限を引き継ぎますか？前任のオーナーは管理者になります。";
 "group.action.assign_admin" = "管理者にする";
 "group.action.assign_admin_confirm" = "「%@」を管理者にしますか？";
-"group.action.remove_member" = "退出させる";
-"group.action.remove_member_confirm" = "「%@」をかいぎから退出させますか？";
+"group.action.remove_member" = "退室させる";
+"group.action.remove_member_confirm" = "「%@」をかいぎから退室させますか？";
 "group.action.leave_group" = "退室する";
 "group.action.leave_group_confirm" = "このかいぎを退室しますか？";
 "group.action.cannot_leave_owner" = "オーナーはかいぎを退室できません。先に他の管理者にオーナーを交代してください。";
 "group.action.edit_title" = "かいぎ名の変更";
-"group.action.edit_title_prompt" = "グループメンバー全員に表示されるかいぎ名を変更します。";
+"group.action.edit_title_prompt" = "かいぎのメンバー全員に表示されるかいぎ名を変更します。";
 "group.action.add_member" = "メンバーを追加";
-"group.add_member.title" = "メンバーを追加";
-"group.add_member.submit_btn" = "追加";
-"group.add_member.no_candidates" = "追加できる友達がいません";
+"group.add_member.no_candidates" = "追加できるともだちがいません";
 "group.add_member.select_count" = "%d人選択中";
 "group.avatar.change_title" = "かいぎのアイコンを変更";
 "group.delete.button" = "かいぎを完全に削除";
 "group.delete.confirm_title" = "かいぎ「%@」を完全に削除しますか？";
 "group.delete.confirm_message" = "この操作は取り消せません。かいぎを削除すると、メッセージの送受信ができなくなり、メンバー全員の一覧から完全に削除されます。";
-"group.delete.confirm_action" = "完全に削除する";
-
-// MARK: - Home
+"group.delete.confirm_action" = "削除";
 
 // MARK: - Chats
 "chat.list.title" = "ともだち";
-"chat.list.empty" = "トーク履歴がありません\n友達と対面二次元コードを交換してトークを開始しましょう";
+"chat.list.empty" = "トーク履歴がありません\nともだちと対面2次元コードを交換してトークを開始しましょう";
+"chat.list.no_messages" = "メッセージのやり取りはありません";
 "chat.detail.input_placeholder" = "メッセージを入力…";
 "chat.detail.send" = "送信";
 "chat.detail.new_messages_badge" = "新着メッセージがあります ↓";
-"chat.detail.scroll_to_latest" = "最新メッセージへ移動";
 "chat.detail.empty" = "メッセージのやり取りはまだありません\n最初のメッセージを送信してみましょう";
 "chat.read.status" = "既読";
 "chat.read.count" = "既読 %d";
-"chat.detail.attachment_action_title" = "写真の添付";
-"chat.detail.take_photo" = "写真を撮る";
-"chat.detail.choose_from_library" = "写真一覧から選択";
+"chat.detail.take_photo" = "カメラを起動";
+"chat.detail.choose_from_library" = "写真ライブラリから選択";
 "chat.detail.camera_not_available" = "カメラが利用できません。実機端末でご利用ください。";
 "chat.detail.sending_images" = "写真を暗号化して送信中…";
 "chat.detail.upload_failed" = "写真のアップロードに失敗しました。";
-"chat.detail.image_message" = "写真";
-"chat.detail.max_images_exceeded" = "写真は一度に最大10枚まで選択できます。";
-
+"chat.detail.image_message_sent" = "写真を送信しました";
+"chat.viewer.save_current" = "この写真を保存";
+"chat.viewer.save_all" = "写真を保存(%d)";
+"chat.viewer.save_success" = "写真ライブラリに保存しました";
+"chat.viewer.save_all_success" = "%d枚の写真を保存しました";
+"chat.viewer.save_failed" = "写真の保存に失敗しました";
+"chat.viewer.previous" = "前の写真";
+"chat.viewer.next" = "次の写真";
+"chat.viewer.page_format" = "%d / %d";
 
 // MARK: - Reactions
 "chat.reaction.details_title" = "リアクション";
@@ -140,45 +142,38 @@
 
 // MARK: - Friends
 "friend.list.title" = "ともだち";
-"friend.list.add_btn" = "友達を追加";
-"friend.list.empty" = "登録されている友達はいません\n二次元コードをスキャンして友達を追加しましょう";
-"friend.list.user_id_prefix" = "ID: %@";
+"friend.list.add_btn" = "ともだちを追加";
+"friend.list.empty" = "登録されているともだちはいません\n2次元コードをスキャンしてともだちを追加しましょう";
 
 // MARK: - Friend Add (C03)
-"friend.add.title" = "友達を追加";
-"friend.add.tab_two_dimensional_code" = "二次元コード";
+"friend.add.title" = "ともだちを追加";
+"friend.add.tab_two_dimensional_code" = "2次元コード";
 "friend.add.tab_text" = "テキスト";
-"friend.add.camera_simulator_btn" = "テスト用二次元コードをスキャン（シミュレート）";
 "friend.add.passcode_title" = "合言葉";
 "friend.add.my_info_section" = "自分の情報";
 "friend.add.user_id_label" = "ユーザー名";
 "friend.add.text_input_section" = "相手を追加";
 "friend.add.target_user_id_placeholder" = "相手のユーザー名";
 "friend.add.target_passcode_placeholder" = "合言葉";
-"friend.add.confirm_addition_btn" = "友達に追加する";
-"friend.add.success_alert_title" = "友達追加完了";
-"friend.add.success_alert_msg" = "%@ を友達に追加しました！";
-"friend.add.confirm_sheet_title" = "友達の追加確認";
-"friend.add.confirm_sheet_msg" = "「%@」(@%@) を友達に追加しますか？";
-"friend.edit_name.action" = "表示名の変更";
+"friend.add.confirm_addition_btn" = "ともだちを追加";
+"friend.add.success_alert_title" = "ともだち追加完了";
+"friend.add.success_alert_msg" = "%@ をともだちに追加しました";
 "friend.edit_name.title" = "表示名の変更";
 "friend.edit_name.message" = "相手には見えません。あなた専用に表示名を設定します。";
 "friend.edit_name.placeholder" = "表示名を入力";
-"friend.edit_name.save" = "保存";
-"friend.edit_name.success" = "表示名を変更しました";
 
 // MARK: - Settings
 "settings.title" = "設定";
 "settings.section.profile" = "プロフィール";
 "settings.section.tenant" = "テナント";
 "settings.section.security" = "セキュリティ";
-"settings.section.about" = "アプリ情報";
 "settings.profile.display_name" = "名前";
-"settings.profile.username" = "アカウント";
-"settings.profile.username_placeholder" = "account";
-"settings.profile.username_invalid_format" = "アカウントは半角英数字・アンダースコアで入力してください。";
-"settings.profile.username_confirm_title" = "アカウント名の変更確認";
-"settings.profile.username_confirm_msg" = "アカウント名を変更すると、相手があなたを検索・追加する際のアカウント名が変わります。変更して保存しますか？";
+"settings.profile.username_placeholder" = "username";
+"settings.profile.username_invalid_format" = "ユーザー名は半角英数字・アンダースコアで入力してください。";
+"settings.profile.username_too_short" = "ユーザー名は3文字以上で入力してください。";
+"settings.profile.username_too_long" = "ユーザー名は20文字以内で入力してください。";
+"settings.profile.username_confirm_title" = "ユーザー名の変更確認";
+"settings.profile.username_confirm_msg" = "ユーザー名を変更すると、相手があなたを検索・追加する際のユーザー名が変わります。変更して保存しますか？";
 "settings.profile.username_confirm_button" = "変更";
 "settings.profile.user_id" = "ID";
 "settings.profile.default_user" = "ユーザー";
@@ -197,16 +192,13 @@
 "settings.recovery.regenerate_btn" = "再作成";
 "settings.recovery.regenerate_title" = "ふっかつのじゅもんの再作成";
 "settings.recovery.regenerate_prompt" = "ふっかつのじゅもんを新しく作成しますか？これまでのふっかつのじゅもんは使用できなくなります。";
-"settings.recovery.regenerate_action" = "再作成する";
+"settings.recovery.regenerate_action" = "再作成";
 "settings.recovery.regenerate_success" = "ふっかつのじゅもんを再作成しました。";
-"settings.recovery.copy_button" = "呪文をコピー";
+"settings.recovery.copy_button" = "じゅもんをコピー";
 "settings.recovery.copied" = "ふっかつのじゅもんをコピーしました。";
-"settings.recovery.not_found" = "ふっかつのじゅもんが見つかりません。";
 "settings.logout" = "ログアウト";
 "settings.logout.confirm_title" = "ログアウトして初期化しますか？";
 "settings.logout.confirm_msg" = "アカウントからログアウトします。「ふっかつのじゅもん」がなければ復元できなくなります。";
-"settings.about.version" = "バージョン";
-"settings.about.encryption" = "暗号化方式";
 "settings.profile.edit_title" = "プロフィール編集";
 "settings.profile.edit_placeholder" = "表示名を入力 (最大32文字)";
 "settings.profile.edit_empty_error" = "表示名を入力してください。";
@@ -219,21 +211,20 @@
 "auth.recovery.restore_button" = "アカウントと鍵を復元";
 "auth.recovery.word_count_error" = "12個の英単語を入力してください (現在 %d 単語)";
 "auth.recovery.invalid_phrase" = "ふっかつのじゅもんが無効です。単語のスペルや順序を確認してください。";
-"auth.recovery.restored_user_prefix" = "復元ユーザー";
-"settings.recovery.copy_button" = "呪文をコピー";
-"settings.recovery.copied" = "ふっかつのじゅもんをコピーしました。";
-"settings.recovery.not_found" = "ふっかつのじゅもんが見つかりません。";
 
 // MARK: - Errors
 "error.unknown" = "不明なエラーが発生しました。";
-"error.friend.invalid_format" = "友達追加コードの形式が正しくありません。";
+"error.friend.invalid_format" = "ともだち追加コードの形式が正しくありません。";
 "error.friend.user_not_found" = "指定されたユーザーIDが見つかりませんでした。";
 "error.friend.passcode_expired" = "合言葉が一致しないか、有効期限が切れています。最新のコードを再入力してください。";
-"error.friend.tenant_mismatch" = "異なるテナントのユーザーです。同一テナント内でのみ友達追加が可能です。";
-"error.friend.self_add" = "自分自身を友達に追加することはできません。";
+"error.friend.tenant_mismatch" = "異なるテナントのユーザーです。同一テナント内でのみともだち追加が可能です。";
+"error.friend.self_add" = "自分自身をともだちに追加することはできません。";
 "error.recovery.data_not_found" = "復元データが見つかりません。";
 "error.recovery.decryption_failed" = "秘密鍵の復号に失敗しました。正しいふっかつのじゅもんを入力してください。";
-"error.recovery.tenant_not_configured" = "テナントが未設定です。先にテナント二次元コードをスキャンしてください。";
+"error.recovery.tenant_not_configured" = "テナントが未設定です。先にテナント2次元コードをスキャンしてください。";
+"error.recovery.server_config_missing" = "サーバーの認証設定が未完了です。システム管理者に問い合わせてください。";
+"error.recovery.server_error" = "サーバーとの通信または認証処理に問題が発生しました。しばらくしてから再度お試しください。";
+"error.recovery.invalid_format" = "ふっかつのじゅもんの形式が正しくありません。";
 "error.user.not_found" = "ユーザープロファイルが見つかりません。";
 
 // MARK: - Toast Notification
@@ -243,22 +234,16 @@
 "app_info.title" = "アプリ情報";
 "app_info.version" = "バージョン";
 "app_info.encryption" = "暗号化方式";
-"app_info.encryption_detail" = "AES-256-GCM / X25519 (ECDH)";
 "app_info.encryption_detail_1" = "AES-256-GCM";
 "app_info.encryption_detail_2" = "X25519 (ECDH)";
 "app_info.encryption_desc" = "メッセージ通信は端末間の Curve25519 鍵交換と HKDF-SHA256 で導出されたセッション鍵による AES-256-GCM E2EE、組織内データはテナントマスターキーによる AES-256-GCM で保護されています。";
 "app_info.licenses" = "ライセンス表示";
-"app_info.license_list_title" = "オープンソースライセンス";
-"app_info.license_search_placeholder" = "ライブラリを検索";
-"app_info.license_repository" = "リポジトリ";
-"app_info.license_view_source" = "ソースコードを表示";
-"app_info.license_empty" = "該当するライブラリが見つかりません。";
 
 // MARK: - Account Deletion
 "settings.account_delete" = "アカウントを完全に削除";
 "settings.account_delete_confirm_title" = "アカウントを完全に削除しますか？";
-"settings.account_delete_confirm_msg" = "この操作は取り消せません。アカウントを削除すると、チャット履歴、友達関係、設定、暗号化鍵バックアップなどのすべてのデータが完全に抹消されます。";
-"settings.account_delete_execute" = "完全に削除する";
+"settings.account_delete_confirm_msg" = "この操作は取り消せません。アカウントを削除すると、チャット履歴、ともだち関係、設定、暗号化鍵バックアップなどのすべてのデータが完全に抹消されます。";
+"settings.account_delete_execute" = "削除";
 "settings.account_delete_success" = "アカウントが完全に削除されました。";
 
 // MARK: - Safety & Block
@@ -271,8 +256,8 @@
 "block.unblock_confirm_title" = "%@ のブロックを解除しますか？";
 "block.unblock_confirm_msg" = "このユーザーからのメッセージが再度表示されるようになります。";
 "block.unblock_execute" = "解除する";
-"block.list_title" = "ブロックしたユーザー";
-"block.list_empty" = "ブロックしているユーザーはいません";
+"block.list_title" = "ブロックしたともだち";
+"block.list_empty" = "ブロックしているともだちは居ません";
 "block.blocked_banner" = "このユーザーをブロックしています";
 
 // MARK: - Legal & Policy
@@ -280,5 +265,40 @@
 "legal.terms_title" = "利用規約 (EULA)";
 "legal.privacy_title" = "プライバシーポリシー";
 "legal.terms_agree_notice" = "アカウントを作成または利用を開始することで、利用規約およびプライバシーポリシーに同意したものとみなされます。";
+"legal.document_load_error" = "法的ドキュメントを読み込めませんでした。";
+"legal.document_file_name" = "ファイル: %@.md";
 
+// MARK: - Group Details
+"group.member_count_format" = "(%d)";
+"group.default_title" = "かいぎ";
 
+// MARK: - Tenant Extra
+"tenant.default_name_format" = "テナント (%@)";
+"tenant.default_org_name" = "テナント";
+"error.tenant.not_found" = "指定されたテナントが見つかりません。";
+
+// MARK: - User Extra
+"error.user.username_taken" = "このユーザー名は既に使用されています。";
+
+// MARK: - Chat Font Size Settings
+"settings.section.display" = "表示";
+"settings.chat_font_size.label" = "メッセージの文字サイズ";
+"settings.chat_font_size.xs" = "より小";
+"settings.chat_font_size.s" = "小";
+"settings.chat_font_size.m" = "中";
+"settings.chat_font_size.l" = "大";
+"settings.chat_font_size.xl" = "より大";
+
+// MARK: - Storage & Media Errors
+"error.storage.config_incomplete" = "ストレージ設定が不完全です。";
+"error.storage.invalid_endpoint" = "不正なストレージエンドポイントです。";
+"error.storage.upload_failed" = "ストレージへの画像アップロードに失敗しました (HTTP %d)";
+"error.storage.image_compress_failed" = "画像の圧縮に失敗しました。";
+"error.storage.image_encrypt_failed" = "画像の暗号化に失敗しました。";
+"error.storage.avatar_not_set" = "アバターが設定されていません。";
+"error.storage.cdn_url_invalid" = "ストレージ配信 URL の設定が無効です。";
+"error.storage.cdn_fetch_failed" = "ストレージから画像を取得できませんでした。";
+"error.storage.image_decode_failed" = "画像のデコードに失敗しました。";
+"error.storage.invalid_encryption_key" = "無効なファイル暗号化鍵です。";
+"chat.dm_default_title" = "1:1トーク";
+"tenant.default_tenant_name" = "デフォルト";

@@ -83,14 +83,15 @@ final class ToastNotificationManager: ObservableObject {
     public func handleToastTap(_ toast: InAppToast) {
         dismiss()
         
-        // ChatService のチャット一覧から対象を検索
-        let chatService = ChatService.shared
-        if let existingChat = chatService.chats.first(where: { $0.chatID == toast.chatId }) {
+        let tenantId = AuthService.shared.currentTenant?.tenantID ?? ""
+        let currentUserId = AuthService.shared.currentUser?.userID ?? ""
+        
+        // 1. グループチャット一覧またはDMチャット一覧から対象を検索
+        if let existingChat = GroupChatService.shared.groupChats.first(where: { $0.chatID == toast.chatId }) ??
+                              DirectChatService.shared.dmChats.first(where: { $0.chatID == toast.chatId }) {
             self.navigationTargetChat = existingChat
-        } else if let friend = chatService.friends.first(where: { $0.userID == toast.senderId || $0.uid == toast.senderId }) {
-            // 友達情報から FriendsChatUIModel を生成
-            let tenantId = chatService.currentTenant?.tenantID ?? ""
-            let currentUserId = chatService.currentUser?.userID ?? ""
+        } else if let friend = DirectChatService.shared.friendProfile(for: toast.senderId) {
+            // 2. 友達情報から FriendsChatUIModel を生成
             let fallbackChat = FriendsChatUIModel(
                 chat: FriendsChat(
                     chatID: toast.chatId,
@@ -105,13 +106,12 @@ final class ToastNotificationManager: ObservableObject {
             )
             self.navigationTargetChat = fallbackChat
         } else {
-            // 汎用 FriendsChatUIModel
-            let tenantId = chatService.currentTenant?.tenantID ?? ""
+            // 3. 汎用 FriendsChatUIModel
             let fallbackChat = FriendsChatUIModel(
                 chat: FriendsChat(
                     chatID: toast.chatId,
                     tenantID: tenantId,
-                    chatType: .direct,
+                    chatType: toast.isGroup ? .group : .direct,
                     members: []
                 ),
                 title: toast.senderName,

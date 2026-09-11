@@ -1,7 +1,9 @@
 import SwiftUI
 
 public struct MainTabView: View {
-    @ObservedObject private var chatService = ChatService.shared
+    @ObservedObject private var directChatService = DirectChatService.shared
+    @ObservedObject private var groupChatService = GroupChatService.shared
+    @ObservedObject private var messageService = MessageService.shared
     @ObservedObject private var toastManager = ToastNotificationManager.shared
     @State private var selectedTab: Tab = .home
     
@@ -28,17 +30,17 @@ public struct MainTabView: View {
                 .tabItem {
                     Label(L10n.Tab.friends, systemImage: "bubble.left.and.bubble.right.fill")
                 }
-                .badge(chatService.totalDmUnreadCount > 0 ? chatService.totalDmUnreadCount : 0)
+                .badge(directChatService.totalDmUnreadCount > 0 ? directChatService.totalDmUnreadCount : 0)
                 .tag(Tab.friends)
             
             GroupListView(navigationPath: $groupNavigationPath)
                 .tabItem {
                     Label(L10n.Tab.groups, systemImage: "person.3.fill")
                 }
-                .badge(chatService.totalGroupUnreadCount > 0 ? chatService.totalGroupUnreadCount : 0)
+                .badge(groupChatService.totalGroupUnreadCount > 0 ? groupChatService.totalGroupUnreadCount : 0)
                 .tag(Tab.groups)
         }
-        .tint(.blue)
+        .tint(.appAccent)
         .onChange(of: toastManager.navigationTargetChat) { targetChat in
             guard let chat = targetChat else { return }
             let isGroup = chat.chatType == .group || chat.chatID.hasPrefix("gm_")
