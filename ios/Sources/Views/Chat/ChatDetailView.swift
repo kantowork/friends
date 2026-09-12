@@ -41,6 +41,13 @@ struct ChatDetailView: View {
         return all.filter { !blockManager.isBlocked(userId: $0.senderID) }
     }
     
+    /// チャットタイムライン上のすべての添付写真（時系列順）
+    private var allChatAttachments: [MessageAttachment] {
+        currentMessages.flatMap { $0.attachments }
+    }
+    
+    @State private var selectedViewerItem: ViewerPresentationItem? = nil
+    
     @State private var lastBottomMessageId: String? = nil
     @State private var isAtBottom: Bool = true
     @State private var hasUnseenNewMessages: Bool = false
@@ -132,6 +139,9 @@ struct ChatDetailView: View {
                                         globalDragOffset: globalDragOffset,
                                         onShowReactionDetails: {
                                             selectedMessageForReactions = message
+                                        },
+                                        onAttachmentTapped: { attachment in
+                                            handleAttachmentTapped(attachment)
                                         }
                                     )
                                     .id(message.id)
@@ -433,6 +443,9 @@ struct ChatDetailView: View {
         .alert(L10n.Chat.uploadFailed, isPresented: $showingUploadErrorAlert) {
             Button(L10n.Common.ok, role: .cancel) {}
         }
+        .fullScreenCover(item: $selectedViewerItem) { item in
+            ImageViewerView(attachments: item.attachments, initialIndex: item.initialIndex)
+        }
         .onAppear {
             if chat.chatType == .group {
                 if groupChatService.groupChats.contains(where: { $0.chatID == chat.chatID }) {
@@ -498,9 +511,9 @@ struct ChatDetailView: View {
     
     private func handleSendImages(images: [UIImage]) {
         guard !images.isEmpty else { return }
-        let currentText = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
         isSendingImages = true
-        self.messageText = ""
+        let currentText = messageText
+        messageText = ""
         
         messageService.sendImageMessage(chatId: chat.chatID, images: images, text: currentText) { result in
             DispatchQueue.main.async {
@@ -514,6 +527,15 @@ struct ChatDetailView: View {
                 }
             }
         }
+    }
+    
+    private func handleAttachmentTapped(_ attachment: MessageAttachment) {
+        let all = allChatAttachments
+        let initialIdx = all.firstIndex(where: { $0.id == attachment.id || $0.attachmentId == attachment.attachmentId }) ?? 0
+        selectedViewerItem = ViewerPresentationItem(
+            attachments: all.isEmpty ? [attachment] : all,
+            initialIndex: initialIdx
+        )
     }
     
     private func loadAndSendSelectedPhotos(_ items: [PhotosPickerItem]) {
@@ -596,6 +618,7 @@ struct MessageBubbleView: View {
     var isAllDetailsRevealed: Bool = false
     var globalDragOffset: CGFloat = 0
     var onShowReactionDetails: () -> Void = {}
+    var onAttachmentTapped: ((MessageAttachment) -> Void)? = nil
     
     private var messageFontSize: CGFloat {
         fontSize
@@ -603,7 +626,6 @@ struct MessageBubbleView: View {
     
     @ObservedObject private var messageService = MessageService.shared
     @State private var showActionMenu: Bool = false
-    @State private var selectedViewerItem: ViewerPresentationItem? = nil
     
     private var isRead: Bool {
         messageService.isMessageRead(
@@ -889,10 +911,9 @@ struct MessageBubbleView: View {
         VStack(alignment: isMe ? .trailing : .leading, spacing: 6) {
             if message.hasAttachments {
                 MessageAttachmentsGridView(attachments: message.attachments) { tappedIndex in
-                    selectedViewerItem = ViewerPresentationItem(
-                        attachments: message.attachments,
-                        initialIndex: tappedIndex
-                    )
+                    if tappedIndex < message.attachments.count {
+                        onAttachmentTapped?(message.attachments[tappedIndex])
+                    }
                 }
             }
             if !message.decryptedText.isEmpty {
@@ -913,9 +934,6 @@ struct MessageBubbleView: View {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
                 showActionMenu.toggle()
             }
-        }
-        .fullScreenCover(item: $selectedViewerItem) { item in
-            ImageViewerView(attachments: item.attachments, initialIndex: item.initialIndex)
         }
     }
     

@@ -380,66 +380,129 @@ private struct AttachmentViewerPage: View {
 
 // MARK: - Zoomable & Pannable Image View
 
-private struct ZoomableImageView: View {
+private struct ZoomableImageView: UIViewRepresentable {
     let image: UIImage
     let onDismiss: () -> Void
     
-    @State private var scale: CGFloat = 1.0
-    @State private var lastScale: CGFloat = 1.0
-    @State private var offset: CGSize = .zero
-    @State private var lastOffset: CGSize = .zero
+    func makeUIView(context: Context) -> UIScrollView {
+        let scrollView = UIScrollView()
+        scrollView.delegate = context.coordinator
+        scrollView.minimumZoomScale = 1.0
+        scrollView.maximumZoomScale = 4.0
+        scrollView.showsHorizontalScrollIndicator = false
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.bouncesZoom = true
+        scrollView.backgroundColor = .clear
+        scrollView.isScrollEnabled = false // 等倍時はスクロール無効化し親の左右スワイプを最優先
+        
+        let imageView = UIImageView(image: image)
+        imageView.contentMode = .scaleAspectFit
+        imageView.clipsToBounds = true
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.addSubview(imageView)
+        
+        context.coordinator.scrollView = scrollView
+        context.coordinator.imageView = imageView
+        
+        NSLayoutConstraint.activate([
+            imageView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+            imageView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+            imageView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            imageView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+            imageView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
+            imageView.heightAnchor.constraint(equalTo: scrollView.frameLayoutGuide.heightAnchor)
+        ])
+        
+        // ダブルタップでズームイン/アウト
+        let doubleTap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleDoubleTap(_:)))
+        doubleTap.numberOfTapsRequired = 2
+        scrollView.addGestureRecognizer(doubleTap)
+        
+        // 等倍時の下スワイプで閉じるジェスチャー
+        let swipeDown = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleSwipeDown(_:)))
+        swipeDown.delegate = context.coordinator
+        scrollView.addGestureRecognizer(swipeDown)
+        
+        return scrollView
+    }
     
-    var body: some View {
-        Image(uiImage: image)
-            .resizable()
-            .scaledToFit()
-            .scaleEffect(scale)
-            .offset(offset)
-            .gesture(
-                MagnificationGesture()
-                    .onChanged { value in
-                        let delta = value / lastScale
-                        lastScale = value
-                        scale = min(max(scale * delta, 1.0), 5.0)
-                    }
-                    .onEnded { _ in
-                        lastScale = 1.0
-                        if scale < 1.0 {
-                            withAnimation(.spring()) {
-                                scale = 1.0
-                                offset = .zero
-                            }
-                        }
-                    }
-            )
-            .simultaneousGesture(
-                DragGesture()
-                    .onChanged { value in
-                        if scale > 1.0 {
-                            offset = CGSize(
-                                width: lastOffset.width + value.translation.width,
-                                height: lastOffset.height + value.translation.height
-                            )
-                        }
-                    }
-                    .onEnded { value in
-                        if scale > 1.0 {
-                            lastOffset = offset
-                        } else if abs(value.translation.height) > 100 {
-                            onDismiss()
-                        }
-                    }
-            )
-            .onTapGesture(count: 2) {
-                withAnimation(.spring()) {
-                    if scale > 1.0 {
-                        scale = 1.0
-                        offset = .zero
-                        lastOffset = .zero
-                    } else {
-                        scale = 2.5
-                    }
+    func updateUIView(_ uiView: UIScrollView, context: Context) {
+        if context.coordinator.imageView?.image != image {
+            context.coordinator.imageView?.image = image
+            uiView.setZoomScale(1.0, animated: false)
+            uiView.isScrollEnabled = false
+        }
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onDismiss: onDismiss)
+    }
+    
+    class Coordinator: NSObject, UIScrollViewDelegate, UIGestureRecognizerDelegate {
+        weak var scrollView: UIScrollView?
+        weak var imageView: UIImageView?
+        let onDismiss: () -> Void
+        
+        init(onDismiss: @escaping () -> Void) {
+            self.onDismiss = onDismiss
+        }
+        
+        func viewForZooming(in scrollView: UIScrollView) -> UIView? {
+            return imageView
+        }
+        
+        func scrollViewDidZoom(_ scrollView: UIScrollView) {
+            scrollView.isScrollEnabled = scrollView.zoomScale > 1.01
+        }
+        
+        func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
+            if scale <= 1.01 {
+                scrollView.setZoomScale(1.0, animated: true)
+                scrollView.isScrollEnabled = false
+            } else {
+                scrollView.isScrollEnabled = true
+            }
+        }
+        
+        @objc func handleDoubleTap(_ recognizer: UITapGestureRecognizer) {
+            guard let scrollView = scrollView, let imageView = imageView else { return }
+            if scrollView.zoomScale > 1.01 {
+                scrollView.setZoomScale(1.0, animated: true)
+                scrollView.isScrollEnabled = false
+            } else {
+                let point = recognizer.location(in: imageView)
+                let targetScale: CGFloat = 2.5
+                let w = scrollView.bounds.width / targetScale
+                let h = scrollView.bounds.height / targetScale
+                let rect = CGRect(x: point.x - w / 2, y: point.y - h / 2, width: w, height: h)
+                scrollView.zoom(to: rect, animated: true)
+                scrollView.isScrollEnabled = true
+            }
+        }
+        
+        @objc func handleSwipeDown(_ recognizer: UIPanGestureRecognizer) {
+            guard let scrollView = scrollView, scrollView.zoomScale <= 1.01 else { return }
+            let translation = recognizer.translation(in: scrollView)
+            let velocity = recognizer.velocity(in: scrollView)
+            
+            if recognizer.state == .ended {
+                if translation.y > 60 && velocity.y > 150 {
+                    onDismiss()
                 }
             }
+        }
+        
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            guard let pan = gestureRecognizer as? UIPanGestureRecognizer,
+                  let scrollView = scrollView else { return false }
+            if scrollView.zoomScale > 1.01 { return false }
+            let velocity = pan.velocity(in: scrollView)
+            // 下方向のドラッグのみを認識し、水平ドラッグは親の TabView に譲る
+            return velocity.y > 50 && abs(velocity.y) > abs(velocity.x) * 1.5
+        }
+        
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            return false
+        }
     }
 }

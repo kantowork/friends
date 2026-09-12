@@ -7,6 +7,7 @@
     "lint:md": "markdownlint '**/*.md' --ignore node_modules --ignore build",
     "tenant:init": "node ./scripts/add_tenant.mjs --preset",
     "tenant:create": "node ./scripts/add_tenant.mjs",
+    "tenant:qr": "node ./scripts/show_qr.mjs -f shared/data/preset-tenant.json",
     "deploy:sims": "./scripts/deploy_simulators.sh",
     "deploy:firestore": "firebase deploy --config infra/firebase.json --only firestore:rules,firestore:indexes",
     "deploy:workers": "npm --prefix server/workers run deploy",
