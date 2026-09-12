@@ -71,6 +71,8 @@ sequenceDiagram
   - テナントの有効/無効状態、公開設定
 
 > 端末上のローカル保存は暗号化マスターキーの厳重管理とユーザー体験向上用であり、権威あるテナント構成は Firestore 側に置きます。また、`workerApiUrl` や `r2Config` はソースコードに埋め込まず、配布されたテナント設定（二次元コード/JSON/URL）からのみ注入されます。
+> 
+> **スキャンUI実装**: 二次元コード読み取り処理およびガイド枠は、無駄なアニメーションを排除したシンプルな共通コンポーネント `TwoDimensionalCodeScannerView` (`ios/Sources/Views/Components/TwoDimensionalCodeScannerView.swift`) に統合されています。
 
 ---
 

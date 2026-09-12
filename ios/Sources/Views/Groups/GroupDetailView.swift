@@ -1,12 +1,22 @@
 import SwiftUI
 import PhotosUI
 
+// MARK: - GroupDetailRoute (NavigationStack遷移用ルーティング)
+struct GroupDetailRoute: Hashable {
+    let chat: FriendsChatUIModel
+    
+    init(chat: FriendsChatUIModel) {
+        self.chat = chat
+    }
+}
+
 // MARK: - GroupDetailView (D04 グループ詳細・メンバー一覧画面)
 // グループ情報、参加メンバー一覧、メンバー属性(role)表示・操作、退室管理、および重要操作グループ削除（1回確認ダイアログ）
 
 struct GroupDetailView: View {
     @Environment(\.dismiss) private var dismiss
     let chat: FriendsChatUIModel
+    var onGroupDeletedOrLeft: (() -> Void)? = nil
     @ObservedObject var groupChatService = GroupChatService.shared
     @ObservedObject var directChatService = DirectChatService.shared
     @ObservedObject var authService = AuthService.shared
@@ -403,7 +413,11 @@ struct GroupDetailView: View {
                 self.isProcessing = false
                 switch result {
                 case .success:
-                    self.dismiss()
+                    if let onGroupDeletedOrLeft = self.onGroupDeletedOrLeft {
+                        onGroupDeletedOrLeft()
+                    } else {
+                        self.dismiss()
+                    }
                 case .failure(let error):
                     self.errorMessage = error.localizedDescription
                 }
@@ -460,7 +474,11 @@ struct GroupDetailView: View {
                 self.isProcessing = false
                 switch result {
                 case .success:
-                    self.dismiss()
+                    if let onGroupDeletedOrLeft = self.onGroupDeletedOrLeft {
+                        onGroupDeletedOrLeft()
+                    } else {
+                        self.dismiss()
+                    }
                 case .failure(let error):
                     self.errorMessage = error.localizedDescription
                 }

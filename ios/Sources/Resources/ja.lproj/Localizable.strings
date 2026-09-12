@@ -33,7 +33,7 @@
 // MARK: - Tenant Selection
 "tenant.selection.title" = "テナント選択";
 "tenant.selection.header" = "テナントを選択";
-"tenant.tab.two_dimensional_code" = "2次元コード";
+"tenant.tab.two_dimensional_code" = "二次元コード";
 "tenant.tab.url" = "URL";
 "tenant.tab.text" = "テキスト";
 "tenant.verify.verifying" = "テナントを検証中…";
@@ -43,7 +43,7 @@
 "tenant.input.url_label" = "テナント設定URL";
 "tenant.input.url_placeholder" = "https://...";
 "tenant.verify.btn" = "検証する";
-"tenant.camera.instruction" = "2次元コードをフレーム内に合わせてください";
+"tenant.camera.instruction" = "二次元コードをフレーム内に合わせてください";
 "error.tenant.invalid_format" = "テナント設定の形式が正しくありません。完全なJSONまたは有効なURLを指定してください。";
 "error.tenant.fetch_failed" = "URLからテナント設定を取得できませんでした。URLとネットワーク接続を確認してください。";
 "error.tenant.verification_failed" = "テナント検証に失敗しました: %@";
@@ -103,7 +103,7 @@
 
 // MARK: - Chats
 "chat.list.title" = "ともだち";
-"chat.list.empty" = "トーク履歴がありません\nともだちと対面2次元コードを交換してトークを開始しましょう";
+"chat.list.empty" = "トーク履歴がありません\nともだちと対面二次元コードを交換してトークを開始しましょう";
 "chat.list.no_messages" = "メッセージのやり取りはありません";
 "chat.detail.input_placeholder" = "メッセージを入力…";
 "chat.detail.send" = "送信";
@@ -143,11 +143,11 @@
 // MARK: - Friends
 "friend.list.title" = "ともだち";
 "friend.list.add_btn" = "ともだちを追加";
-"friend.list.empty" = "登録されているともだちはいません\n2次元コードをスキャンしてともだちを追加しましょう";
+"friend.list.empty" = "登録されているともだちはいません\n二次元コードをスキャンしてともだちを追加しましょう";
 
 // MARK: - Friend Add (C03)
 "friend.add.title" = "ともだちを追加";
-"friend.add.tab_two_dimensional_code" = "2次元コード";
+"friend.add.tab_two_dimensional_code" = "二次元コード";
 "friend.add.tab_text" = "テキスト";
 "friend.add.passcode_title" = "合言葉";
 "friend.add.my_info_section" = "自分の情報";
@@ -221,7 +221,7 @@
 "error.friend.self_add" = "自分自身をともだちに追加することはできません。";
 "error.recovery.data_not_found" = "復元データが見つかりません。";
 "error.recovery.decryption_failed" = "秘密鍵の復号に失敗しました。正しいふっかつのじゅもんを入力してください。";
-"error.recovery.tenant_not_configured" = "テナントが未設定です。先にテナント2次元コードをスキャンしてください。";
+"error.recovery.tenant_not_configured" = "テナントが未設定です。先にテナント二次元コードをスキャンしてください。";
 "error.recovery.server_config_missing" = "サーバーの認証設定が未完了です。システム管理者に問い合わせてください。";
 "error.recovery.server_error" = "サーバーとの通信または認証処理に問題が発生しました。しばらくしてから再度お試しください。";
 "error.recovery.invalid_format" = "ふっかつのじゅもんの形式が正しくありません。";

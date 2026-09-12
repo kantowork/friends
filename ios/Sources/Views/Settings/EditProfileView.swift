@@ -25,7 +25,7 @@ public struct EditProfileView: View {
     
     private var isUsernameTooShort: Bool {
         let raw = usernameText.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "@", with: "")
-        return !raw.isEmpty && raw.count < 3
+        return raw.count < 3
     }
     
     private var isUsernameTooLong: Bool {
@@ -61,18 +61,17 @@ public struct EditProfileView: View {
                                 .fixedSize()
                                 .layoutPriority(1)
                             
-                            // 右側: @xxxxxx アカウント入力 (フォントサイズ大・文字数増大時は文字の途中で自然に改行)
-                            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                            // 右側: @xxxxxx アカウント入力
+                            HStack(spacing: 2) {
                                 Text("@")
                                     .font(.system(.body, design: .monospaced))
                                     .foregroundColor(.secondary)
                                 
-                                TextField(L10n.Settings.profileUsernamePlaceholder, text: $usernameText, axis: .vertical)
+                                TextField(L10n.Settings.profileUsernamePlaceholder, text: $usernameText)
                                     .font(.system(.body, design: .monospaced))
                                     .textInputAutocapitalization(.never)
                                     .autocorrectionDisabled()
                                     .keyboardType(.asciiCapable)
-                                    .lineLimit(1...5)
                                     .focused($isUsernameFocused)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)

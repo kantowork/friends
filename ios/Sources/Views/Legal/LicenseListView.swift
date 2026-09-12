@@ -1,7 +1,7 @@
 import SwiftUI
 
 // MARK: - LicenseListView (B06-a オープンソースライセンス画面)
-/// shared/legal/licenses.md を読み込んでレンダリング
+/// ios/Sources/Resources/legal/licenses.md を読み込んでレンダリング
 public struct LicenseListView: View {
     @Environment(\.dismiss) private var dismiss
     var isPresentedInModal: Bool

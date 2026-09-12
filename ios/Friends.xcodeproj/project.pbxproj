@@ -61,6 +61,7 @@
 		6E364A4661AC7DFB3A95C32B /* AppInfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39B39E93BE5A8F667E78E2B3 /* AppInfoView.swift */; };
 		6E56001E6D461263F26716D4 /* InAppToast.swift in Sources */ = {isa = PBXBuildFile; fileRef = E398E98BC6D08ED8318A22C7 /* InAppToast.swift */; };
 		73D77DB5772733AC7F44523D /* WorkerConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 764227E2A951DEC1C296E4D1 /* WorkerConfig.swift */; };
+		76385C4FD4110E306D3E55D3 /* TwoDimensionalCodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC462035DDAA42833047FB9A /* TwoDimensionalCodeScannerView.swift */; };
 		763AD6C13FBC1F6457066D47 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = F118FFCB9DD858C7A0A80E52 /* FirebaseAuth */; };
 		764E4DCC4823267C8E16B621 /* PrivacyPolicyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1440ED71D3FB94B75E3E1697 /* PrivacyPolicyView.swift */; };
 		7A0965B56A1FC40F1BF8D0EA /* LicenseListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46392499F66988C7EABFDEE8 /* LicenseListView.swift */; };
@@ -87,6 +88,7 @@
 		B3A99794B2C923E58BAD10A6 /* EditProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 442E60A7622E1E4E241C5438 /* EditProfileView.swift */; };
 		B8F8A42F949CE721CE93CAFF /* ChatRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC16F3F99E96F06398EEA0DE /* ChatRepository.swift */; };
 		B99DA6ABD7FFCCDBC702D57C /* SafetyAndModerationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF8ACB4EC281197B12255079 /* SafetyAndModerationTests.swift */; };
+		BA65EDFCBF2615F5E9FE44AF /* ChatFontSizeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62181210FF1E55F0C45BACCF /* ChatFontSizeTests.swift */; };
 		BC567221FAA48C3E70534049 /* StoredTenant.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFDB95891B042D43FAE6A8E2 /* StoredTenant.swift */; };
 		BEC1492D721D439B830CFECA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CD36FC1580443FFBF44D7AEC /* Assets.xcassets */; };
 		C30E4713B96E7E2AAA2E4087 /* CreateGroupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D53F1206AD03B5EE30104E9 /* CreateGroupView.swift */; };
@@ -160,6 +162,7 @@
 		5CF3FF426059D141981394E0 /* GroupListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupListView.swift; sourceTree = "<group>"; };
 		5DE80AD746183BADA346EAC5 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		5F64846AAFBA969A28B5DE37 /* ReactionTypeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReactionTypeTests.swift; sourceTree = "<group>"; };
+		62181210FF1E55F0C45BACCF /* ChatFontSizeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatFontSizeTests.swift; sourceTree = "<group>"; };
 		677874861ECB1893E610DCB1 /* TenantSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TenantSelectionView.swift; sourceTree = "<group>"; };
 		6A2D0B0998D12338E964679F /* PresetTenantConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetTenantConfig.swift; sourceTree = "<group>"; };
 		6B6566578026DEF531283462 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
@@ -211,6 +214,7 @@
 		F46B1D4C2F1C0972C55CF64D /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		F4E55771D2DF7D51DD94CEE5 /* MessageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageService.swift; sourceTree = "<group>"; };
 		FA78CAE1B760FF7E25B883AD /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		FC462035DDAA42833047FB9A /* TwoDimensionalCodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TwoDimensionalCodeScannerView.swift; sourceTree = "<group>"; };
 		FCEECE7C03F984E10D3B0580 /* ReadReceiptRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadReceiptRepository.swift; sourceTree = "<group>"; };
 		FF255C2140EC8D1EFB180E3A /* TenantRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TenantRepository.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -277,6 +281,7 @@
 			children = (
 				A5DDF5C457F30A5E64C80531 /* GroupAvatarView.swift */,
 				C511C266F0E54EC5E548D35F /* ToastBannerView.swift */,
+				FC462035DDAA42833047FB9A /* TwoDimensionalCodeScannerView.swift */,
 				EDDA2192716162B5698ADDC5 /* UserAvatarView.swift */,
 			);
 			path = Components;
@@ -375,6 +380,7 @@
 			children = (
 				A51A56B559F9A7916EAF854D /* AuthServiceTests.swift */,
 				888224E1799D1C7E1EED965C /* AuthValidationTests.swift */,
+				62181210FF1E55F0C45BACCF /* ChatFontSizeTests.swift */,
 				D565C3091DA5BECD9CC25D05 /* CryptoKeyManagerTests.swift */,
 				2257A684A65505B5D975DFAF /* DirectChatServiceTests.swift */,
 				110A108EC499613F06260DAB /* FriendInvitationTests.swift */,
@@ -642,6 +648,7 @@
 			files = (
 				81F1FC60F9C4037BE353868B /* AuthServiceTests.swift in Sources */,
 				C3FEB69F446F51A56A9DD214 /* AuthValidationTests.swift in Sources */,
+				BA65EDFCBF2615F5E9FE44AF /* ChatFontSizeTests.swift in Sources */,
 				CE0CACFE6FD36062538BF26C /* CryptoKeyManagerTests.swift in Sources */,
 				24974A3A2474DB0ED79B64D9 /* DirectChatServiceTests.swift in Sources */,
 				226F6A4764327930953CE0E8 /* FriendInvitationTests.swift in Sources */,
@@ -715,6 +722,7 @@
 				989BA7D39154D0749A60AADE /* TermsOfServiceView.swift in Sources */,
 				7FB2E9F596C3B632ECBC3C80 /* ToastBannerView.swift in Sources */,
 				313B8036D8076C092433EF9C /* ToastNotificationManager.swift in Sources */,
+				76385C4FD4110E306D3E55D3 /* TwoDimensionalCodeScannerView.swift in Sources */,
 				5045A2D21B50A6E8BCD1F7BA /* UserAvatarView.swift in Sources */,
 				05F908DDF6F5B560DEF36667 /* UserProfileResolver.swift in Sources */,
 				38BC7C13425562115454F2FD /* UserRepository.swift in Sources */,

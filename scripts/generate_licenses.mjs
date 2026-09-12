@@ -5,7 +5,7 @@
  *
  * Swift Package Manager (SPM) の Package.resolved および DerivedData のチェックアウトフォルダから、
  * アプリが使用しているすべてのオープンソースライブラリのライセンス情報を抽出し、
- * shared/legal/licenses.md および ios/Sources/Resources/legal/licenses.md に自動集約・出力するスクリプト。
+ * ios/Sources/Resources/legal/licenses.md に自動集約・出力するスクリプト。
  */
 
 import fs from 'fs';
@@ -141,7 +141,7 @@ results.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'b
 // 4. Markdown の構築
 let mdContent = `# オープンソースライセンス (Open Source Licenses)
 
-本アプリケーションでは、以下のオープンソースソフトウェア（OSS）を使用しています。各ソフトウェアの著作権者およびライセンス条項は以下のとおりです。
+本アプリケーションでは、以下のオープンソースソフトウェア(OSS)を使用しています。各ソフトウェアの著作権者およびライセンス条項は以下のとおりです。
 
 ---
 `;
@@ -149,9 +149,8 @@ let mdContent = `# オープンソースライセンス (Open Source Licenses)
 results.forEach((item, index) => {
   mdContent += `
 **${item.name}**
-\`\`\`
+
 ${item.license}
-\`\`\`
 `;
 });
 

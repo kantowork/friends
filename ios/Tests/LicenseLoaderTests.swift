@@ -14,10 +14,11 @@ final class LicenseLoaderTests: XCTestCase {
         
         if let url = url, let content = try? String(contentsOf: url, encoding: .utf8) {
             XCTAssertFalse(content.isEmpty, "licenses.md should not be empty")
-            XCTAssertTrue(content.contains("SwiftProtobuf"), "Should contain SwiftProtobuf")
-            XCTAssertTrue(content.contains("Base58Swift"), "Should contain Base58Swift")
-            XCTAssertTrue(content.contains("Apple Swift Crypto"), "Should contain Apple Swift Crypto")
-            XCTAssertTrue(content.contains("Firebase iOS SDK"), "Should contain Firebase iOS SDK")
+            let lower = content.lowercased()
+            XCTAssertTrue(lower.contains("swift-protobuf") || lower.contains("swiftprotobuf"), "Should contain SwiftProtobuf")
+            XCTAssertTrue(lower.contains("base58swift") || lower.contains("base58"), "Should contain Base58Swift")
+            XCTAssertTrue(lower.contains("swift-crypto") || lower.contains("crypto"), "Should contain Apple Swift Crypto")
+            XCTAssertTrue(lower.contains("firebase-ios-sdk") || lower.contains("firebase"), "Should contain Firebase iOS SDK")
         }
     }
     

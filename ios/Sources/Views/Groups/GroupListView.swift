@@ -77,6 +77,11 @@ public struct GroupListView: View {
             .navigationDestination(for: FriendsChatUIModel.self) { chat in
                 ChatDetailView(chat: chat)
             }
+            .navigationDestination(for: GroupDetailRoute.self) { route in
+                GroupDetailView(chat: route.chat, onGroupDeletedOrLeft: {
+                    navigationPath = NavigationPath()
+                })
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {

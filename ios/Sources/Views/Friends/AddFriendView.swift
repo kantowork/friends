@@ -87,22 +87,10 @@ struct AddFriendView: View {
         GeometryReader { geometry in
             VStack(spacing: 0) {
                 // Top Half: Camera Scanner
-                ZStack {
-                    Color.black
-                    
-                    FriendCameraScannerView { detectedCode in
-                        handleScannedCode(detectedCode)
-                    }
-                    
-                    // Finder overlay guide
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.white.opacity(0.85), lineWidth: 2.5)
-                        .frame(width: min(geometry.size.width * 0.7, 220), height: min(geometry.size.width * 0.7, 220))
-                    
-
+                TwoDimensionalCodeScannerView(guideSize: min(geometry.size.width * 0.7, 220)) { detectedCode in
+                    handleScannedCode(detectedCode)
                 }
                 .frame(height: geometry.size.height * 0.5)
-                .clipped()
                 
                 // Bottom Half: My 2D Code Only (30秒毎に更新、余計なボタン・文字なし)
                 VStack(spacing: 0) {
@@ -445,103 +433,4 @@ struct CircularCountdownView: View {
     }
 }
 
-// MARK: - AVFoundation Camera Scanner View
 
-struct FriendCameraScannerView: UIViewControllerRepresentable {
-    let onCodeDetected: (String) -> Void
-    
-    func makeUIViewController(context: Context) -> FriendCameraScannerViewController {
-        let controller = FriendCameraScannerViewController()
-        controller.onCodeDetected = onCodeDetected
-        return controller
-    }
-    
-    func updateUIViewController(_ uiViewController: FriendCameraScannerViewController, context: Context) {}
-}
-
-class FriendCameraScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
-    var onCodeDetected: ((String) -> Void)?
-    private var captureSession: AVCaptureSession?
-    private var previewLayer: AVCaptureVideoPreviewLayer?
-    private var hasScanned = false
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        view.backgroundColor = .black
-        setupCaptureSession()
-    }
-    
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        previewLayer?.frame = view.bounds
-    }
-    
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        hasScanned = false
-        if captureSession?.isRunning == false {
-            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                self?.captureSession?.startRunning()
-            }
-        }
-    }
-    
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        if captureSession?.isRunning == true {
-            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                self?.captureSession?.stopRunning()
-            }
-        }
-    }
-    
-    private func setupCaptureSession() {
-        let session = AVCaptureSession()
-        guard let videoCaptureDevice = AVCaptureDevice.default(for: .video),
-              let videoInput = try? AVCaptureDeviceInput(device: videoCaptureDevice) else {
-            return
-        }
-        
-        if session.canAddInput(videoInput) {
-            session.addInput(videoInput)
-        } else {
-            return
-        }
-        
-        let metadataOutput = AVCaptureMetadataOutput()
-        if session.canAddOutput(metadataOutput) {
-            session.addOutput(metadataOutput)
-            metadataOutput.setMetadataObjectsDelegate(self, queue: DispatchQueue.main)
-            metadataOutput.metadataObjectTypes = [.qr]
-        } else {
-            return
-        }
-        
-        let preview = AVCaptureVideoPreviewLayer(session: session)
-        preview.videoGravity = .resizeAspectFill
-        view.layer.addSublayer(preview)
-        
-        self.previewLayer = preview
-        self.captureSession = session
-        
-        DispatchQueue.global(qos: .userInitiated).async {
-            session.startRunning()
-        }
-    }
-    
-    func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
-        guard !hasScanned,
-              let metadataObject = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
-              let stringValue = metadataObject.stringValue else {
-            return
-        }
-        
-        hasScanned = true
-        AudioServicesPlaySystemSound(SystemSoundID(kSystemSoundID_Vibrate))
-        onCodeDetected?(stringValue)
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
-            self?.hasScanned = false
-        }
-    }
-}

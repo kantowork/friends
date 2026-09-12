@@ -54,7 +54,7 @@ final class GroupChatServiceTests: XCTestCase {
         XCTAssertEqual(L10n.Group.assignAdmin, "管理者にする")
         XCTAssertFalse(L10n.Group.assignAdminConfirm("テスト太郎").isEmpty, "Group.assignAdminConfirm がフォーマット可能である必要があります")
         XCTAssertFalse(L10n.Group.removeMember.isEmpty, "Group.removeMember がローカライズされている必要があります")
-        XCTAssertEqual(L10n.Group.removeMember, "退出させる")
+        XCTAssertEqual(L10n.Group.removeMember, "退室させる")
         XCTAssertFalse(L10n.Group.leaveGroup.isEmpty, "Group.leaveGroup がローカライズされている必要があります")
         XCTAssertEqual(L10n.Group.leaveGroup, "退室する")
         XCTAssertEqual(L10n.Group.deleteButton, "かいぎを完全に削除")

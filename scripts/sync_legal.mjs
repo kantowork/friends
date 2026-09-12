@@ -29,7 +29,7 @@ if (!fs.existsSync(iosLegalDir)) {
   console.log(`📁 作成しました: ${iosLegalDir}`);
 }
 
-const files = fs.readdirSync(sharedLegalDir).filter(f => f.endsWith('.md'));
+const files = fs.readdirSync(sharedLegalDir).filter(f => f.endsWith('.md') && f !== 'licenses.md');
 
 if (files.length === 0) {
   console.warn('⚠️ shared/legal/ 内に .md ファイルが見つかりませんでした。');

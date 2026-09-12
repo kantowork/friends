@@ -16,7 +16,7 @@ if [ ! -f "${IOS_DIR}/Sources/Assets.xcassets/AppIcon.appiconset/AppIcon.png" ] 
     mkdir -p "${WORKSPACE_ROOT}/.build/clang-cache"
     swift -module-cache-path "${WORKSPACE_ROOT}/.build/clang-cache" "${WORKSPACE_ROOT}/scripts/generate_app_icon.swift" || true
 fi
-if [ ! -f "${WORKSPACE_ROOT}/shared/legal/licenses.md" ]; then
+if [ ! -f "${IOS_DIR}/Sources/Resources/legal/licenses.md" ]; then
     echo "📄 licenses.md が未生成のためパッケージ情報から自動生成します..."
     node "${WORKSPACE_ROOT}/scripts/generate_licenses.mjs" || true
 fi

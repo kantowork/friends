@@ -3,11 +3,13 @@ import PhotosUI
 import FirebaseFirestore
 
 struct ChatDetailView: View {
+    @Environment(\.dismiss) private var dismiss
     let chat: FriendsChatUIModel
     @ObservedObject var authService = AuthService.shared
     @ObservedObject var messageService = MessageService.shared
     @ObservedObject var directChatService = DirectChatService.shared
     @ObservedObject var groupChatService = GroupChatService.shared
+    @State private var hasAppearedInGroupChats: Bool = false
     @State private var messageText = ""
     @FocusState private var isInputFocused: Bool
     @State private var selectedMessageForReactions: DecryptedMessage? = nil
@@ -335,7 +337,7 @@ struct ChatDetailView: View {
         .toolbar {
             if chat.chatType == .group {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink(destination: GroupDetailView(chat: chat)) {
+                    NavigationLink(value: GroupDetailRoute(chat: chat)) {
                         Image(systemName: "info.circle")
                             .font(.system(size: 16))
                     }
@@ -432,6 +434,11 @@ struct ChatDetailView: View {
             Button(L10n.Common.ok, role: .cancel) {}
         }
         .onAppear {
+            if chat.chatType == .group {
+                if groupChatService.groupChats.contains(where: { $0.chatID == chat.chatID }) {
+                    hasAppearedInGroupChats = true
+                }
+            }
             messageService.activeChatId = chat.chatID
             messageService.watchMessages(chatId: chat.chatID)
             messageService.watchReadReceipts(chatId: chat.chatID)
@@ -442,6 +449,16 @@ struct ChatDetailView: View {
                     lastMessageId: lastMsg.id,
                     lastMessageDate: lastMsg.createdDate
                 )
+            }
+        }
+        .onChange(of: groupChatService.groupChats) { chats in
+            if chat.chatType == .group {
+                let exists = chats.contains(where: { $0.chatID == chat.chatID })
+                if exists {
+                    hasAppearedInGroupChats = true
+                } else if hasAppearedInGroupChats {
+                    dismiss()
+                }
             }
         }
         .onDisappear {
@@ -552,8 +569,8 @@ enum ChatFontSize: String, CaseIterable {
         case .xs: return 14.0
         case .s:  return 15.5
         case .m:  return 17.0
-        case .l:  return 20.0
-        case .xl: return 23.0
+        case .l:  return 23.0
+        case .xl: return 28.0
         }
     }
     
