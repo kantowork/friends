@@ -13,10 +13,11 @@
     "deploy:workers": "npm --prefix server/workers run deploy",
     "dev:workers": "npm --prefix server/workers run dev",
     "clean:messages": "node ./scripts/clean_messages.mjs",
+    "generate:models": "./scripts/generate_models.sh",
     "generate:icon": "swift -module-cache-path .build/clang-cache ./scripts/generate_app_icon.swift",
     "generate:licenses": "node ./scripts/generate_licenses.mjs",
     "sync:legal": "npm run generate:licenses && node ./scripts/sync_legal.mjs",
-    "prepare:resources": "npm run generate:icon && npm run generate:licenses && npm run sync:legal"
+    "prepare:resources": "npm run generate:models && npm run generate:icon && npm run generate:licenses && npm run sync:legal"
   },
   "devDependencies": {
     "markdownlint-cli": "^0.44.0"
@@ -25,6 +26,7 @@
     "bs58": "^6.0.0",
     "firebase-admin": "^12.0.0",
     "qrcode-terminal": "^0.12.0",
-    "uuid": "^14.0.2"
+    "uuid": "^14.0.2",
+    "zod": "^3.24.2"
   }
 }

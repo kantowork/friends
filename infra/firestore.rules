@@ -140,9 +140,8 @@ service cloud.firestore {
     //     - クライアント直接読み取りは禁止（Cloudflare Workers バックエンド経由で安全に照合）
     // =========================================================================
     match /recovery_vault/{recoveryHash} {
-      // 復元用ハッシュからの逆引き検索（Cloudflare Workers REST API 経由）を許可
-      // recoveryHash は 64 文字の推測不可能な SHA-256 ハッシュであり、暗号鍵として機能する
-      allow read: if recoveryHash.size() == 64;
+      // クライアントからの直接読み取りは完全禁止 (Cloudflare Workers サーバーが Admin 権限で照合)
+      allow read: if false;
 
       // バックアップ登録・更新: 本人の uid と一致すること、および厳格なバリデーション
       allow create, update: if isAuthenticated()
@@ -377,17 +376,8 @@ service cloud.firestore {
           // チャット参加メンバーのみメッセージを読み取り可能
           allow read: if isChatMember(tenantId, chatId);
 
-          // メッセージ作成 (Append-Only):
-          // - チャット参加メンバーであること
-          // - 監査メタデータ (createdBy/createdAt/updatedBy/updatedAt) が正当であること
-          // - 送信者本人 (senderId == createdBy) の正当な userId (u_...) であること
-          allow create: if isAuthenticated()
-            && isChatMember(tenantId, chatId)
-            && isValidAuditCreate(tenantId)
-            && request.resource.data.senderId == request.resource.data.createdBy
-            && request.resource.data.tenantId == tenantId
-            && request.resource.data.chatId == chatId
-            && request.resource.data.keys().hasAll(['messageId', 'tenantId', 'chatId', 'senderId', 'keyVersion', 'encryptedPayload', 'createdBy', 'createdAt', 'updatedBy', 'updatedAt']);
+          // メッセージ作成: クライアント SDK からの直接書き込みは完全禁止 (Cloudflare Workers API が Admin 権限で保存)
+          allow create: if false;
 
           // メッセージ本文の改ざん・削除は禁止、リアクション集計と監査更新 (updatedBy/updatedAt) のみ更新許可
           allow update: if isChatMember(tenantId, chatId)

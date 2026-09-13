@@ -125,6 +125,9 @@
 "chat.viewer.previous" = "Previous Photo";
 "chat.viewer.next" = "Next Photo";
 "chat.viewer.page_format" = "%d / %d";
+"chat.detail.resend" = "Resend";
+"chat.detail.send_failed" = "Failed";
+"chat.detail.sending" = "Sending...";
 
 // MARK: - Reactions
 "chat.reaction.details_title" = "Reactions";

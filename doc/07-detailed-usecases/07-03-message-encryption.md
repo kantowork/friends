@@ -46,6 +46,7 @@
 2. **暗号化・送信**:
    ローカルの $SK_{direct}$ を使用して AES-256-GCM 暗号化。
    $$\text{CiphertextPayload} = \text{AES-256-GCM-Encrypt}(SK_{direct}, \text{Plaintext}, \text{Nonce})$$
+   暗号化されたペイロードおよびメタデータを Cloudflare Workers API（`POST /api/v1/tenants/:tenantId/chats/:chatId/messages`）へ送信。サーバーAuthorizerが Firebase ID Token の真正性および送信者本人性を検証した上で、Firestore への保存と将来の Push 通知（FCM/APNs）ディスパッチを実行。
 3. **受信・復号**:
    ローカルの $SK_{direct}$ を使用して即座に復号。
 

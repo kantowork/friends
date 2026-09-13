@@ -125,6 +125,9 @@
 "chat.viewer.previous" = "前の写真";
 "chat.viewer.next" = "次の写真";
 "chat.viewer.page_format" = "%d / %d";
+"chat.detail.resend" = "再送";
+"chat.detail.send_failed" = "送信失敗";
+"chat.detail.sending" = "送信中...";
 
 // MARK: - Reactions
 "chat.reaction.details_title" = "リアクション";

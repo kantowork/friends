@@ -9,6 +9,10 @@
   },
   "author": "kanto.work",
   "license": "MIT",
+  "dependencies": {
+    "hono": "^4.7.0",
+    "zod": "^3.24.2"
+  },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260905.1",
     "typescript": "^5.5.4",

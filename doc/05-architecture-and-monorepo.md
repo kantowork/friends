@@ -30,7 +30,7 @@
 ### ドメイン層
 
 - エンティティ、値オブジェクト、ドメインサービス
-- 主要ビジネスルールを `shared/` で定義
+- 主要ビジネスルール、ドメインモデル（Proto3: `shared/model/`）、およびサーバー・クライアント共通の REST API インタフェース定義（TypeScript + Zod SSoT: `shared/schema/` -> Swift / TS コード直接生成）を `shared/` で一元管理（SSoT）
 
 ### インフラ層
 
@@ -40,9 +40,10 @@
 ## 4. 技術スタック想定
 
 - `infra/`: Terraform / Pulumi / Cloud SDK
-- `server/`: Node.js / TypeScript もしくは Go、Firestore、gRPC/WebSocket
-- `shared/`: TypeScript または Swift for shared domain definitions
-- `ios/`: Swift、SwiftUI、Firebase SDK
+- `server/`: Cloudflare Workers / Hono / TypeScript、Firestore REST API
+- `shared/model/`: ドメインモデル (.proto)
+- `shared/schema/`: REST API スキーマ SSoT (TypeScript + Zod)
+- `ios/`: Swift、SwiftUI、SwiftProtobuf、Firebase SDK
 
 ## 5. iOS 初期重点
 

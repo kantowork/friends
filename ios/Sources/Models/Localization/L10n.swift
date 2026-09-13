@@ -178,6 +178,9 @@ public enum L10n {
         public static func viewerPageFormat(_ current: Int, _ total: Int) -> String {
             String(format: tr("chat.viewer.page_format"), current, total)
         }
+        public static var resend: String { tr("chat.detail.resend") }
+        public static var sendFailed: String { tr("chat.detail.send_failed") }
+        public static var sending: String { tr("chat.detail.sending") }
     }
     
     // MARK: - Reactions

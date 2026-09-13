@@ -6,6 +6,13 @@
 - **直接Firestore書き込み可能** (Client SDK + Security Rules で保護)
 - **サーバーAPI必須** (認可判定・秘密鍵処理・リカバリ認証・複雑集計ロジック)
 
+### 共通インタフェースの管理原則 (SSoT)
+サーバーとクライアント間で共通となる REST API インタフェース定義は、TypeScript + Zod を真実の唯一のソース (SSoT) として **`shared/schema/*.ts`** にて一元管理します。
+- **Zod スキーマ (SSoT)**: `shared/schema/`（`auth.ts`, `messages.ts`, `common.ts` 等）にてリクエスト/レスポンス構造、フィールド型、バリデーションルール、エラー構造を厳密に定義。
+- **TypeScript (サーバー側)**: `scripts/generate_api.mjs` により `shared/api/generated/schema.ts` に型定義を自動生成し、Cloudflare Workers (Hono) から静的型安全な参照および `safeParse` によるランタイムバリデーションに直接利用。
+- **Swift (クライアント側)**: `scripts/generate_api.mjs` により Zod スキーマと完全一致する型安全な Swift Codable モデル（`ios/Sources/Models/Generated/APISchemas.generated.swift`）を自動生成し、通信モデルの完全な型整合性を担保。
+- **構成管理方針**: 中間ファイルとしての OpenAPI YAML はリポジトリ保持せず、`shared/schema/` から直接 Swift / TypeScript コードを生成（`npm run generate:models`）。自動生成コードはすべて `.gitignore` 対象とし、手動二重管理を完全に排除。
+
 ---
 
 ## API別分析
@@ -38,20 +45,35 @@
 - **Firestore パス**: `/tenants/{tenantId}/users/{publicUserId}`
 - **実装**: Firestore SDK `getDoc()`
 
-#### `POST /api/v1/messages` (メッセージ送信)
-- **判定**: **✅ クライアント直接書き込み（Security Rules で保護）**
-- **理由**: 暗号化はクライアント側で完結。サーバーはメッセージ内容を復号不可。
+#### `POST /api/v1/tenants/:tenantId/chats/:chatId/messages` (メッセージ送信)
+- **判定**: **❌ サーバーAPI 必須 (Cloudflare Workers)**
+- **理由**: 将来の FCM / APNs Push 通知連携の契機とするため、および送信時の検証・監査の一元化。暗号化はクライアント側で完結したまま、サーバーが Firestore への保存と通知ディスパッチを統制。
 - **Firestore パス**: `/tenants/{tenantId}/chats/{chatId}/messages`
-- **操作**: 
+- **操作**:
   - クライアント側で共有セッションキー（`SK_direct` または `SK_group`）で暗号化
-  - `keyVersion` と `encryptedPayload` (`ciphertext`, `nonce`) を作成して書き込み
-- **Security Rules**:
-  ```javascript
-  match /tenants/{tenantId}/chats/{chatId}/messages/{messageId} {
-    allow create: if request.auth.uid == request.resource.data.senderId 
-                  && isTenantMember(tenantId);
+  - Firebase ID Token（`Authorization: Bearer`）と共に `POST /api/v1/tenants/:tenantId/chats/:chatId/messages` へ送信
+  - サーバー（Workers）が ID Token を検証し、Firestore REST API で親チャットの更新・メッセージ作成を実行
+- **リクエスト**:
+  ```json
+  {
+    "message": {
+      "messageId": "m_...",
+      "tenantId": "t_...",
+      "chatId": "dm_...",
+      "senderId": "u_...",
+      "keyVersion": "v_1",
+      "encryptedPayload": { "ciphertext": "...", "nonce": "..." },
+      "messageType": "text",
+      "createdAt": 1726000000000
+    },
+    "members": ["u_...", "u_..."]
   }
   ```
+- **Authorizer（認証・送信者評価）**:
+  1. `Authorization: Bearer <ID_TOKEN>` の必須化。
+  2. Google Identity Toolkit REST API (`accounts:lookup`) による Firebase ID Token の署名・有効期限・失効検証。無効時は `401 Unauthorized` を返却。
+  3. 送信者評価: トークンから得られた認証済み `uid` と、メッセージの送信者 `senderId`（`/tenants/{tenantId}/users/{senderId}` の `uid` フィールド）の一致性を厳格に評価。不一致やなりすまし時は `403 Forbidden` を返却。
+- **レスポンス**: `{ "success": true, "messageId": "m_...", "chatId": "...", "tenantId": "..." }`
 
 #### `GET /api/v1/messages/:messageId`
 - **判定**: **✅ クライアント直接読み取り（Security Rules で保護）**
@@ -104,6 +126,7 @@
 ### 7. 外部通知連携
 
 #### `POST /api/v1/external/notifications/send` (外部システムからのグループ宛通知)
+
 - **判定**: **❌ サーバーAPI 必須 (Cloudflare Workers)**
 - **理由**: 外部 API Key 認証、複数グループメンバーの抽出、FCM マルチキャスト送信。
 
@@ -113,74 +136,19 @@
 
 | 操作 API | プラットフォーム | 理由 |
 | :--- | :--- | :--- |
+| `POST /api/v1/tenants/:tenantId/chats/:chatId/messages` | Cloudflare Workers | E2EE暗号化メッセージの保存・将来のPush通知（FCM/APNs）ディスパッチ |
 | `POST /api/v1/auth/recover-anonymous` | Cloudflare Workers | 匿名アカウントの復旧ハッシュ検証・Firebase Custom Token 発行 |
-| `GET /api/v1/audit/metadata` | Cloudflare Workers | テナント管理者認可・監査ログ集計 |
-| `POST /api/v1/external/notifications/send` | Cloudflare Workers | 外部 API Key 認証・FCM 送信制御 |
+| `GET /api/v1/tenants/:tenantId/audit/metadata` | Cloudflare Workers | テナント管理者認可・監査ログ集計 |
+| `POST /api/v1/tenants/:tenantId/external/notifications/send` | Cloudflare Workers | 外部 API Key 認証・FCM 送信制御 |
 
 ---
 
-## Security Rules 設計例
+## サーバー API インタフェース定義方針 (SSoT)
 
-```javascript
-rules_version = '2';
-
-service cloud.firestore {
-  match /databases/{database}/documents {
-    
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    function isTenantMember(tenantId) {
-      return isAuthenticated() && 
-        exists(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid));
-    }
-
-    // 1. 全域ユーザー情報
-    match /users/{uid} {
-      allow read: if isAuthenticated();
-      allow create, update: if request.auth.uid == uid;
-
-      // 復元データ（本人しかアクセス不可）
-      match /private/data {
-        allow read, write: if request.auth.uid == uid;
-      }
-    }
-    
-    // 2. テナント情報
-    match /tenants/{tenantId} {
-      allow read: if isAuthenticated();
-      
-      // テナント所属ユーザー情報
-      match /users/{publicUserId} {
-        allow read: if isTenantMember(tenantId);
-        allow create, update: if isAuthenticated() && request.resource.data.uid == request.auth.uid;
-      }
-      
-      // チャット（1:1 DM & グループ）
-      match /chats/{chatId} {
-        allow read: if isTenantMember(tenantId) && (
-          request.auth.uid in resource.data.members || request.auth.token.role == 'tenant_admin'
-        );
-
-        match /messages/{messageId} {
-          allow read: if isTenantMember(tenantId) && (
-            resource.data.senderId == request.auth.uid ||
-            request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/chats/$(chatId)).data.members ||
-            request.auth.token.role == 'tenant_admin'
-          );
-          
-          allow create: if isTenantMember(tenantId) 
-                         && request.resource.data.senderId == request.auth.uid
-                         && request.resource.data.createdAt == request.time
-                         && request.resource.data.keys().hasAll(['encryptedPayload', 'keyVersion']);
-        }
-
-        match /keys/{keyVersion} {
-          allow read, create: if isTenantMember(tenantId) && request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/chats/$(chatId)).data.members;
-        }
-      }
-    }
-  }
-}
-```
+- **真実の唯一のソース (SSoT)**: `shared/schema/*.ts` (TypeScript + Zod)
+- **自動生成対象**:
+  - TypeScript API 型定義: `shared/api/generated/schema.ts`
+  - Swift Codable モデル: `ios/Sources/Models/Generated/APISchemas.generated.swift`
+- **構成管理方針**:
+  - 中間生成物となる OpenAPI YAML はリポジトリ保持せず、`shared/schema/` から直接 TypeScript / Swift コードを自動生成（`npm run generate:models`）。
+  - 自動生成コードはすべて `.gitignore` 対象とし、手動編集を禁止。

@@ -75,9 +75,11 @@ sequenceDiagram
 
     Service->>Service: attachments メタデータ JSON 構築
     Service->>Crypto: encryptDirect/GroupMessage(payloadJSON, sessionKey)
-    Service->>MsgRepo: createMessage(tenantId, chatId, message)
-    MsgRepo->>FS: Firestore ドキュメント追記
-    FS-->>MsgRepo: 成功
+    Service->>MsgRepo: sendMessageViaWorker(tenantId, chatId, message, members)
+    MsgRepo->>Worker: POST /api/v1/tenants/{tenantId}/chats/{chatId}/messages
+    Worker->>FS: Firestore ドキュメント追記 & Push通知ディスパッチ
+    FS-->>Worker: 成功
+    Worker-->>MsgRepo: 200 OK
     MsgRepo-->>Service: 完了通知
     Service-->>View: UI更新（タイムラインに反映）
 ```

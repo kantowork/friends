@@ -1,112 +1,73 @@
-// 認証・復旧関連ルートハンドラ
-import { createFirebaseCustomToken } from "../lib/jwt";
-import { FirestoreClient } from "../lib/firestore";
+import { Hono } from "hono";
+import type { HonoEnv } from "../types";
+import { RecoveryService } from "../services/recoveryService";
+import { RecoverAnonymousRequestSchema } from "@shared/schema";
+import type { RecoverAnonymousRequest, RecoverAnonymousResponse } from "@shared/schema";
 
-export interface Env {
-  FIREBASE_PROJECT_ID: string;
-  GOOGLE_CLIENT_EMAIL: string;
-  GOOGLE_PRIVATE_KEY: string;
-  FIREBASE_API_KEY?: string;
-}
+export type { RecoverAnonymousRequest, RecoverAnonymousResponse };
 
-const DEFAULT_FIREBASE_API_KEY = "AIzaSyCGtfJeKx84ogLGkwzy8Ic_QHvn0543Hxg";
+export const authRoute = new Hono<HonoEnv>();
 
-export async function handleRecoverAnonymous(request: Request, env: Env): Promise<Response> {
-  if (request.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { "Content-Type": "application/json" },
-    });
+/**
+ * POST /api/v1/auth/recover-anonymous
+ * 
+ * 端末移行時の「ふっかつのじゅもん」recoveryHash によるアカウント復旧・Custom Token 発行
+ */
+authRoute.post("/recover-anonymous", async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON payload", code: "BAD_REQUEST" }, 400);
   }
 
-  try {
-    const body = (await request.json()) as { recoveryHash?: string };
-    const recoveryHash = body.recoveryHash?.trim();
-
-    if (!recoveryHash || recoveryHash.length !== 64 || !/^[0-9a-fA-F]+$/.test(recoveryHash)) {
-      return new Response(
-        JSON.stringify({
-          error: "Invalid recoveryHash format (must be 64-char hex string)",
-          code: "INVALID_FORMAT",
-        }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    const missing: string[] = [];
-    if (!env.FIREBASE_PROJECT_ID) missing.push("FIREBASE_PROJECT_ID");
-    if (!env.GOOGLE_CLIENT_EMAIL) missing.push("GOOGLE_CLIENT_EMAIL");
-    if (!env.GOOGLE_PRIVATE_KEY) missing.push("GOOGLE_PRIVATE_KEY");
-
-    if (missing.length > 0) {
-      return new Response(
-        JSON.stringify({
-          error: `Server configuration missing (${missing.join(", ")})`,
-          code: "SERVER_CONFIG_MISSING",
-        }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    const apiKey = env.FIREBASE_API_KEY || DEFAULT_FIREBASE_API_KEY;
-    const firestore = new FirestoreClient(
-      env.FIREBASE_PROJECT_ID,
-      env.GOOGLE_CLIENT_EMAIL,
-      env.GOOGLE_PRIVATE_KEY,
-      apiKey
+  // 1. Zod スキーマによるリクエストバリデーション
+  const parseResult = RecoverAnonymousRequestSchema.safeParse(body);
+  if (!parseResult.success) {
+    return c.json(
+      {
+        error: "Invalid recoveryHash format (must be 64-char hex string)",
+        details: parseResult.error.issues,
+        code: "INVALID_FORMAT",
+      },
+      400
     );
+  }
 
-    const record = await firestore.findRecoveryRecord(recoveryHash.toLowerCase());
+  const { recoveryHash } = parseResult.data;
+  const firestoreClient = c.get("firestore");
+  const recoveryService = new RecoveryService(
+    firestoreClient,
+    c.env.GOOGLE_CLIENT_EMAIL,
+    c.env.GOOGLE_PRIVATE_KEY
+  );
+
+  try {
+    const record = await recoveryService.findRecoveryRecord(recoveryHash.toLowerCase());
     if (!record) {
-      return new Response(
-        JSON.stringify({
+      return c.json(
+        {
           error: "No account found matching this recovery phrase",
           code: "ACCOUNT_NOT_FOUND",
-        }),
-        {
-          status: 404,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
-        }
+        },
+        404
       );
     }
 
     // 復旧対象ユーザーの Firebase Auth Custom Token の生成
-    const customToken = await createFirebaseCustomToken(
-      env.GOOGLE_CLIENT_EMAIL,
-      env.GOOGLE_PRIVATE_KEY,
-      record.uid
-    );
+    const customToken = await recoveryService.createCustomToken(record.uid);
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        uid: record.uid,
-        customToken: customToken,
-        encryptedPrivateKey: record.encryptedPrivateKey,
-        nonce: record.nonce,
-      }),
-      {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        },
-      }
-    );
+    const responsePayload: RecoverAnonymousResponse = {
+      success: true,
+      uid: record.uid,
+      customToken: customToken,
+      encryptedPrivateKey: record.encryptedPrivateKey,
+      nonce: record.nonce,
+    };
+
+    return c.json(responsePayload, 200);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Internal Server Error";
-    return new Response(
-      JSON.stringify({
-        error: message,
-        code: "INTERNAL_ERROR",
-      }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+    return c.json({ error: message, code: "INTERNAL_ERROR" }, 500);
   }
-}
+});

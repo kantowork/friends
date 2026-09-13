@@ -161,11 +161,15 @@ Apple 審査ガイドラインに基づき、利用者が自発的にアカウ�
    - `allow update: if false;` （既存ドキュメントの上書き・更新は完全禁止）
    - `allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;` （所有者本人のみ削除・解放を許可）
 5. **復旧ボルト (`/recovery_vault/{recoveryHash}`)**:
-   - `allow read: if recoveryHash.size() == 64;`
-   - 未ログイン端末から Cloudflare Workers REST API を経由した復元用レコード取得を許可（推測不可能な 64文字 SHA-256 ハッシュを暗号鍵として検証）。
-   - `allow create, update: if isAuthenticated() && request.resource.data.uid == request.auth.uid ...;`
-   - `allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;`
-   - 復元用レコードの完全削除。
+   - `allow read: if false;` （クライアントからの直接読み取りは完全禁止。Cloudflare Workers サーバーのみが Service Account Admin 権限で照合）
+   - `allow create, update: if isAuthenticated() && request.resource.data.uid == request.auth.uid ...;` （本人によるバックアップ登録・更新）
+   - `allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;` （復元用レコードの完全削除）
+
+6. **メッセージ作成 (`/tenants/{tenantId}/chats/{chatId}/messages/{messageId}`)**:
+   - `allow create: if false;` （クライアント SDK からの直接メッセージ作成は完全禁止。Cloudflare Workers REST API 経由でのみアトミックコミット保存）
+   - `allow read: if isChatMember(tenantId, chatId);` （チャット参加メンバーのみリアルタイム購読・過去取得）
+   - `allow update: ...` （リアクション集計と監査更新のみ許可）
+   - `allow delete: if false;` （メッセージの物理削除は禁止）
 
 
 

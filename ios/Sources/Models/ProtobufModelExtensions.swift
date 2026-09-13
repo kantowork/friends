@@ -421,6 +421,12 @@ public struct MessageContentPayload: Codable, Equatable {
 // MARK: - Local Message Decryption Wrapper
 
 struct DecryptedMessage: Identifiable, Equatable {
+    enum SendStatus: String, Codable, Equatable {
+        case sending
+        case sent
+        case failed
+    }
+
     let message: FriendsMessage
     var senderName: String
     let plainText: String
@@ -428,6 +434,7 @@ struct DecryptedMessage: Identifiable, Equatable {
     let reactions: [FriendsMessageReaction]
     let myReaction: FriendsReactionType?
     let attachments: [MessageAttachment]
+    var sendStatus: SendStatus
     
     var id: String { message.messageID }
     var chatID: String { message.chatID }
@@ -456,13 +463,15 @@ struct DecryptedMessage: Identifiable, Equatable {
         isDecrypted: Bool = true,
         reactions: [FriendsMessageReaction] = [],
         myReaction: FriendsReactionType? = nil,
-        attachments: [MessageAttachment] = []
+        attachments: [MessageAttachment] = [],
+        sendStatus: SendStatus = .sent
     ) {
         self.message = message
         self.senderName = senderName
         self.isDecrypted = isDecrypted
         self.reactions = reactions
         self.myReaction = myReaction
+        self.sendStatus = sendStatus
         
         let candidateText = decryptedText ?? plainText
         // JSON ペイロード (MessageContentPayload) のパース試行

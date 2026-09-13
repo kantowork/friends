@@ -159,7 +159,8 @@ final class MessageService: ObservableObject {
                     }
                     
                     DispatchQueue.main.async {
-                        self.messages[chatId] = newDecryptedMessages
+                        let pendingMessages = (self.messages[chatId] ?? []).filter { $0.sendStatus != .sent && !currentMessageIds.contains($0.id) }
+                        self.messages[chatId] = newDecryptedMessages + pendingMessages
                         
                         if self.activeChatId != chatId {
                             let groupChatModel = GroupChatService.shared.groupChats.first(where: { $0.chatID == chatId })
@@ -206,7 +207,7 @@ final class MessageService: ObservableObject {
         watchMessages(chatId: chatId, limit: newLimit)
     }
     
-    // MARK: - Send Message to Firestore (E2EE)
+    // MARK: - Send Message to Workers API (E2EE)
     
     func createMessage(chatId: String, text: String, completion: ((Result<Void, Error>) -> Void)? = nil) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -226,6 +227,55 @@ final class MessageService: ObservableObject {
         let tenantId = tenant.tenantID
         let messageId = "m_\(ULID().ulidString)"
         
+        // 1. 楽観的UI更新: 即座に messages[chatId] に追加（sendStatus = .sending）
+        let initialPbMsg = FriendsMessage(
+            messageID: messageId,
+            tenantID: tenantId,
+            chatID: chatId,
+            senderID: user.userID,
+            keyVersion: "v_1",
+            ciphertext: "",
+            nonce: "",
+            messageType: .text,
+            createdAt: Date()
+        )
+        let initialDecryptedMsg = DecryptedMessage(
+            message: initialPbMsg,
+            senderName: user.displayName,
+            plainText: trimmed,
+            decryptedText: trimmed,
+            myReaction: nil,
+            sendStatus: .sending
+        )
+        
+        DispatchQueue.main.async {
+            var list = self.messages[chatId] ?? []
+            list.append(initialDecryptedMsg)
+            self.messages[chatId] = list
+        }
+        
+        // 2. 未送信（失敗）メッセージの自動連動送信
+        resendFailedMessages(chatId: chatId)
+        
+        // 3. メッセージ暗号化 & Workers API 送信
+        sendPreparedTextMessage(
+            chatId: chatId,
+            messageId: messageId,
+            tenantId: tenantId,
+            user: user,
+            text: trimmed,
+            completion: completion
+        )
+    }
+    
+    private func sendPreparedTextMessage(
+        chatId: String,
+        messageId: String,
+        tenantId: String,
+        user: FriendsPublicUserProfile,
+        text: String,
+        completion: ((Result<Void, Error>) -> Void)? = nil
+    ) {
         var members: [String] = []
         if chatId.hasPrefix("dm_") {
             let rawStr = String(chatId.dropFirst(3))
@@ -247,19 +297,20 @@ final class MessageService: ObservableObject {
             }
         }
         
-        getKeyHandler { sessionKey in
+        getKeyHandler { [weak self] sessionKey in
+            guard let self = self else { return }
             var ciphertext = ""
             var nonce = ""
             
             if let key = sessionKey {
-                if let enc = try? CryptoKeyManager.shared.encryptDirectMessage(plainText: trimmed, sessionKey: key) {
+                if let enc = try? CryptoKeyManager.shared.encryptDirectMessage(plainText: text, sessionKey: key) {
                     ciphertext = enc.ciphertext
                     nonce = enc.nonce
                 }
             }
             
             if ciphertext.isEmpty {
-                if let enc = try? CryptoKeyManager.shared.encryptWithTenantKey(plainText: trimmed, tenantId: tenantId) {
+                if let enc = try? CryptoKeyManager.shared.encryptWithTenantKey(plainText: text, tenantId: tenantId) {
                     ciphertext = enc.encryptedData
                     nonce = enc.nonce
                 }
@@ -277,29 +328,63 @@ final class MessageService: ObservableObject {
                 createdAt: Date()
             )
             
-            let decryptedMsg = DecryptedMessage(
-                message: pbMsg,
-                senderName: user.displayName,
-                decryptedText: trimmed,
-                myReaction: nil
-            )
-            
             MessageRepository.shared.createMessage(tenantId: tenantId, chatId: chatId, message: pbMsg, members: members) { [weak self] result in
                 guard let self = self else { return }
-                switch result {
-                case .failure(let err):
-                    completion?(.failure(err))
-                case .success:
-                    DispatchQueue.main.async {
-                        var list = self.messages[chatId] ?? []
-                        if !list.contains(where: { $0.id == decryptedMsg.id }) {
-                            list.append(decryptedMsg)
+                DispatchQueue.main.async {
+                    switch result {
+                    case .failure(let err):
+                        AppLogger.error("Failed to send message \(messageId) in chat \(chatId): \(err.localizedDescription)", category: .chat)
+                        if var list = self.messages[chatId], let idx = list.firstIndex(where: { $0.id == messageId }) {
+                            list[idx].sendStatus = .failed
                             self.messages[chatId] = list
                         }
+                        completion?(.failure(err))
+                    case .success:
+                        if var list = self.messages[chatId], let idx = list.firstIndex(where: { $0.id == messageId }) {
+                            list[idx].sendStatus = .sent
+                            self.messages[chatId] = list
+                        }
+                        completion?(.success(()))
                     }
-                    completion?(.success(()))
                 }
             }
+        }
+    }
+    
+    /// 指定した失敗メッセージの再送処理
+    func resendMessage(chatId: String, messageId: String) {
+        guard let list = messages[chatId], let target = list.first(where: { $0.id == messageId }) else { return }
+        guard let tenant = currentTenant, let user = currentUser else { return }
+        
+        // ステータスを即座に .sending に更新（UIが回転アニメーションに変化）
+        DispatchQueue.main.async {
+            if var currentList = self.messages[chatId], let idx = currentList.firstIndex(where: { $0.id == messageId }) {
+                currentList[idx].sendStatus = .sending
+                self.messages[chatId] = currentList
+            }
+        }
+        
+        if target.hasAttachments {
+            // 添付ファイル付きメッセージの再送
+            resendAttachmentMessage(chatId: chatId, target: target, tenantId: tenant.tenantID, user: user)
+        } else {
+            // テキストメッセージの再送
+            sendPreparedTextMessage(
+                chatId: chatId,
+                messageId: messageId,
+                tenantId: tenant.tenantID,
+                user: user,
+                text: target.plainText
+            )
+        }
+    }
+    
+    /// 同チャット内の未送信（失敗）メッセージを一括再送
+    func resendFailedMessages(chatId: String) {
+        guard let list = messages[chatId] else { return }
+        let failedList = list.filter { $0.sendStatus == .failed }
+        for failed in failedList {
+            resendMessage(chatId: chatId, messageId: failed.id)
         }
     }
     
@@ -326,6 +411,36 @@ final class MessageService: ObservableObject {
         
         let tenantId = tenant.tenantID
         let messageId = "m_\(ULID().ulidString)"
+        let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // 1. 楽観的UI更新: 即座に messages[chatId] に追加（sendStatus = .sending）
+        let initialPbMsg = FriendsMessage(
+            messageID: messageId,
+            tenantID: tenantId,
+            chatID: chatId,
+            senderID: user.userID,
+            keyVersion: "v_1",
+            ciphertext: "",
+            nonce: "",
+            messageType: .image,
+            createdAt: Date()
+        )
+        let initialDecryptedMsg = DecryptedMessage(
+            message: initialPbMsg,
+            senderName: user.displayName,
+            plainText: trimmedText,
+            decryptedText: trimmedText,
+            myReaction: nil,
+            sendStatus: .sending
+        )
+        DispatchQueue.main.async {
+            var list = self.messages[chatId] ?? []
+            list.append(initialDecryptedMsg)
+            self.messages[chatId] = list
+        }
+        
+        // 2. 未送信（失敗）メッセージの自動連動送信
+        resendFailedMessages(chatId: chatId)
         
         var members: [String] = []
         if chatId.hasPrefix("dm_") {
@@ -402,90 +517,159 @@ final class MessageService: ObservableObject {
             
             if let error = uploadError, attachments.isEmpty {
                 DispatchQueue.main.async {
+                    if var list = self.messages[chatId], let idx = list.firstIndex(where: { $0.id == messageId }) {
+                        list[idx].sendStatus = .failed
+                        self.messages[chatId] = list
+                    }
                     completion?(.failure(error))
                 }
                 return
             }
             
-            let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            let payloadObj = MessageContentPayload(text: trimmedText, attachments: attachments)
-            guard let payloadData = try? JSONEncoder().encode(payloadObj),
-                  let payloadJsonString = String(data: payloadData, encoding: .utf8) else {
-                DispatchQueue.main.async {
-                    completion?(.failure(NSError(domain: "ChatError", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to encode message payload JSON"])))
-                }
-                return
-            }
-            
-            let getKeyHandler: (@escaping (SymmetricKey?) -> Void) -> Void = { handler in
-                DispatchQueue.main.async {
-                    if chatId.hasPrefix("gm_") {
-                        GroupChatService.shared.getGroupSessionKey(chatId: chatId, tenantId: tenantId, completion: handler)
-                    } else {
-                        DirectChatService.shared.getDirectSessionKey(chatId: chatId, tenantId: tenantId, completion: handler)
-                    }
+            // 添付ファイル情報を反映
+            DispatchQueue.main.async {
+                if var list = self.messages[chatId], let idx = list.firstIndex(where: { $0.id == messageId }) {
+                    list[idx] = DecryptedMessage(
+                        message: list[idx].message,
+                        senderName: user.displayName,
+                        plainText: trimmedText,
+                        decryptedText: trimmedText,
+                        myReaction: nil,
+                        attachments: attachments,
+                        sendStatus: .sending
+                    )
+                    self.messages[chatId] = list
                 }
             }
             
-            getKeyHandler { sessionKey in
-                var ciphertext = ""
-                var nonce = ""
-                
-                if let key = sessionKey {
-                    if let enc = try? CryptoKeyManager.shared.encryptDirectMessage(plainText: payloadJsonString, sessionKey: key) {
-                        ciphertext = enc.ciphertext
-                        nonce = enc.nonce
-                    }
+            self.sendPreparedAttachmentMessage(
+                chatId: chatId,
+                messageId: messageId,
+                tenantId: tenantId,
+                user: user,
+                text: trimmedText,
+                attachments: attachments,
+                members: members,
+                completion: completion
+            )
+        }
+    }
+    
+    private func sendPreparedAttachmentMessage(
+        chatId: String,
+        messageId: String,
+        tenantId: String,
+        user: FriendsPublicUserProfile,
+        text: String,
+        attachments: [MessageAttachment],
+        members: [String],
+        completion: ((Result<Void, Error>) -> Void)? = nil
+    ) {
+        let payloadObj = MessageContentPayload(text: text, attachments: attachments)
+        guard let payloadData = try? JSONEncoder().encode(payloadObj),
+              let payloadJsonString = String(data: payloadData, encoding: .utf8) else {
+            DispatchQueue.main.async {
+                if var list = self.messages[chatId], let idx = list.firstIndex(where: { $0.id == messageId }) {
+                    list[idx].sendStatus = .failed
+                    self.messages[chatId] = list
                 }
-                
-                if ciphertext.isEmpty {
-                    if let enc = try? CryptoKeyManager.shared.encryptWithTenantKey(plainText: payloadJsonString, tenantId: tenantId) {
-                        ciphertext = enc.encryptedData
-                        nonce = enc.nonce
-                    }
+                completion?(.failure(NSError(domain: "ChatError", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to encode message payload JSON"])))
+            }
+            return
+        }
+        
+        let getKeyHandler: (@escaping (SymmetricKey?) -> Void) -> Void = { handler in
+            DispatchQueue.main.async {
+                if chatId.hasPrefix("gm_") {
+                    GroupChatService.shared.getGroupSessionKey(chatId: chatId, tenantId: tenantId, completion: handler)
+                } else {
+                    DirectChatService.shared.getDirectSessionKey(chatId: chatId, tenantId: tenantId, completion: handler)
                 }
-                
-                let pbMsg = FriendsMessage(
-                    messageID: messageId,
-                    tenantID: tenantId,
-                    chatID: chatId,
-                    senderID: user.userID,
-                    keyVersion: "v_1",
-                    ciphertext: ciphertext,
-                    nonce: nonce,
-                    messageType: .image,
-                    createdAt: Date()
-                )
-                
-                let decryptedMsg = DecryptedMessage(
-                    message: pbMsg,
-                    senderName: user.displayName,
-                    plainText: trimmedText,
-                    decryptedText: payloadJsonString,
-                    myReaction: nil,
-                    attachments: attachments
-                )
-                
-                MessageRepository.shared.createMessage(tenantId: tenantId, chatId: chatId, message: pbMsg, members: members) { [weak self] result in
-                    guard let self = self else { return }
+            }
+        }
+        
+        getKeyHandler { [weak self] sessionKey in
+            guard let self = self else { return }
+            var ciphertext = ""
+            var nonce = ""
+            
+            if let key = sessionKey {
+                if let enc = try? CryptoKeyManager.shared.encryptDirectMessage(plainText: payloadJsonString, sessionKey: key) {
+                    ciphertext = enc.ciphertext
+                    nonce = enc.nonce
+                }
+            }
+            
+            if ciphertext.isEmpty {
+                if let enc = try? CryptoKeyManager.shared.encryptWithTenantKey(plainText: payloadJsonString, tenantId: tenantId) {
+                    ciphertext = enc.encryptedData
+                    nonce = enc.nonce
+                }
+            }
+            
+            let pbMsg = FriendsMessage(
+                messageID: messageId,
+                tenantID: tenantId,
+                chatID: chatId,
+                senderID: user.userID,
+                keyVersion: "v_1",
+                ciphertext: ciphertext,
+                nonce: nonce,
+                messageType: .image,
+                createdAt: Date()
+            )
+            
+            MessageRepository.shared.createMessage(tenantId: tenantId, chatId: chatId, message: pbMsg, members: members) { [weak self] result in
+                guard let self = self else { return }
+                DispatchQueue.main.async {
                     switch result {
                     case .failure(let err):
-                        DispatchQueue.main.async {
-                            completion?(.failure(err))
+                        AppLogger.error("Failed to send image message \(messageId): \(err.localizedDescription)", category: .chat)
+                        if var list = self.messages[chatId], let idx = list.firstIndex(where: { $0.id == messageId }) {
+                            list[idx].sendStatus = .failed
+                            self.messages[chatId] = list
                         }
+                        completion?(.failure(err))
                     case .success:
-                        DispatchQueue.main.async {
-                            var list = self.messages[chatId] ?? []
-                            if !list.contains(where: { $0.id == decryptedMsg.id }) {
-                                list.append(decryptedMsg)
-                                self.messages[chatId] = list
-                            }
-                            completion?(.success(()))
+                        if var list = self.messages[chatId], let idx = list.firstIndex(where: { $0.id == messageId }) {
+                            list[idx].sendStatus = .sent
+                            self.messages[chatId] = list
                         }
+                        completion?(.success(()))
                     }
                 }
             }
         }
+    }
+    
+    private func resendAttachmentMessage(
+        chatId: String,
+        target: DecryptedMessage,
+        tenantId: String,
+        user: FriendsPublicUserProfile
+    ) {
+        var members: [String] = []
+        if chatId.hasPrefix("dm_") {
+            let rawStr = String(chatId.dropFirst(3))
+            let parts = rawStr.components(separatedBy: "_u_")
+            if parts.count == 2 {
+                let userA = parts[0].hasPrefix("u_") ? parts[0] : "u_" + parts[0]
+                let userB = "u_" + parts[1]
+                members = [userA, userB].sorted()
+            }
+        } else if let existingChat = GroupChatService.shared.groupChats.first(where: { $0.chatID == chatId }) {
+            members = existingChat.chat.members
+        }
+        
+        sendPreparedAttachmentMessage(
+            chatId: chatId,
+            messageId: target.id,
+            tenantId: tenantId,
+            user: user,
+            text: target.plainText,
+            attachments: target.attachments,
+            members: members
+        )
     }
     
     nonisolated private func resizeImageForUpload(image: UIImage, maxDimension: CGFloat) -> UIImage {

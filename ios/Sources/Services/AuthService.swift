@@ -435,8 +435,8 @@ final class AuthService: ObservableObject {
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            let requestBody = ["recoveryHash": recoveryHash]
-            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody, options: [])
+            let reqBody = RecoverAnonymousRequest(recoveryHash: recoveryHash)
+            request.httpBody = try JSONEncoder().encode(reqBody)
             
             URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
                 guard let self = self else { return }
@@ -489,14 +489,14 @@ final class AuthService: ObservableObject {
                 }
                 
                 do {
-                    guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                          let customToken = json["customToken"] as? String,
-                          let recoveredUid = json["uid"] as? String,
-                          let encryptedPrivateKey = json["encryptedPrivateKey"] as? String,
-                          let nonce = json["nonce"] as? String else {
-                        AppLogger.error("[RESTORE] ❌ Missing fields in 200 response: \(rawBody)", category: .repo)
+                    guard let apiRes = try? JSONDecoder().decode(RecoverAnonymousResponse.self, from: data) else {
+                        AppLogger.error("[RESTORE] ❌ Failed to decode RecoverAnonymousResponse: \(rawBody)", category: .repo)
                         throw NSError(domain: "AuthService", code: 500, userInfo: [NSLocalizedDescriptionKey: L10n.Error.Recovery.dataNotFound])
                     }
+                    let customToken = apiRes.customToken
+                    let recoveredUid = apiRes.uid
+                    let encryptedPrivateKey = apiRes.encryptedPrivateKey
+                    let nonce = apiRes.nonce
                     AppLogger.debug("[RESTORE] Got customToken uid=\(recoveredUid) encKeyLen=\(encryptedPrivateKey.count)", category: .crypto)
                     
                     Auth.auth().signIn(withCustomToken: customToken) { authResult, signInError in

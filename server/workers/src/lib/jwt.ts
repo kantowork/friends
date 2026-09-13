@@ -88,6 +88,52 @@ export async function createFirebaseCustomToken(
   return await signJwtRS256(header, payload, privateKeyPem);
 }
 
+// Google Cloud OAuth2 Access Token の取得 (Service Account JWT Bearer Grant)
+export async function getGoogleOAuth2AccessToken(
+  clientEmail: string,
+  privateKeyPem: string,
+  scopes: string[] = ["https://www.googleapis.com/auth/datastore"]
+): Promise<{ accessToken: string; expiresIn: number }> {
+  const now = Math.floor(Date.now() / 1000);
+  const header = {
+    alg: "RS256",
+    typ: "JWT",
+  };
+
+  const payload = {
+    iss: clientEmail,
+    sub: clientEmail,
+    aud: "https://oauth2.googleapis.com/token",
+    iat: now,
+    exp: now + 3600,
+    scope: scopes.join(" "),
+  };
+
+  const assertion = await signJwtRS256(header, payload, privateKeyPem);
+
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion,
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Failed to obtain Google OAuth2 access token: ${res.status} ${errText}`);
+  }
+
+  const data = (await res.json()) as { access_token: string; expires_in: number };
+  return {
+    accessToken: data.access_token,
+    expiresIn: data.expires_in,
+  };
+}
+
 // Firebase Custom Token を Firebase ID Token に交換 (Firestore REST API 認可用)
 export async function exchangeCustomTokenToIdToken(
   customToken: string,
@@ -110,4 +156,40 @@ export async function exchangeCustomTokenToIdToken(
 
   const data = (await res.json()) as { idToken: string };
   return data.idToken;
+}
+
+export interface VerifiedUser {
+  uid: string;
+  email?: string;
+}
+
+// Firebase ID Token の検証 (Google Identity Toolkit accounts:lookup API)
+export async function verifyFirebaseIdToken(
+  idToken: string,
+  firebaseApiKey: string
+): Promise<VerifiedUser> {
+  const url = `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseApiKey}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Invalid or expired ID token: ${res.status} ${errText}`);
+  }
+
+  const data = (await res.json()) as {
+    users?: Array<{ localId: string; email?: string }>;
+  };
+
+  if (!data.users || data.users.length === 0 || !data.users[0].localId) {
+    throw new Error("No user found for the provided token");
+  }
+
+  return {
+    uid: data.users[0].localId,
+    email: data.users[0].email,
+  };
 }

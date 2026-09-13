@@ -27,10 +27,36 @@ Workers 基盤 (`server/workers/`) は、将来的な機能拡張に対応する
 |:---|:---|:---|:---|
 | `/api/v1/health` | `GET` | サーバーヘルスチェック | なし (Public) |
 | `/api/v1/auth/recover-anonymous` | `POST` | ふっかつのじゅもんによるアカウント完全復旧・Custom Token 発行 | `recoveryHash` 照合 |
-| `/api/v1/notifications/send` | `POST` | *(将来拡張)* FCM/APNs バックグラウンド通知配信制御 | テナント API キー |
-| `/api/v1/audit/metadata` | `GET` | *(将来拡張)* テナント管理者向け集計・監査メタデータ取得 | テナント管理者署名 |
+| `/api/v1/tenants/:tenantId/chats/:chatId/messages` | `POST` | E2EEメッセージ保存・親チャット更新・将来のPush通知ディスパッチ | Firebase ID Token (Bearer) + 送信者認可 |
+| `/api/v1/tenants/:tenantId/notifications/send` | `POST` | *(将来拡張)* FCM/APNs バックグラウンド通知配信制御 | テナント API キー |
+| `/api/v1/tenants/:tenantId/audit/metadata` | `GET` | *(将来拡張)* テナント管理者向け集計・監査メタデータ取得 | テナント管理者署名 |
 
 ※ エラー発生時は `{ "error": "...", "code": "ERROR_CODE" }` の統一 JSON 形式で返却され、クライアント側でローカライズ表示されます。
+
+### 内部アーキテクチャ & ミドルウェア構成 (Hono + 3層分離)
+
+Workers バックエンドは **Hono** フレームワークを採用し、宣言的ルーティングと関心事の分離（SoC）を徹底しています：
+
+```text
+[Request] -> [cors()] -> [configMiddleware] -> [authMiddleware] -> [Route] -> [Service] -> [Lib (FirestoreClient)]
+```
+
+
+- **`middleware/config.ts` (`configMiddleware`)**:
+  - `FIREBASE_PROJECT_ID`, `FIREBASE_API_KEY`, `GOOGLE_CLIENT_EMAIL`, `GOOGLE_PRIVATE_KEY` の 4 つの必須シークレット存在チェック。
+  - FirestoreClient インスタンスの初期化とコンテキスト（`c.set('firestore', ...)`）への注入。
+- **`middleware/auth.ts` (`authMiddleware`)**:
+  - `Authorization: Bearer <idToken>` ヘッダーの抽出。
+  - Google Identity Toolkit による Firebase ID Token 署名・有効期限検証。
+  - 検証済みユーザー情報（`VerifiedUser`）をコンテキスト（`c.set('user', ...)`）へ格納。
+- **`routes/` (HTTP / ルーティング層)**:
+  - Zod スキーマ（`shared/schema/`）によるリクエストバリデーション（`safeParse`）。
+  - Service 層の呼び出しと HTTP レスポンス返却。
+- **`services/` (業務ロジック層)**:
+  - 送信者認可（`verifySender`）、チャット・メッセージアトミック作成、復旧ハッシュ検証などのドメインロジック。
+- **`lib/` (インフラ / ユーティリティ層)**:
+  - 業務知識を持たない純粋な Firestore REST API クライアント、Web Crypto JWT 署名・検証ツール。
+  - **Firestore REST API 認証**: サービスアカウントの秘密鍵から Web Crypto API で署名した JWT を用いて `https://oauth2.googleapis.com/token` から Google OAuth2 Access Token（スコープ: `datastore`）を取得・キャッシュ。Firestore Security Rules をバイパスする完全なサーバー管理者権限（Admin）として安全にアトミックコミットを実行。
 
 ---
 
@@ -49,8 +75,8 @@ Firebase Auth の Custom Token を発行し、Firestore を安全に検索する
    - サービス アカウント ID: 自動入力（例: `friends-workers-backend@your-project-id.iam.gserviceaccount.com`）
    - 「作成して続行」をクリック。
 3. **ロール（権限）の付与（最小権限の原則）**:
-   - 以下のロールを付与します（必要最小限の権限）：
-     - **Cloud Datastore 閲覧者** (`roles/datastore.viewer`)
+   - 以下のロールを付与します（メッセージ書き込み・更新およびアカウント復旧に必要な権限）：
+     - **Cloud Datastore ユーザー** (`roles/datastore.user`)
    - 「続行」→「完了」をクリック。
 4. **JSON キーの生成・ダウンロード**:
    - 作成したサービスアカウント一覧から `friends-workers-backend` をクリック。
@@ -84,11 +110,12 @@ Firebase Auth の Custom Token を発行し、Firestore を安全に検索する
    1. [Cloudflare ダッシュボード](https://dash.cloudflare.com/) にログイン。
    2. 左側メニューの **「Workers & Pages」**（または **「Compute (Workers)」**）を開き、一覧から **`friends-api`** を選択。
    3. **「Settings（設定）」** タブをクリックし、左メニューから **「Variables and Secrets（変数とシークレット）」** を選択。
-   4. **「Secrets（シークレット）」** セクションの **「Add（追加）」** をクリックして、以下の 3 つを登録します：
+   4. **「Secrets（シークレット）」** セクションの **「Add（追加）」** をクリックして、以下の 4 つを登録します：
 
-   | 変数名 (Variable Name) | タイプ | 設定する値（JSON ファイルから転記） |
+   | 変数名 (Variable Name) | タイプ | 設定する値 |
    | :--- | :---: | :--- |
-   | **`FIREBASE_PROJECT_ID`** | Secret | JSON 内の `project_id`（例: `friends-kanto-prod`） |
+   | **`FIREBASE_PROJECT_ID`** | Secret | JSON 内の `project_id`（例: `kantowork-friends`） |
+   | **`FIREBASE_API_KEY`** | Secret | Firebase Web API Key（`GoogleService-Info.plist` の `API_KEY`） |
    | **`GOOGLE_CLIENT_EMAIL`** | Secret | JSON 内の `client_email`（例: `friends-workers-backend@...`） |
    | **`GOOGLE_PRIVATE_KEY`** | Secret | JSON 内の `private_key` 全文（`-----BEGIN PRIVATE KEY-----\n...` をそのまま貼り付け） |
 
@@ -152,4 +179,3 @@ npx wrangler tail
    - `recover-anonymous` エンドポイントには、同一 IP からの連続総当たりを防ぐレートリミットガードが組み込まれています（デフォルト: 1分あたり最大10リクエスト）。
 2. **秘密鍵ローテーション**:
    - 万が一 Google サービスアカウントキーが漏洩した疑いがある場合は、Google Cloud Console から既存キーを削除し、新しいキーを作成して `npx wrangler secret put GOOGLE_PRIVATE_KEY` で更新してください。
-

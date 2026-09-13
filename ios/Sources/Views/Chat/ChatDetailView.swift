@@ -494,12 +494,15 @@ struct ChatDetailView: View {
             return
         }
         
+        // 送信ボタン押下時に速やかに入力エリアから削除
+        self.messageText = ""
+        self.hasUnseenNewMessages = false
+        
         messageService.createMessage(chatId: chat.chatID, text: text) { result in
             DispatchQueue.main.async {
                 switch result {
                 case .success:
-                    self.messageText = ""
-                    self.hasUnseenNewMessages = false
+                    break
                 case .failure(let error):
                     AppLogger.error("Failed to send message in chat \(self.chat.chatID): \(error.localizedDescription)", category: .chat)
                 }
@@ -607,6 +610,23 @@ enum ChatFontSize: String, CaseIterable {
     }
 }
 
+// MARK: - Spinning Resend Icon (再送信中アニメーションアイコン)
+
+struct SpinningResendIcon: View {
+    @State private var isSpinning: Bool = false
+    
+    var body: some View {
+        Image(systemName: "arrow.triangle.2.circlepath")
+            .font(.system(size: 9, weight: .bold))
+            .foregroundColor(.secondary)
+            .rotationEffect(.degrees(isSpinning ? 360 : 0))
+            .animation(.linear(duration: 1.0).repeatForever(autoreverses: false), value: isSpinning)
+            .onAppear {
+                isSpinning = true
+            }
+    }
+}
+
 // MARK: - Message Bubble View (相手アイコン・吹き出し & 長押しリアクションピッカー & バッジ)
 
 struct MessageBubbleView: View {
@@ -683,27 +703,55 @@ struct MessageBubbleView: View {
                     if isFromMe {
                         Spacer(minLength: 24)
                         
-                        // 自分のメッセージのメタデータ (左側: 上段に既読状態、下段に送信時刻)
+                        // 自分のメッセージのメタデータ (左側: 上段に既読状態/再送、下段に送信時刻)
                         VStack(alignment: .trailing, spacing: 2) {
                             Spacer()
                             
-                            if isGroup {
-                                if readCount > 0 {
-                                    Text(L10n.Chat.readCount(readCount))
-                                        .font(.system(size: 10, weight: .semibold))
+                            switch message.sendStatus {
+                            case .sending:
+                                HStack(spacing: 3) {
+                                    SpinningResendIcon()
+                                    Text(timeString(from: message.createdDate))
+                                        .font(.system(size: 10))
                                         .foregroundColor(.secondary)
                                 }
-                            } else {
-                                if isRead {
-                                    Text(L10n.Chat.readStatus)
-                                        .font(.system(size: 10, weight: .semibold))
-                                        .foregroundColor(.appAccent)
+                            case .failed:
+                                Button {
+                                    messageService.resendMessage(chatId: chatId, messageId: message.id)
+                                } label: {
+                                    HStack(spacing: 2) {
+                                        Image(systemName: "exclamationmark.circle.fill")
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundColor(.red)
+                                        Text(L10n.Chat.resend)
+                                            .font(.system(size: 10, weight: .semibold))
+                                            .foregroundColor(.red)
+                                    }
                                 }
+                                .buttonStyle(.plain)
+                                
+                                Text(timeString(from: message.createdDate))
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                            case .sent:
+                                if isGroup {
+                                    if readCount > 0 {
+                                        Text(L10n.Chat.readCount(readCount))
+                                            .font(.system(size: 10, weight: .semibold))
+                                            .foregroundColor(.secondary)
+                                    }
+                                } else {
+                                    if isRead {
+                                        Text(L10n.Chat.readStatus)
+                                            .font(.system(size: 10, weight: .semibold))
+                                            .foregroundColor(.appAccent)
+                                    }
+                                }
+                                
+                                Text(timeString(from: message.createdDate))
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
                             }
-                            
-                            Text(timeString(from: message.createdDate))
-                                .font(.system(size: 10))
-                                .foregroundColor(.secondary)
                         }
                         
                         // 吹き出し本文バブル (自分: 青色)
@@ -928,7 +976,14 @@ struct MessageBubbleView: View {
         .padding(.vertical, message.hasAttachments && message.decryptedText.isEmpty ? 4 : (message.hasAttachments ? 4 : 0))
         .background(isMe ? Color.appAccent : Color(uiColor: .secondarySystemBackground))
         .clipShape(BubbleShape(isFromMe: isMe))
+        .contentShape(BubbleShape(isFromMe: isMe))
+        .onTapGesture {
+            if message.sendStatus == .failed {
+                messageService.resendMessage(chatId: chatId, messageId: message.id)
+            }
+        }
         .onLongPressGesture(minimumDuration: 0.35) {
+            guard message.sendStatus == .sent else { return }
             let generator = UIImpactFeedbackGenerator(style: .medium)
             generator.impactOccurred()
             withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {

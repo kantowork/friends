@@ -12,6 +12,7 @@ enabled = true
 head_sampling_rate = 1
 
 # Secrets required:
-# - FIREBASE_PROJECT_ID: e.g. "friends-kanto-prod"
+# - FIREBASE_PROJECT_ID: e.g. "kantowork-friends"
+# - FIREBASE_API_KEY: e.g. "AIzaSy..."
 # - GOOGLE_CLIENT_EMAIL: e.g. "friends-workers-backend@..."
 # - GOOGLE_PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----\n..."
