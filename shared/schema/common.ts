@@ -1,22 +1,24 @@
 import { z } from "zod";
-import { withExample } from "./helper.ts";
+
 
 /**
  * 共通エラーレスポンススキーマ
  */
 export const ErrorResponseSchema = z.object({
-  error: withExample(
-    z.string().describe("エラーメッセージ"),
-    "Unauthorized: Bearer token required"
-  ),
-  code: withExample(
-    z.string().optional().describe("エラーコード"),
-    "UNAUTHORIZED"
-  ),
-  senderId: withExample(
-    z.string().optional().describe("認可失敗時の送信者ID"),
-    "u_1234567890ab"
-  ),
+  error: z
+    .string()
+    .describe("エラーメッセージ")
+    .meta({ example: "Unauthorized: Bearer token required" }),
+  code: z
+    .string()
+    .optional()
+    .describe("エラーコード")
+    .meta({ example: "UNAUTHORIZED" }),
+  senderId: z
+    .string()
+    .optional()
+    .describe("認可失敗時の送信者ID")
+    .meta({ example: "u_1234567890ab" }),
 });
 
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;

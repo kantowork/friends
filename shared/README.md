@@ -13,9 +13,8 @@ shared/
 │   ├── chat.proto         # Chat (dm_ / gm_) & KeyBucket (v_)
 │   ├── friend.proto       # 友達関係 (u_)
 │   └── message.proto      # Message (m_)
-└── schema/                # REST API スキーマ定義 (TypeScript + Zod SSoT)
+└── schema/                # REST API スキーマ定義 (TypeScript + Zod 4 SSoT)
     ├── index.ts           # 共通エクスポート（スキーマ & z.infer 型定義）
-    ├── helper.ts          # Zod メタデータ付与ヘルパー (withExample, withRef)
     ├── auth.ts            # 匿名復旧スキーマ (RecoverAnonymousRequest/Response)
     ├── messages.ts        # メッセージ送信スキーマ (SendMessageRequest/Response)
     └── common.ts          # 共通エラーレスポンススキーマ (ErrorResponse)

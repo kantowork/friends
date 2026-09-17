@@ -2,13 +2,10 @@
 
 /**
  * scripts/generate_api.mjs
- * 
- * 真実の唯一のソース (SSoT) である `shared/schema/` (TypeScript + Zod) から
+ *
+ * 真実の唯一のソース (SSoT) である `shared/schema/` (TypeScript + Zod 4) から
  * Swift Codable モデル: ios/Sources/Models/Generated/APISchemas.generated.swift
  * を直接自動生成します。
- * 
- * サーバー側 (TypeScript) は shared/schema/*.ts から z.infer を直接参照するため、
- * 中間ディレクトリ shared/api/* は作成・保持しません。
  */
 
 import { writeFileSync, mkdirSync } from "node:fs";
@@ -24,49 +21,81 @@ const ROOT_DIR = resolve(__dirname, "..");
 const SWIFT_OUTPUT_DIR = resolve(ROOT_DIR, "ios/Sources/Models/Generated");
 
 // ==========================================
-// 1. Zod 型解析ヘルパー
+// 1. Zod 4 型解析ヘルパー
 // ==========================================
 function unwrapZodType(schema) {
   let current = schema;
   let isOptional = false;
+  let ref = current?.meta?.()?.ref;
 
   while (current) {
-    const typeName = current._def?.typeName;
-    if (typeName === "ZodOptional" || typeName === "ZodDefault") {
+    if (!ref && current?.meta?.()?.ref) {
+      ref = current.meta().ref;
+    }
+    if (current.type === "optional" || current.type === "nullable" || current.type === "default") {
       isOptional = true;
-      current = current._def.innerType;
+      current = current.unwrap();
     } else {
       break;
     }
   }
 
-  return { unwrapped: current, isOptional };
+  if (!ref && current?.meta?.()?.ref) {
+    ref = current.meta().ref;
+  }
+
+  return { unwrapped: current, isOptional, ref };
 }
 
-function resolveSwiftType(schema) {
-  const def = schema._def;
-  if (def.refComponent) {
-    return def.refComponent;
+function findRegisteredSchemaName(schema, registeredSchemas) {
+  for (const [name, reg] of Object.entries(registeredSchemas)) {
+    if (
+      schema === reg ||
+      (schema.def && reg.def && schema.def === reg.def) ||
+      (schema.shape && reg.shape && schema.shape === reg.shape)
+    ) {
+      return name;
+    }
+  }
+  return null;
+}
+
+function resolveSwiftType(schema, registeredSchemas = {}) {
+  const { unwrapped, ref } = unwrapZodType(schema);
+  if (ref) {
+    return ref;
   }
 
-  const { unwrapped } = unwrapZodType(schema);
-  const typeName = unwrapped._def.typeName;
+  // 登録済みスキーマ（SendMessagePayloadSchema 等）が直接埋め込まれている場合は自動解決
+  const matchedName = findRegisteredSchemaName(unwrapped, registeredSchemas);
+  if (matchedName) {
+    return matchedName;
+  }
 
-  if (typeName === "ZodString") return "String";
-  if (typeName === "ZodBoolean") return "Bool";
-  if (typeName === "ZodNumber") return "Double";
-  if (typeName === "ZodArray") {
-    const itemType = resolveSwiftType(unwrapped._def.type);
-    return `[${itemType}]`;
+  switch (unwrapped.type) {
+    case "string":
+      return "String";
+    case "boolean":
+      return "Bool";
+    case "number":
+      return "Double";
+    case "array": {
+      const itemType = resolveSwiftType(unwrapped.element, registeredSchemas);
+      return `[${itemType}]`;
+    }
+    case "record": {
+      const valType = resolveSwiftType(unwrapped.valueType, registeredSchemas);
+      return `[String: ${valType}]`;
+    }
+    case "object":
+      return "AnyCodable";
+    default:
+      return "AnyCodable";
   }
-  if (typeName === "ZodObject") {
-    return "AnyCodable";
-  }
-  return "AnyCodable";
 }
 
 function generateSwiftModels() {
-  // 1. shared/schema からエクスポートされた Zod スキーマ群（*Schema）を動的走査
+  // 1. shared/schema からエクスポートされた Zod 4 スキーマ群（*Schema）を走査
   const registeredSchemas = {};
   for (const [exportName, item] of Object.entries(schemas)) {
     if (exportName.endsWith("Schema") && typeof item?.safeParse === "function") {
@@ -83,12 +112,12 @@ import Foundation
 
   for (const [schemaName, schema] of Object.entries(registeredSchemas)) {
     swiftContent += `public struct ${schemaName}: Codable, Sendable {\n`;
-    const shape = schema._def.shape ? schema._def.shape() : {};
+    const shape = schema.shape || {};
     const propList = Object.entries(shape);
 
     for (const [propName, propSchema] of propList) {
       const { isOptional } = unwrapZodType(propSchema);
-      const swiftType = resolveSwiftType(propSchema);
+      const swiftType = resolveSwiftType(propSchema, registeredSchemas);
       if (isOptional) {
         swiftContent += `    public var ${propName}: ${swiftType}?\n`;
       } else {
@@ -100,7 +129,7 @@ import Foundation
     swiftContent += `\n    public init(\n`;
     const initParams = propList.map(([propName, propSchema]) => {
       const { isOptional } = unwrapZodType(propSchema);
-      const swiftType = resolveSwiftType(propSchema);
+      const swiftType = resolveSwiftType(propSchema, registeredSchemas);
       return isOptional
         ? `        ${propName}: ${swiftType}? = nil`
         : `        ${propName}: ${swiftType}`;
