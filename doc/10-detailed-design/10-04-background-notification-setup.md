@@ -1,8 +1,8 @@
-# 12-04: バックグラウンドプッシュ通知 導入準備・設計仕様書 (Background Push Notification Setup & Design)
+# 10-04: バックグラウンドプッシュ通知 導入準備・設計仕様書 (Background Push Notification Setup & Design)
 
 ## 1. 概要 (Overview)
 
-本ドキュメントは、**Friends** アプリケーションにおけるバックグラウンドプッシュ通知（APNs: Apple Push Notification service ＋ FCM: Firebase Cloud Messaging）の導入準備手順、ゼロ知識 E2EE アーキテクチャとの統合仕様、クライアント/サーバー実装設計、および導入作業チェックリストを定めたものです。
+本ドキュメントは、**Friends** アプリケーションにおけるバックグラウンドプッシュ通知（APNs: Apple Push Notification service ＋ FCM: Firebase Cloud Messaging）の導入準備手順、ゼロ知識 E2EE アーキテクチャとの統合仕様、Cloudflare Workers サーバー配信設計、フォアグラウンド抑制制御、および設定画面でのデバイス管理仕様を定めたものです。
 
 ---
 
@@ -12,45 +12,27 @@
 sequenceDiagram
     autonumber
     participant Sender as 送信者 (iOS Client)
+    participant Worker as Cloudflare Workers<br/>(API: POST /messages)
     participant Firestore as Cloud Firestore
-    participant Function as Cloud Functions (Server)
-    participant FCM as Firebase Cloud Messaging
-    participant APNs as Apple Push Notification service
+    participant FCM as Push通知ゲートウェイ (FCM / APNs)
     participant RecipientDevice as 受信者 iOS 端末
-    participant NSE as Notification Service Extension<br/>(Client-side Decryption)
-    participant RecipientApp as Friends iOS App
+    participant RecipientApp as Friends iOS App (Foreground)
 
-    Sender->>Firestore: E2EE暗号化メッセージ書き込み (messages/{messageId})
-    Firestore-->>Function: onCreate トリガー発火
-    Function->>Firestore: チャット参加者のデバイストークン取得 (devices/{deviceId})
+    Sender->>Worker: メッセージ送信 (E2EE暗号文)
+    Worker->>Firestore: メッセージドキュメント & チャット更新 (アトミックコミット)
+    Worker->>Firestore: チャット参加者(送信者除く)の /devices コレクション取得
+    Worker->>FCM: Push通知マルチキャスト送信 (ゼロ知識E2EE準拠ペイロード)
+    FCM->>RecipientDevice: APNs ペイロード転送
 
-    Note over Function, FCM: ゼロ知識原則: 平文は送信せず暗号化メタデータまたは汎用通知のみ送信
-    Function->>FCM: sendEachForMulticast(payload)
-    FCM->>APNs: APNs ペイロード転送
-    APNs->>RecipientDevice: プッシュ通知配信 (mutable-content: 1)
-
-    alt E2EE 端末内復号方式 (Notification Service Extension)
-        RecipientDevice->>NSE: didReceiveNotificationRequest
-        NSE->>NSE: Keychain/ローカルキャッシュからセッション鍵取得
-        NSE->>NSE: 暗号文 (ciphertext) をローカル復号
-        NSE->>RecipientDevice: 復号済み通知 (送信者名・本文) を表示
-    else 汎用通知方式 (Generic Alert)
-        RecipientDevice->>RecipientDevice: 「新しいメッセージを受信しました」と表示
+    alt アプリ起動中 (フォアグラウンド)
+        RecipientDevice->>RecipientApp: UNUserNotificationCenter willPresentNotification
+        RecipientApp->>RecipientApp: completionHandler([]) でシステム通知を破棄
+        Firestore->>RecipientApp: onSnapshot (新着メッセージ同期)
+        RecipientApp->>RecipientApp: ToastNotificationManager によるアプリ内トースト表示
+    else バックグラウンド / 画面ロック中
+        RecipientDevice->>RecipientDevice: iOS システム通知バナーを表示
+        RecipientDevice->>RecipientApp: バナータップでアプリ起動 & 対象チャットへ遷移
     end
-
-    RecipientDevice->>RecipientApp: ユーザータップでアプリ起動
-    RecipientApp->>RecipientApp: 該当チャット画面へディープリンク遷移
-```
-
-    Sender->>Firestore: 暗号化メッセージ書き込み (E2EE)
-    Firestore->>Function: onCreate トリガー発火
-    Function->>Function: 受信者デバイスの FCM トークン取得
-    Function->>FCM: 通知ペイロード送信 (暗号化データまたは汎用通知)
-    FCM->>APNs: APNs ペイロード転送 (mutable-content: 1)
-    APNs->>RecipientDevice: プッシュ通知着信
-    RecipientDevice->>NSE: Notification Service Extension 起動
-    NSE->>NSE: Keychain から $MK_T$ / $SK$ 取得しローカル復号
-    NSE->>RecipientDevice: 復号済みテキストでローカル通知バナー表示
 ```
 
 ---
@@ -59,121 +41,100 @@ sequenceDiagram
 
 ### 3.1 平文メッセージの外部送信禁止
 - Apple (APNs) および Google (FCM) のサーバーには、**メッセージ平文を一切送信してはならない**。
-- ペイロードには以下を採用する：
-
-| 方式 | 特徴 | セキュリティ評価 | 実装要件 |
-|:---|:---|:---:|:---|
-| **A. 端末内復号方式 (NSE)**<br>*(推奨)* | ペイロードに暗号文 (`ciphertext`, `nonce`, `keyVen`) を含め、iOS の `UNNotificationServiceExtension` 内で App Group 経由の Keychain 鍵を用いて復号・表示 | 最高 (E2EE 堅持 ＋ リッチな通知) | App Groups 設定、Notification Service Extension ターゲット追加 |
+- ペイロードには送信者名、チャットID、メッセージIDなどのメタデータのみを含め、本文は「新着メッセージが届きました」等の汎用文言を使用。
+- 将来的な端末内復号（Notification Service Extension: NSE）拡張時は、暗号文・nonce をペイロードに含め、App Group 経由のローカル鍵で復号。
 
 ---
 
-## 3.2 実装・設定手順
+## 4. クライアント仕様 (iOS Client Implementation)
 
-### 3.2.1 Apple Developer Portal 設定 (APNs AuthKey)
-1. **Apple Developer Account** (`developer.apple.com`) にログイン。
-2. **Certificates, Identifiers & Profiles** ➔ **Keys** へ移動。
-3. 新しい Key を作成（名前: `Friends APNs Key`）。
-4. **Apple Push Notifications service (APNs)** を有効化して Key を生成・ダウンロード（`.p8` ファイル）。
-5. **Key ID** および **Team ID** を控える。
+### 4.1 フォアグラウンド通知の破棄（システム通知抑制）
+アプリを開いている状態では、`UNUserNotificationCenterDelegate` によりシステムバナーを抑止：
+```swift
+func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    willPresent notification: UNNotification,
+    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+) {
+    // アプリ起動中はシステム通知を一切表示しない（Firestore onSnapshot + ToastNotificationManager に委ねる）
+    completionHandler([])
+}
+```
 
-### 3.2.2 Firebase Console 設定
-1. **Firebase Console** ➔ プロジェクト設定 ➔ **Cloud Messaging** タブを開く。
-2. **Apple アプリ構成** ➔ **APNs 認証キー** に `.p8` ファイルをアップロード。
-3. Key ID と Team ID を入力して保存。
+### 4.2 初回ログイン時の通知登録（事前説明シート）
+- 初回匿名ログイン完了時、未登録であれば `NotificationPermissionSheet`（ソフトプロンプト）を表示。
+- ユーザーが「通知をオンにする」を押下した場合にのみ `UNUserNotificationCenter.current().requestAuthorization` を起動。
+- 許可取得後、APNs / FCM トークンを Firestore に登録。
 
-### 3.2.3 iOS アプリ設定 (Xcode / project.yml)
-1. **Capability 追加**:
-   - `Push Notifications`
-   - `Background Modes` ➔ `Remote notifications` をチェック。
-2. **APNs トークン登録処理 (AppDelegate / NotificationManager)**:
-   - アプリ起動時に `UNUserNotificationCenter.current().requestAuthorization(...)` で通知許可を要求。
-   - `UIApplication.shared.registerForRemoteNotifications()` を実行。
-   - `didRegisterForRemoteNotificationsWithDeviceToken` で取得したデバイストークンを FCM SDK に渡し、FCM トークンを取得。
-   - 取得した FCM トークンを Firestore（`/tenants/{tenantId}/users/{userId}/devices/{deviceId}`）に保存。
+### 4.3 デバイストークンおよびデバイス情報モデル
+Firestore パス: `/tenants/{tenantId}/users/{userId}/devices/{deviceId}`
 
-### 3.2.4 Notification Service Extension (NSE) による端末内 E2EE 復号
-1. Xcode プロジェクトに **Notification Service Extension** ターゲットを追加（App Group を設定）。
-2. App Group を経由してメインアプリの Keychain（$MK_T$ およびセッションキー）を共有。
-3. `didReceive(_:withContentHandler:)` 内で、ペイロードの暗号化本文をローカル復号し、バナー表示文言を上書き。
+| フィールド名 | 型 | 説明 |
+|:---|:---|:---|
+| `deviceId` | string | 端末一意識別子 (Keychain UUID) |
+| `deviceName` | string | デバイス名（`UIDevice.current.name` を自動保持） |
+| `fcmToken` | string? | FCM Push 通知トークン |
+| `apnsToken` | string? | APNs デバイストークン (Hex) |
+| `platform` | string | プラットフォーム (`ios`) |
+| `enabled` | boolean | アプリ内通知有効化フラグ（初期値: true） |
+| `createdBy` | string | 登録者 userId |
+| `createdAt` | timestamp | 登録日時 |
+| `updatedBy` | string | 更新者 userId |
+| `updatedAt` | timestamp | 最終更新日時 |
+
+### 4.4 設定画面（アプリ設定）での通知トグル制御
+- 設定画面の「アプリ設定」セクションに「通知（トグルスイッチ）」を配置。
+- トグルOFF時はアプリ内での通知受信を無効化し、Firestore の `enabled: false` に更新。
+- トグルON時は通知許諾を確認/要求し、`enabled: true` に更新。
+
 
 ---
 
-## 4. Cloud Functions 送信関数仕様 (TypeScript)
+## 5. サーバー（Cloudflare Workers）送信仕様 (TypeScript)
 
+### 5.1 Pushディスパッチフロー
 ```typescript
-import * as functions from 'firebase-functions/v1';
-import * as admin from 'firebase-admin';
+// server/workers/src/services/messageService.ts
+// 1. チャットメンバーから送信者を除外
+const recipientUids = members.filter((uid) => uid !== message.senderId);
 
-export const onNewMessageCreated = functions.firestore
-  .document('tenants/{tenantId}/chats/{chatId}/messages/{messageId}')
-  .onCreate(async (snap, context) => {
-    const { tenantId, chatId, messageId } = context.params;
-    const messageData = snap.data();
-    const senderId = messageData.senderId;
+// 2. PushNotificationService 経由で受信者のデバイストークンを一括取得 (Collection Group クエリ)
+// lib/firestore.ts の汎用 runQuery を用い、PushNotificationService が責務を持つ
+const pushService = new PushNotificationService(this.firestore);
+const tokens = await pushService.getDeviceTokensForUsers(recipientUids);
 
-    // 1. チャットメンバーの取得
-    const chatDoc = await admin.firestore().doc(`tenants/${tenantId}/chats/${chatId}`).get();
-    const members: string[] = chatDoc.data()?.members || [];
-    const recipientUids = members.filter(uid => uid !== senderId);
-
-    // 2. 受信者デバイスの FCM トークン一覧を取得
-    const tokens: string[] = [];
-    for (const uid of recipientUids) {
-      const devicesSnap = await admin.firestore()
-        .collection(`tenants/${tenantId}/users/${uid}/devices`)
-        .get();
-      devicesSnap.forEach(doc => {
-        const token = doc.data().fcmToken;
-        if (token) tokens.push(token);
-      });
-    }
-
-    if (tokens.length === 0) return null;
-
-    // 3. APNs / FCM ペイロード作成 (ゼロ知識 E2EE 準拠)
-    const payload: admin.messaging.MulticastMessage = {
-      tokens,
-      notification: {
-        body: "新着メッセージが届きました",
-      },
-      data: {
-        tenantId,
-        chatId,
-        messageId,
-        senderId,
-      },
-      apns: {
-        payload: {
-          aps: {
-            badge: 1,
-            sound: "default",
-            mutableContent: true, // NSE での端末内復号を有効化
-          },
-        },
-      },
-    };
-
-    await admin.messaging().sendEachForMulticast(payload);
+// 3. Push通知マルチキャスト送信
+if (tokens.length > 0) {
+  await pushService.sendNotification({
+    tokens,
+    title: "Friends",
+    body: "新着メッセージが届きました",
+    data: {
+      tenantId,
+      chatId,
+      messageId: message.messageId,
+      senderId: message.senderId,
+    },
   });
+}
 ```
 
 ---
 
-## 5. 導入作業チェックリスト (Implementation Checklist)
+## 6. セキュリティルール仕様 (`infra/firestore.rules`)
 
-- [ ] **Apple Developer**: APNs Auth Key (`.p8`) 発行・ダウンロード
-- [ ] **Firebase Console**: APNs 認証キーのアップロード設定
-- [ ] **iOS project.yml**: `Push Notifications` / `Background Modes` capability 設定追加
-- [ ] **iOS Package**: `FirebaseMessaging` の依存追加
-- [ ] **iOS Code**: `AppDelegate` / `NotificationManager` によるトークン取得・Firestore 登録実装
-- [ ] **Firestore Rule**: `/tenants/{tenantId}/users/{userId}/devices/{deviceId}` への書き込み許可ルール検証
-- [ ] **Cloud Functions**: メッセージ作成トリガーによる FCM 配信関数のデプロイ
-- [ ] **実機検証**: APNs 実機へのバックグラウンド通知受信・バナー表示・ディープリンク遷移検証
+```javascript
+match /devices/{deviceId} {
+  // 本人のみ自身のデバイス一覧の取得・登録・更新・削除が可能
+  allow read, write: if isTenantUser(tenantId, userId);
+}
+```
 
 ---
 
-## 6. 関連ドキュメント
+## 7. 関連ドキュメント
 
 - [07-07-push-notification.md](../07-detailed-usecases/07-07-push-notification.md) - プッシュ通知基本設計
 - [07-03-message-encryption.md](../07-detailed-usecases/07-03-message-encryption.md) - メッセージ暗号化仕様
+- [10-02-firestore-direct-access-rules.md](./10-02-firestore-direct-access-rules.md) - Firestoreセキュリティルール仕様
 - [10-03-data-access-patterns.md](./10-03-data-access-patterns.md) - データアクセスパターン仕様

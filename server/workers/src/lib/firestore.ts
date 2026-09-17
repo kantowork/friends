@@ -98,8 +98,37 @@ export class FirestoreClient {
     return (await res.json()) as FirestoreDocument;
   }
 
+  /// コレクション直下のドキュメント一覧取得 (GET)
+  async listDocuments(relativeCollectionPath: string): Promise<FirestoreDocument[]> {
+    const accessToken = await this.getAccessToken();
+    const cleanPath = relativeCollectionPath.replace(/^\/+/, "");
+    const url = `https://firestore.googleapis.com/v1/projects/${this.projectId}/databases/(default)/documents/${cleanPath}`;
+
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.warn(`[FirestoreClient.listDocuments] ${cleanPath} failed: status=${res.status}, body=${errText}`);
+      return [];
+    }
+
+    const data = (await res.json()) as { documents?: FirestoreDocument[] };
+    return data.documents || [];
+  }
+
+  /// プロジェクトIDの取得
+  getProjectId(): string {
+    return this.projectId;
+  }
+
   /// ドキュメントパスの完全修飾名 (projects/{projectId}/databases/(default)/documents/{path}) を生成
   formatDocumentName(relativeDocPath: string): string {
+
     const cleanPath = relativeDocPath.replace(/^\/+/, "");
     return `projects/${this.projectId}/databases/(default)/documents/${cleanPath}`;
   }
@@ -124,5 +153,40 @@ export class FirestoreClient {
       const errText = await res.text();
       throw new Error(`Firestore commit failed: ${res.status} ${errText}`);
     }
+  }
+
+  /// 構造化クエリの実行 (POST documents:runQuery)
+  async runQuery(
+    structuredQuery: Record<string, unknown>,
+    parentDocPath?: string
+  ): Promise<FirestoreDocument[]> {
+    const accessToken = await this.getAccessToken();
+    const basePath = parentDocPath
+      ? `projects/${this.projectId}/databases/(default)/documents/${parentDocPath.replace(/^\/+/, "")}`
+      : `projects/${this.projectId}/databases/(default)/documents`;
+    const queryUrl = `https://firestore.googleapis.com/v1/${basePath}:runQuery`;
+
+    const res = await fetch(queryUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ structuredQuery }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Firestore runQuery failed: ${res.status} ${errText}`);
+    }
+
+    const results = (await res.json()) as Array<{ document?: FirestoreDocument }>;
+    const documents: FirestoreDocument[] = [];
+    for (const r of results) {
+      if (r.document) {
+        documents.push(r.document);
+      }
+    }
+    return documents;
   }
 }

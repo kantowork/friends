@@ -28,7 +28,9 @@ public struct GroupListView: View {
                 title: groupChat.title,
                 lastMessage: effectiveLastMessage,
                 lastMessageAt: effectiveLastMessageAt,
-                unreadCount: calculatedUnread
+                unreadCount: calculatedUnread,
+                avatarNonce: groupChat.avatarNonce,
+                avatarUpdatedAt: groupChat.avatarUpdatedAt
             )
         }.sorted { c1, c2 in
             if c1.lastMessageAt != c2.lastMessageAt {
@@ -60,6 +62,7 @@ public struct GroupListView: View {
                         ForEach(groupListItems) { item in
                             NavigationLink(value: item) {
                                 GroupChatRowView(chat: item)
+                                    .id("\(item.chatID)_\(item.avatarNonce)_\(item.avatarUpdatedAt?.timeIntervalSince1970 ?? 0)_\(item.lastMessageAt.timeIntervalSince1970)_\(item.unreadCount)")
                             }
                         }
                     }

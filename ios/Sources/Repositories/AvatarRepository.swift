@@ -229,9 +229,9 @@ final class AvatarRepository {
     
     /// キャッシュから同期的にアバター画像を取得（存在する場合）
     func getCachedAvatar(userId: String, updatedAt: Date?) -> UIImage? {
-        let cacheKey = "avatar_\(userId)_\(updatedAt?.timeIntervalSince1970 ?? 0)" as NSString
-        if let cached = memoryCache.object(forKey: cacheKey) {
-            return cached
+        if let updatedAt = updatedAt {
+            let cacheKey = "avatar_\(userId)_\(updatedAt.timeIntervalSince1970)" as NSString
+            return memoryCache.object(forKey: cacheKey)
         }
         let userLatestKey = "avatar_\(userId)" as NSString
         return memoryCache.object(forKey: userLatestKey)
@@ -260,10 +260,12 @@ final class AvatarRepository {
             "updatedBy": userId,
             "updatedAt": FieldValue.serverTimestamp()
         ]
-        userDocRef.updateData(updates) { error in
+        userDocRef.updateData(updates) { [weak self] error in
             if let error = error {
                 completion(.failure(error))
             } else {
+                let userLatestKey = "avatar_\(userId)" as NSString
+                self?.memoryCache.removeObject(forKey: userLatestKey)
                 completion(.success(()))
             }
         }
@@ -385,9 +387,9 @@ final class AvatarRepository {
     
     /// キャッシュから同期的にグループアバター画像を取得
     func getCachedGroupAvatar(chatId: String, updatedAt: Date?) -> UIImage? {
-        let cacheKey = "avatar_group_\(chatId)_\(updatedAt?.timeIntervalSince1970 ?? 0)" as NSString
-        if let cached = memoryCache.object(forKey: cacheKey) {
-            return cached
+        if let updatedAt = updatedAt {
+            let cacheKey = "avatar_group_\(chatId)_\(updatedAt.timeIntervalSince1970)" as NSString
+            return memoryCache.object(forKey: cacheKey)
         }
         let groupLatestKey = "avatar_group_\(chatId)" as NSString
         return memoryCache.object(forKey: groupLatestKey)
@@ -407,10 +409,12 @@ final class AvatarRepository {
             "updatedBy": updatedBy,
             "updatedAt": FieldValue.serverTimestamp()
         ]
-        chatDocRef.updateData(updates) { error in
+        chatDocRef.updateData(updates) { [weak self] error in
             if let error = error {
                 completion(.failure(error))
             } else {
+                let groupLatestKey = "avatar_group_\(chatId)" as NSString
+                self?.memoryCache.removeObject(forKey: groupLatestKey)
                 completion(.success(()))
             }
         }

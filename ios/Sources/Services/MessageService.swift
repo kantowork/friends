@@ -816,6 +816,89 @@ final class MessageService: ObservableObject {
         return unread
     }
     
+    // MARK: - Unread Management (Fan-out on Read)
+    
+    /// チャットに未読が存在するかを判定 (Fan-out on Read: lastMessageAt > lastReadAt)
+    func hasUnread(chatId: String, lastMessageAt: Date) -> Bool {
+        if activeChatId == chatId {
+            return false
+        }
+        guard let myUserId = currentUser?.userID else { return false }
+        
+        let receipts = readReceipts[chatId] ?? [:]
+        let myReceipt = receipts[myUserId]
+        let myLastReadDate = myReceipt?.lastReadDate ?? Date.distantPast
+        
+        // メモリ内にメッセージがある場合は unreadCount > 0 で精密判定
+        if let chatMessages = messages[chatId], !chatMessages.isEmpty {
+            return unreadCount(for: chatId) > 0
+        }
+        
+        // メモリ未ロード時は水位線比較 (lastMessageAt > myLastReadDate)
+        return lastMessageAt > myLastReadDate.addingTimeInterval(0.1)
+    }
+    
+    /// ホーム画面向け: 現在アクティブなテナントの未読チャット一覧を最新順に生成 (FriendsChatUIModel)
+    func getUnreadChats() -> [FriendsChatUIModel] {
+        guard let myUserId = currentUser?.userID, let tenantId = currentTenant?.tenantID else { return [] }
+        var chats: [FriendsChatUIModel] = []
+        
+        // 1. 1:1 DM チャットの未読チェック
+        let friends = DirectChatService.shared.friends
+        for friend in friends {
+            let dmChatId = "dm_" + [myUserId, friend.userID].sorted().joined(separator: "_")
+            let dmChat = DirectChatService.shared.directChats.first(where: { $0.chatID == dmChatId })
+            let lastMessageAt = dmChat?.lastMessageAt ?? Date.distantPast
+            
+            if hasUnread(chatId: dmChatId, lastMessageAt: lastMessageAt) && lastMessageAt > Date.distantPast {
+                let unread = unreadCount(for: dmChatId)
+                let latestDecrypted = messages[dmChatId]?.last
+                let effectiveLastMessage = latestDecrypted?.summaryText ?? dmChat?.lastMessage ?? ""
+                
+                let chatUI = FriendsChatUIModel(
+                    chat: FriendsChat(
+                        chatID: dmChatId,
+                        tenantID: tenantId,
+                        chatType: .direct,
+                        members: [myUserId, friend.userID].sorted()
+                    ),
+                    title: friend.displayName,
+                    lastMessage: effectiveLastMessage,
+                    lastMessageAt: lastMessageAt,
+                    unreadCount: max(1, unread),
+                    avatarNonce: friend.avatarNonce,
+                    avatarUpdatedAt: friend.avatarUpdatedDate
+                )
+                chats.append(chatUI)
+            }
+        }
+        
+        // 2. かいぎ（グループ）チャットの未読チェック
+        let groups = GroupChatService.shared.groupChats
+        for group in groups {
+            let lastMessageAt = group.lastMessageAt
+            if hasUnread(chatId: group.chatID, lastMessageAt: lastMessageAt) && lastMessageAt > Date.distantPast {
+                let unread = unreadCount(for: group.chatID)
+                let latestDecrypted = messages[group.chatID]?.last
+                let effectiveLastMessage = latestDecrypted?.summaryText ?? group.lastMessage
+                
+                let groupUI = FriendsChatUIModel(
+                    chat: group.chat,
+                    title: group.title,
+                    lastMessage: effectiveLastMessage,
+                    lastMessageAt: lastMessageAt,
+                    unreadCount: max(1, unread),
+                    avatarNonce: group.avatarNonce,
+                    avatarUpdatedAt: group.avatarUpdatedAt
+                )
+                chats.append(groupUI)
+            }
+        }
+        
+        // 最新メッセージ時刻の降順にソート
+        return chats.sorted(by: { $0.lastMessageAt > $1.lastMessageAt })
+    }
+    
     // MARK: - Message Reactions Management
     
     func toggleReaction(chatId: String, messageId: String, reactionType: FriendsReactionType) {

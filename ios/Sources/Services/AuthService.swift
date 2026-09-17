@@ -113,6 +113,7 @@ final class AuthService: ObservableObject {
                             DirectChatService.shared.configure(tenant: tenant, user: profile)
                             GroupChatService.shared.configure(tenant: tenant, user: profile)
                             TenantManager.shared.refreshUnreadCounts()
+                            NotificationManager.shared.syncCurrentDevice()
                             completion(.success(tenant))
                         }
                     case .failure:
@@ -302,6 +303,7 @@ final class AuthService: ObservableObject {
                     DirectChatService.shared.configure(tenant: tenant, user: userProfile)
                     GroupChatService.shared.configure(tenant: tenant, user: userProfile)
                 }
+                NotificationManager.shared.syncCurrentDevice()
                 completion(.success(()))
             }
         }
@@ -653,6 +655,7 @@ final class AuthService: ObservableObject {
                         DirectChatService.shared.configure(tenant: tenant, user: profile)
                         GroupChatService.shared.configure(tenant: tenant, user: profile)
                     }
+                    NotificationManager.shared.syncCurrentDevice()
                 }
             case .failure:
                 DispatchQueue.main.async {

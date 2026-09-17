@@ -2,7 +2,9 @@ import SwiftUI
 
 public struct SettingsView: View {
     @ObservedObject var authService = AuthService.shared
+    @ObservedObject var notificationManager = NotificationManager.shared
     @AppStorage(ChatFontSize.defaultKey) private var chatFontSizeRaw: String = ChatFontSize.default.rawValue
+
     @State private var showingEditProfile = false
     @State private var showingRecoveryPhrase = false
     @State private var showingSecurityResetAlert = false
@@ -93,8 +95,20 @@ public struct SettingsView: View {
                 }
             }
             
-            // Display Section (メッセージ文字サイズ)
-            Section(L10n.Settings.sectionDisplay) {
+            // App Settings Section (アプリ設定)
+            Section(L10n.Settings.sectionAppSettings) {
+                // 通知 (トグルスイッチ)
+                Toggle(isOn: Binding(
+                    get: { notificationManager.isNotificationsEnabled },
+                    set: { newValue in
+                        notificationManager.handleToggleChange(enabled: newValue)
+                    }
+                )) {
+                    Label(L10n.Settings.notificationsToggle, systemImage: "bell.fill")
+                        .foregroundColor(.primary)
+                }
+                
+                // メッセージの文字サイズ
                 VStack(alignment: .leading, spacing: 10) {
                     Text(L10n.Settings.chatFontSizeLabel)
                         .font(.subheadline)
@@ -112,6 +126,7 @@ public struct SettingsView: View {
             
             // About Section
             Section {
+
                 NavigationLink {
                     AppInfoView()
                 } label: {
@@ -194,8 +209,19 @@ public struct SettingsView: View {
         } message: {
             Text(accountDeleteError ?? L10n.Common.error)
         }
+        .alert(L10n.Settings.notificationsDeniedAlertTitle, isPresented: $notificationManager.showingDeniedSettingsAlert) {
+            Button(L10n.Common.cancel, role: .cancel) {}
+            Button(L10n.Settings.openSettings) {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+        } message: {
+            Text(L10n.Settings.notificationsDeniedAlertMsg)
+        }
     }
 }
+
 
 // MARK: - Recovery Phrase Sheet View
 

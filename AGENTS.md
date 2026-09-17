@@ -20,10 +20,12 @@
   - **Repository**: Firestore / Cloud Storage 等のすべてのデータアクセス（CRUD・`onSnapshot` 購読）を `Repositories/` ディレクトリ配下に集約し、Service や View から直接 Firebase SDK を呼び出さないこと。
 - 詳細仕様: [doc/10-detailed-design/10-03-data-access-patterns.md](doc/10-detailed-design/10-03-data-access-patterns.md)
 
-### 3. Protocol Buffers & コード自動生成ルール (Protobuf)
-- **モデルの単一情報源**: データモデルの定義は `shared/model/*.proto` (Proto3) を真実の唯一のソース (SSOT) とする。
-- **Apple 公式 SwiftProtobuf**: モデル自動生成には Apple 公式 `protoc-gen-swift` を使用する。
-- **構成管理除外**: 自動生成コード（`ios/Sources/Models/Generated/*.pb.swift` 等）は `.gitignore` に指定し、Git 管理対象外とすること。
+### 3. SSoT データモデル & API スキーマ自動生成ルール (Protobuf & Zod)
+- **ドメインモデルの単一情報源 (SSoT)**: `shared/model/*.proto` (Proto3)。モデル自動生成には Apple 公式 `protoc-gen-swift` を使用し、`ios/Sources/Models/Generated/*.pb.swift` を自動生成する。
+- **REST API スキーマの単一情報源 (SSoT)**: `shared/schema/*.ts` (TypeScript + Zod)。
+  - **サーバー側 (TypeScript)**: `shared/schema` から直接 `z.infer` 型とバリデーションスキーマをインポートして使用する（二重定義・中間ディレクトリ `shared/api/*` は完全排除・作成禁止）。
+  - **クライアント側 (Swift)**: `scripts/generate_api.mjs` を使用して `shared/schema/*.ts` から直接 Swift Codable モデル（`ios/Sources/Models/Generated/APISchemas.generated.swift`）を自動生成する。
+- **構成管理除外**: 自動生成コード（`ios/Sources/Models/Generated/*` 等）は `.gitignore` に指定し、Git 管理対象外とすること。
 
 ### 4. 国際化・多言語対応の徹底 (Mandatory i18n / L10n)
 - **ハードコードの禁止**: UI 表示文字列、プレースホルダー、システムアラート、エラーメッセージ等に日本語リテラルを直接記述することを**固く禁止**する。

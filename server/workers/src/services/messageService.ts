@@ -1,6 +1,7 @@
 // メッセージ送受信業務サービス (業務ロジック層)
 import { FirestoreClient, FirestoreWrite } from "../lib/firestore";
-import type { SendMessagePayload, SendMessageResponse } from "@shared/api";
+import { PushNotificationService } from "./pushNotificationService";
+import type { SendMessagePayload, SendMessageResponse } from "@shared/schema";
 
 export class MessageService {
   private firestore: FirestoreClient;
@@ -54,9 +55,15 @@ export class MessageService {
     const existingChat = await this.firestore.getDocument(chatRelativePath);
 
     const writes: FirestoreWrite[] = [];
+    let resolvedChatMembers: string[] = [];
 
     if (existingChat) {
-      // 既存チャット: lastMessageAt, updatedAt, updatedBy のみを更新
+      // 既存チャット: members の取得と lastMessageAt, updatedAt, updatedBy のみを更新
+      const existingMembers = existingChat.fields?.members?.arrayValue?.values
+        ?.map((v) => v.stringValue)
+        .filter((v): v is string => typeof v === "string") || [];
+      resolvedChatMembers = existingMembers;
+
       writes.push({
         update: {
           name: chatDocName,
@@ -87,6 +94,7 @@ export class MessageService {
         resolvedMembers.push(message.senderId);
       }
       resolvedMembers = Array.from(new Set(resolvedMembers)).sort();
+      resolvedChatMembers = resolvedMembers;
 
       writes.push({
         update: {
@@ -141,8 +149,16 @@ export class MessageService {
     // 3. アトミックコミット
     await this.firestore.commit(writes);
 
-    // 4. 将来の Push 通知 (FCM / APNs) ディスパッチ用フック
-    // 将来ここに this.dispatchPushNotification(...) を追加
+    // 4. Push 通知 (FCM / APNs) ディスパッチ (非同期実行)
+    const recipientUids = resolvedChatMembers.filter((uid) => uid !== message.senderId);
+    this.dispatchPushNotification({
+      tenantId,
+      chatId,
+      message,
+      recipientUids,
+    }).catch((err) => {
+      console.error("[MessageService] Push notification dispatch error:", err);
+    });
 
     return {
       success: true,
@@ -150,5 +166,38 @@ export class MessageService {
       chatId,
       tenantId,
     };
+  }
+
+  /// チャット参加者のデバイス宛に Push 通知を送信
+  private async dispatchPushNotification(params: {
+    tenantId: string;
+    chatId: string;
+    message: SendMessagePayload;
+    recipientUids: string[];
+  }): Promise<void> {
+    const { tenantId, chatId, message, recipientUids } = params;
+    if (recipientUids.length === 0) return;
+
+    console.log(`[dispatchPushNotification] Collecting device tokens for recipients: ${recipientUids.join(", ")}`);
+
+    const pushService = new PushNotificationService(this.firestore);
+    const tokens = await pushService.getDeviceTokensForUsers(recipientUids);
+
+    if (tokens.length === 0) {
+      console.log(`[dispatchPushNotification] No registered devices found for recipients`);
+      return;
+    }
+
+    await pushService.sendNotification({
+      tokens,
+      title: "Friends",
+      body: "新着メッセージが届きました",
+      data: {
+        tenantId,
+        chatId,
+        messageId: message.messageId,
+        senderId: message.senderId,
+      },
+    });
   }
 }

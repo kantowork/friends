@@ -6,24 +6,24 @@
 
 ```text
 shared/
-├── model/                 # ドメインモデル (Proto3 SSOT)
+├── model/                 # ドメインモデル (Proto3 SSoT)
 │   ├── common.proto       # 共通 Enum (ChatType, MessageType, UserRole 等) & EncryptedPayload
 │   ├── tenant.proto       # Tenant (t_) & Group (g_)
 │   ├── user.proto         # PublicUserProfile (u_), UserPrivateData, Device (d_)
 │   ├── chat.proto         # Chat (dm_ / gm_) & KeyBucket (v_)
 │   ├── friend.proto       # 友達関係 (u_)
 │   └── message.proto      # Message (m_)
-├── schema/                # REST API スキーマ定義 (TypeScript + Zod SSoT)
-│   ├── index.ts           # 共通エクスポート
-│   ├── helper.ts          # Zod メタデータ付与ヘルパー (withExample, withRef)
-│   ├── auth.ts            # 匿名復旧スキーマ (RecoverAnonymousRequest/Response)
-│   ├── messages.ts        # メッセージ送信スキーマ (SendMessageRequest/Response)
-│   └── common.ts          # 共通エラーレスポンススキーマ (ErrorResponse)
-└── api/                   # Zod から自動生成される TypeScript 型定義
-    ├── index.ts           # 共通エクスポート
-    └── generated/         # scripts/generate_api.mjs で自動生成 (.gitignore 対象)
-        └── schema.ts      # 生成された TypeScript 型定義
+└── schema/                # REST API スキーマ定義 (TypeScript + Zod SSoT)
+    ├── index.ts           # 共通エクスポート（スキーマ & z.infer 型定義）
+    ├── helper.ts          # Zod メタデータ付与ヘルパー (withExample, withRef)
+    ├── auth.ts            # 匿名復旧スキーマ (RecoverAnonymousRequest/Response)
+    ├── messages.ts        # メッセージ送信スキーマ (SendMessageRequest/Response)
+    └── common.ts          # 共通エラーレスポンススキーマ (ErrorResponse)
 ```
+
+> **Note**: 中間ディレクトリ `shared/api/*` は完全排除されました。
+> - **サーバー (Workers)**: `shared/schema` から直接 `z.infer` 型とバリデーションスキーマをインポートして利用します。
+> - **クライアント (iOS)**: `scripts/generate_api.mjs` により `shared/schema` から直接 Swift Codable モデル（`ios/Sources/Models/Generated/APISchemas.generated.swift`）を自動生成します。
 
 ## ドキュメント・規約への完全準拠
 

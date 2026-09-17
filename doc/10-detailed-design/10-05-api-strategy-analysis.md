@@ -9,9 +9,9 @@
 ### 共通インタフェースの管理原則 (SSoT)
 サーバーとクライアント間で共通となる REST API インタフェース定義は、TypeScript + Zod を真実の唯一のソース (SSoT) として **`shared/schema/*.ts`** にて一元管理します。
 - **Zod スキーマ (SSoT)**: `shared/schema/`（`auth.ts`, `messages.ts`, `common.ts` 等）にてリクエスト/レスポンス構造、フィールド型、バリデーションルール、エラー構造を厳密に定義。
-- **TypeScript (サーバー側)**: `scripts/generate_api.mjs` により `shared/api/generated/schema.ts` に型定義を自動生成し、Cloudflare Workers (Hono) から静的型安全な参照および `safeParse` によるランタイムバリデーションに直接利用。
-- **Swift (クライアント側)**: `scripts/generate_api.mjs` により Zod スキーマと完全一致する型安全な Swift Codable モデル（`ios/Sources/Models/Generated/APISchemas.generated.swift`）を自動生成し、通信モデルの完全な型整合性を担保。
-- **構成管理方針**: 中間ファイルとしての OpenAPI YAML はリポジトリ保持せず、`shared/schema/` から直接 Swift / TypeScript コードを生成（`npm run generate:models`）。自動生成コードはすべて `.gitignore` 対象とし、手動二重管理を完全に排除。
+- **TypeScript (サーバー側)**: `shared/schema` から直接 `z.infer` による型注釈および `safeParse` によるランタイムバリデーションに利用。中間ディレクトリ（`shared/api/*`）等の二重生成は一切行わず完全排除。
+- **Swift (クライアント側)**: `scripts/generate_api.mjs` により Zod スキーマと完全一致する型安全な Swift Codable モデル（`ios/Sources/Models/Generated/APISchemas.generated.swift`）を直接自動生成し、通信モデルの完全な型整合性を担保。
+- **構成管理方針**: 中間ファイルとしての OpenAPI YAML や中間型定義はリポジトリ保持せず、`shared/schema/` から直接 Swift コードを生成（`npm run generate:models`）。自動生成コードはすべて `.gitignore` 対象とし、手動二重管理を完全に排除。
 
 ---
 
@@ -146,9 +146,9 @@
 ## サーバー API インタフェース定義方針 (SSoT)
 
 - **真実の唯一のソース (SSoT)**: `shared/schema/*.ts` (TypeScript + Zod)
-- **自動生成対象**:
-  - TypeScript API 型定義: `shared/api/generated/schema.ts`
-  - Swift Codable モデル: `ios/Sources/Models/Generated/APISchemas.generated.swift`
+- **利用および自動生成対象**:
+  - **サーバー (TypeScript)**: `shared/schema` から直接 `z.infer` 型とスキーマをインポート（中間ディレクトリ `shared/api/*` は完全排除）
+  - **クライアント (Swift)**: `scripts/generate_api.mjs` で `ios/Sources/Models/Generated/APISchemas.generated.swift` を直接自動生成
 - **構成管理方針**:
-  - 中間生成物となる OpenAPI YAML はリポジトリ保持せず、`shared/schema/` から直接 TypeScript / Swift コードを自動生成（`npm run generate:models`）。
+  - 中間生成物となる OpenAPI YAML や中間型ファイルはリポジトリ保持せず、`shared/schema/` から直接 Swift コードを自動生成（`npm run generate:models`）。
   - 自動生成コードはすべて `.gitignore` 対象とし、手動編集を禁止。

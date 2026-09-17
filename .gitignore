@@ -45,7 +45,6 @@ Pods/
 
 # Auto-Generated Code & Assets (Proto3 / Models / Legal / Licenses / AppIcon)
 ios/Sources/Models/Generated/
-shared/api/generated/
 ios/Sources/Resources/legal/
 ios/Sources/Assets.xcassets/
 

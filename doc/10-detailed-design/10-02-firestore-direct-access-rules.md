@@ -42,6 +42,13 @@ Firestore に保存されるすべてのフィールドは、セキュリティ�
   - `nonce` は 128 文字未満の Base64 文字列
 - **削除認可**: 完全禁止（`allow delete: if false;`）。誤操作や不正リクエストによる秘密鍵バックアップの消失を防止。
 
+### 2.4 デバイス・プッシュトークン領域 (/tenants/{tenantId}/users/{userId}/devices/{deviceId})
+- **概要**: プッシュ通知（APNs / FCM）配信用の端末トークンおよび端末名を管理。
+- **読み取り・書き込み認可**: 本人のみ許可（`isTenantUser(tenantId, userId)`）。
+- **削除認可**: 本人のみ許可（`isTenantUser(tenantId, userId)`）。設定画面からの「通知先をこの端末だけにする（他端末リセット）」による一括削除をサポート。
+- **監査メタデータ**: 作成・更新時に `deviceId`, `deviceName`, `platform`, `updatedAt` を格納。
+
+
 ---
 
 ## 3. クライアント直接格納における運用ルール
@@ -137,6 +144,10 @@ Firestore に保存されるすべてのフィールドは、セキュリティ�
 ### 5.2 グループ名の変更権限 (Group Title Update)
 - グループチャットのタイトル（`title`）変更は、グループの改ざん・スパム防止のため**グループオーナー (`owner`) または グループ管理者 (`admin`)** に限定されます。
 - セキュリティルール上、`title` が変更対象キーに含まれる場合は `isGroupOwnerOrAdmin` が真であることを必須とします。
+
+### 5.3 グループアバターの変更・削除権限 (Group Avatar Update)
+- グループチャットのアバター（`avatarNonce`, `avatarUpdatedAt`）変更および削除は、改ざん防止のためグループ名変更と同様に**グループオーナー (`owner`) または グループ管理者 (`admin`)** に限定されます。
+- セキュリティルール上、`avatarNonce` または `avatarUpdatedAt` が変更対象キーに含まれる場合は `isGroupOwnerOrAdmin` が真であることを必須とし、affectedKeys は `avatarNonce`, `avatarUpdatedAt`, `updatedBy`, `updatedAt` のみに厳格制限されます。
 
 ---
 

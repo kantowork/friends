@@ -65,6 +65,7 @@
 // MARK: - Home
 "home.quick_action.title" = "クイックアクション";
 "home.quick_action.add_friend" = "ともだちを追加";
+"home.unread_chats.title" = "未読メッセージ";
 "home.notification.title" = "お知らせ";
 "home.notification.empty" = "新しいお知らせはありません";
 
@@ -305,3 +306,17 @@
 "error.storage.invalid_encryption_key" = "無効なファイル暗号化鍵です。";
 "chat.dm_default_title" = "1:1トーク";
 "tenant.default_tenant_name" = "デフォルト";
+
+// MARK: - Push Notification & App Settings
+"notification.permission.title" = "通知をオンにしませんか？";
+"notification.permission.description" = "新着メッセージの受信にすばやく気づけるようになります。";
+"notification.permission.enable" = "通知をオンにする";
+"notification.permission.later" = "あとで";
+
+"settings.section.app_settings" = "アプリ設定";
+"settings.notifications.toggle" = "通知";
+"settings.notifications.denied_alert_title" = "通知がオフになっています";
+"settings.notifications.denied_alert_msg" = "メッセージの通知を受け取るには、端末の設定アプリから通知を許可してください。";
+"settings.notifications.open_settings" = "設定を開く";
+
+

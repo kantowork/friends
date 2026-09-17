@@ -34,16 +34,17 @@
 ### 2.1 Cloud Firestore パス階層
 
 ```text
-/tenants/{}                                   : テナント基本情報
-           /users/{}                          : ユーザープロファイル
-                    /friends/{}               : 私の友達一覧
-           /chats/{}                          : チャット（DM / かいぎ）
-                    /messages/{}              : E2EE暗号化メッセージ
-                                /reactions/{} : メッセージリアクション
-                    /receipts/{}              : 既読位置・タイムスタンプ
-                    /keys/{}                  : 共通鍵バケット
-/users/{}                                     : 認証ユーザー情報
-         /private/data                        : アカウント復元用・暗号化秘密鍵
+/tenants/{}                  : テナント基本情報
+    /users/{}                : ユーザープロファイル
+        /friends/{}          : 私の友達一覧
+        /devices/{}          : プッシュ通知用デバイス情報
+    /chats/{}                : チャット（DM / かいぎ）
+        /messages/{}         : E2EE暗号化メッセージ
+            /reactions/{}    : メッセージリアクション
+            /receipts/{}     : 既読位置・タイムスタンプ
+        /keys/{}             : 共通鍵バケット
+/users/{}                    : 認証ユーザー情報
+    /private/data            : アカウント復元用・暗号化秘密鍵
 ```
 
 ### 2.2 Cloud Storage パス階層
@@ -125,6 +126,29 @@
 - **対象パス**: iOS Keychain (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`) & 1:1 E2EE メッセージ
 - **関数名**: `updateDisplayName(newName:completion:)`
 - **概要**: 表示名は公開プロファイルには保存せず、ローカル Keychain に安全に保管。最新の表示名はチャット送受信時の 1:1 E2EE ペイロード経由で友達にのみ伝播する。
+
+---
+
+### 3.3 デバイス・プッシュ通知 (Device & Push Token) アクセスパターン
+
+#### DP-01: 登録デバイス一覧取得
+- **操作種別**: Read (Query/Get)
+- **対象パス**: `/tenants/{tenantId}/users/{userId}/devices` (order by `updatedAt` descending)
+- **関数名**: `listDevicesByUserId(tenantId:userId:completion:)`
+- **概要**: ユーザーに紐づく全登録デバイスを取得（設定画面一覧表示用）。
+
+#### DP-02: デバイス登録・トークン更新
+- **操作種別**: Write (Set with Merge)
+- **対象パス**: `/tenants/{tenantId}/users/{userId}/devices/{deviceId}`
+- **関数名**: `registerDevice(tenantId:userId:device:completion:)`
+- **概要**: ログイン時または通知許可時にデバイストークンおよびデバイス名を登録・更新。
+- **監査要件**: `createdBy: userId`, `createdAt: serverTimestamp()`, `updatedBy: userId`, `updatedAt: serverTimestamp()`
+
+#### DP-03: 通知有効化フラグ更新
+- **操作種別**: Write (Update)
+- **対象パス**: `/tenants/{tenantId}/users/{userId}/devices/{deviceId}`
+- **関数名**: `updateDeviceNotificationEnabled(tenantId:userId:deviceId:enabled:completion:)`
+- **概要**: アプリ設定画面の通知トグル切り替えに伴い、`enabled` フィールドを更新。
 
 ---
 
@@ -291,7 +315,7 @@
 - **対象パス**: `/tenants/{tenantId}/chats/{chatId}`
 - **関数名**: `removeGroupMember(tenantId:chatId:targetUserId:updatedBy:completion:)`
 - **監査要件**: `updatedBy: myUserId`, `updatedAt: serverTimestamp()`
-- **権限**: 
+- **権限**:
   - **自発的退出**: 本人のみ（※オーナーは退出不可）
   - **他メンバーを退出させる**: **グループオーナー または グループ管理者のみ**（一般メンバーは不可。左スワイプ操作）
 - **制約**: オーナーは退出不可（他者からの退出操作・自発的退出ともに不可）。
@@ -308,10 +332,10 @@
 
 #### GP-08: かいぎ一覧・全メンバープロファイル一括取得 (Pull-to-Refresh)
 - **操作種別**: Query Read / Batch Read
-- **対象パス**: 
+- **対象パス**:
   - `/tenants/{tenantId}/chats` (ユーザー参加グループの取得)
   - `/tenants/{tenantId}/users/{userId}` (グループ参加メンバー全員のプロファイル一括取得)
-- **関数名**: 
+- **関数名**:
   - Repository: `listChatsByUserId(tenantId:userId:limit:completion:)`
   - Service: `listGroupChats(force:completion:)`
 - **権限**: テナント認証ユーザー
@@ -359,6 +383,14 @@
 - **関数名**: `updateReadReceiptByUserId(tenantId:chatId:userId:lastReadMessageId:lastReadAt:completion:)`
 - **監査要件**: `createdBy: userId`, `createdAt: serverTimestamp()`, `updatedBy: userId`, `updatedAt: serverTimestamp()`
 - **概要**: 自身が最新メッセージを閲覧した際の水位線カーソル更新。
+
+#### RR-03: ホーム画面未読チャット一覧判定 (Fan-out on Read)
+- **操作種別**: Local In-Memory Evaluation (Zero Extra Writes)
+- **入力ソース**:
+  - `CP-01` で購読中の参加チャット一覧 (`[Chat]`: 各要素に `lastMessageAt`)
+  - 自身の既読カーソル辞書 (`[chatId: myLastReadAt]`)
+- **判定ロジック**: 各チャット $C$ に対し、`C.lastMessageAt > (myLastReadAt ?? .distantPast)` を満たすチャットを未読として抽出。
+- **スケーラビリティ**: 参加者が1万人を超えるグループでも書き込み側ファンアウトが不要であり、Read コストは参加チャット数（通常 5〜30 件）のみで安全にスケール。
 
 ---
 

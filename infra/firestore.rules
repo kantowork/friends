@@ -232,7 +232,16 @@ service cloud.firestore {
           // 友達の解除・削除は自分の友達リストからのみ可能
           allow delete: if isTenantUser(tenantId, userId);
         }
+
+        // ---------------------------------------------------------------------
+        // 2.1.2 デバイス・プッシュトークンサブコレクション (/tenants/{tenantId}/users/{userId}/devices/{deviceId})
+        // ---------------------------------------------------------------------
+        match /devices/{deviceId} {
+          // 本人のみ閲覧・作成・更新・削除が可能
+          allow read, write,delete: if isTenantUser(tenantId, userId);
+        }
       }
+
 
       // -----------------------------------------------------------------------
       // 2.2 ユーザー名一意性インデックス (/tenants/{tenantId}/usernames/{username})
@@ -338,6 +347,14 @@ service cloud.firestore {
         isGroupOwnerOrAdmin(resource.data, request.resource.data.updatedBy)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
         'title', 'updatedBy', 'updatedAt'
+        ])
+        )
+          ||
+        // グループアバター変更・削除 -> オーナーまたは管理者のみ実行可能
+        (
+        isGroupOwnerOrAdmin(resource.data, request.resource.data.updatedBy)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'avatarNonce', 'avatarUpdatedAt', 'updatedBy', 'updatedAt'
         ])
         )
           ||

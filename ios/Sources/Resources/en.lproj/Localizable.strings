@@ -65,6 +65,7 @@
 // MARK: - Home
 "home.quick_action.title" = "Quick Actions";
 "home.quick_action.add_friend" = "Add Friend";
+"home.unread_chats.title" = "Unread Messages";
 "home.notification.title" = "Notifications";
 "home.notification.empty" = "No new notifications";
 
@@ -305,3 +306,17 @@
 "error.storage.invalid_encryption_key" = "Invalid file encryption key.";
 "chat.dm_default_title" = "Direct Message";
 "tenant.default_tenant_name" = "Default";
+
+// MARK: - Push Notification & App Settings
+"notification.permission.title" = "Turn on Notifications?";
+"notification.permission.description" = "Quickly notice when you receive new messages.";
+"notification.permission.enable" = "Turn On Notifications";
+"notification.permission.later" = "Maybe Later";
+
+"settings.section.app_settings" = "App Settings";
+"settings.notifications.toggle" = "Notifications";
+"settings.notifications.denied_alert_title" = "Notifications Disabled";
+"settings.notifications.denied_alert_msg" = "To receive message notifications, please allow notifications in iOS Settings.";
+"settings.notifications.open_settings" = "Open Settings";
+
+

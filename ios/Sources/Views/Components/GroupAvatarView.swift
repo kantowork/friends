@@ -66,7 +66,7 @@ public struct GroupAvatarView: View {
     }
     
     private var effectiveImage: UIImage? {
-        if avatarNonce.isEmpty && avatarUpdatedAt == nil {
+        if avatarNonce.isEmpty {
             return nil
         }
         if let loaded = loadedImage {
@@ -76,7 +76,10 @@ public struct GroupAvatarView: View {
     }
     
     private func loadImageIfNeeded() {
-        guard !avatarNonce.isEmpty else { return }
+        guard !avatarNonce.isEmpty else {
+            self.loadedImage = nil
+            return
+        }
         if let cached = AvatarRepository.shared.getCachedGroupAvatar(chatId: chatId, updatedAt: avatarUpdatedAt) {
             self.loadedImage = cached
             return

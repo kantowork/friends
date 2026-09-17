@@ -83,6 +83,7 @@ public enum L10n {
     public enum Home {
         public static var quickActionTitle: String { tr("home.quick_action.title") }
         public static var quickActionAddFriend: String { tr("home.quick_action.add_friend") }
+        public static var unreadSectionTitle: String { tr("home.unread_chats.title") }
         public static var notificationTitle: String { tr("home.notification.title") }
         public static var notificationEmpty: String { tr("home.notification.empty") }
     }
@@ -284,10 +285,24 @@ public enum L10n {
         public static var avatarPresetTitle: String { tr("settings.profile.avatar_preset_title") }
         public static var avatarRemove: String { tr("settings.profile.avatar_remove") }
         
-        // Display
-        public static var sectionDisplay: String { tr("settings.section.display") }
+        // App Settings
+        public static var sectionAppSettings: String { tr("settings.section.app_settings") }
+        public static var notificationsToggle: String { tr("settings.notifications.toggle") }
+        public static var notificationsDeniedAlertTitle: String { tr("settings.notifications.denied_alert_title") }
+        public static var notificationsDeniedAlertMsg: String { tr("settings.notifications.denied_alert_msg") }
+        public static var openSettings: String { tr("settings.notifications.open_settings") }
         public static var chatFontSizeLabel: String { tr("settings.chat_font_size.label") }
     }
+
+    
+    // MARK: - Push Notification Permission Prompt (A06m)
+    public enum Notification {
+        public static var permissionTitle: String { tr("notification.permission.title") }
+        public static var permissionDesc: String { tr("notification.permission.description") }
+        public static var enableButton: String { tr("notification.permission.enable") }
+        public static var laterButton: String { tr("notification.permission.later") }
+    }
+
     
     // MARK: - Errors
     public enum Error {
